@@ -69,12 +69,13 @@ async function runHTTP(): Promise<void> {
     // Walks both EPO workspaces recursively. Finds every project folder by name
     // (P-0077, COM-00086 etc.) and collects the project sheet + RAID log inside.
     // Cache resets on server restart → new projects are auto-discovered.
-    let _projCache: { comm: Record<string, ProjectInfo>; bs: Record<string, ProjectInfo> } | null = null;
+    let _projCache: { comm: Record<string, ProjectInfo>; bs: Record<string, ProjectInfo>; bsByName: Record<string, ProjectInfo> } | null = null;
 
     async function walkFolder(
-        token:    string,
-        folderId: number,
-        out:      Record<string, ProjectInfo>
+        token:      string,
+        folderId:   number,
+        out:        Record<string, ProjectInfo>,
+        outByName?: Record<string, ProjectInfo>   // BS: name-keyed index (folder name → project info)
     ): Promise<void> {
         try {
             const r = await fetch(
@@ -91,6 +92,7 @@ async function runHTTP(): Promise<void> {
             const pidMatch   = folderName.match(/^([A-Z]+-\d+)/i);
 
             if (pidMatch && sheets.length) {
+                // ── Comm-style: P-XXXX folder — index by project ID ──────────────
                 const pid = pidMatch[1].toUpperCase();
 
                 // Prefer sheets whose name starts with "_" as the project sheet
@@ -107,11 +109,34 @@ async function runHTTP(): Promise<void> {
                     raidSheetId:           raidSheet ? String(raidSheet.id)        : null,
                     raidSheetPermalink:    raidSheet ? raidSheet.permalink         : null,
                 };
+
+            } else if (outByName) {
+                // ── BS-style: name-indexed folder ─────────────────────────────────
+                // A project folder is identified by the presence of a sheet named
+                // exactly "RAID Log" (confirmed consistent across all BS projects).
+                // Dept folders (Analytics, App Dev…) never contain a RAID Log directly.
+                const raidSheet = sheets.find(s => s.name === "RAID Log");
+                if (raidSheet) {
+                    // Project sheet = sheet whose name starts with the folder name
+                    // (e.g. "DDS Report Timeline" for folder "DDS Report"),
+                    // falling back to first non-RAID, non-report/dashboard sheet.
+                    const projSheet =
+                        sheets.find(s => s.name !== "RAID Log" && (s.name ?? "").startsWith(folderName)) ??
+                        sheets.find(s => s.name !== "RAID Log" && !/deliverable|dashboard|status/i.test(s.name ?? ""));
+
+                    const key = folderName.toLowerCase().trim();
+                    outByName[key] = {
+                        projectSheetId:        projSheet ? String(projSheet.id)        : null,
+                        projectSheetPermalink: projSheet ? projSheet.permalink         : null,
+                        raidSheetId:           raidSheet ? String(raidSheet.id)        : null,
+                        raidSheetPermalink:    raidSheet ? raidSheet.permalink         : null,
+                    };
+                }
             }
 
-            // Recurse into sub-folders in parallel
+            // Recurse into sub-folders in parallel (pass outByName through)
             if (folder.folders?.length) {
-                await Promise.all(folder.folders.map(sf => walkFolder(token, sf.id, out)));
+                await Promise.all(folder.folders.map(sf => walkFolder(token, sf.id, out, outByName)));
             }
         } catch {
             // Skip inaccessible folders silently
@@ -127,15 +152,21 @@ async function runHTTP(): Promise<void> {
         try {
             // Traverse each workspace into its OWN map — prevents ID collisions.
             // Both Comm and BS use independent P-XXXX sequences that overlap.
-            const commOut: Record<string, ProjectInfo> = {};
-            const bsOut:   Record<string, ProjectInfo> = {};
+            const commOut:   Record<string, ProjectInfo> = {};
+            const bsOut:     Record<string, ProjectInfo> = {};
+            const bsByName:  Record<string, ProjectInfo> = {};   // BS name-indexed (folder name → info)
 
-            const workspaces = [
-                { wsId: "8580344233387908", out: commOut, label: "Comm" },  // EPO – Commercialization
-                { wsId: "8144071119136644", out: bsOut,   label: "BS"   },  // EPO – Business Support
+            const workspaces: Array<{
+                wsId: string;
+                out:    Record<string, ProjectInfo>;
+                byName?: Record<string, ProjectInfo>;
+                label:  string;
+            }> = [
+                { wsId: "8580344233387908", out: commOut,            label: "Comm" },
+                { wsId: "8144071119136644", out: bsOut,  byName: bsByName, label: "BS"   },
             ];
 
-            await Promise.all(workspaces.map(async ({ wsId, out, label }) => {
+            await Promise.all(workspaces.map(async ({ wsId, out, byName, label }) => {
                 const r = await fetch(
                     `https://api.smartsheet.com/2.0/workspaces/${wsId}`,
                     { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
@@ -147,13 +178,17 @@ async function runHTTP(): Promise<void> {
                 const ws = (await r.json()) as SmartsheetWorkspace;
                 console.log(`[EPO] Traversing ${label} workspace:`, ws.name, "— top folders:", ws.folders?.length ?? 0);
                 if (ws.folders?.length) {
-                    await Promise.all(ws.folders.map(f => walkFolder(token, f.id, out)));
+                    await Promise.all(ws.folders.map(f => walkFolder(token, f.id, out, byName)));
                 }
-                console.log(`[EPO] ${label} index:`, Object.keys(out).length, "projects");
+                const byNameCount = byName ? Object.keys(byName).length : 0;
+                console.log(`[EPO] ${label} index:`, Object.keys(out).length, "P-XXXX",
+                    byNameCount ? `| ${byNameCount} by-name` : "");
             }));
 
-            _projCache = { comm: commOut, bs: bsOut };
-            console.log("[EPO] /project-info cache built — Comm:", Object.keys(commOut).length, "| BS:", Object.keys(bsOut).length);
+            _projCache = { comm: commOut, bs: bsOut, bsByName };
+            console.log("[EPO] /project-info cache built — Comm:", Object.keys(commOut).length,
+                "| BS P-XXXX:", Object.keys(bsOut).length,
+                "| BS by-name:", Object.keys(bsByName).length);
             res.json(_projCache);
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
