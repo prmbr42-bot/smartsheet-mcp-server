@@ -69,7 +69,7 @@ async function runHTTP(): Promise<void> {
     // Walks both EPO workspaces recursively. Finds every project folder by name
     // (P-0077, COM-00086 etc.) and collects the project sheet + RAID log inside.
     // Cache resets on server restart → new projects are auto-discovered.
-    let _projCache: Record<string, ProjectInfo> | null = null;
+    let _projCache: { comm: Record<string, ProjectInfo>; bs: Record<string, ProjectInfo> } | null = null;
 
     async function walkFolder(
         token:    string,
@@ -125,28 +125,36 @@ async function runHTTP(): Promise<void> {
         if (!token) { res.status(500).json({ error: "SMARTSHEET_API_TOKEN not set" }); return; }
         if (_projCache) { res.json(_projCache); return; }
         try {
-            const out: Record<string, ProjectInfo> = {};
-            // EPO – Commercialization: 8580344233387908
-            // EPO – Business Support:  8144071119136644
-            const wsIds = ["8580344233387908", "8144071119136644"];
-            await Promise.all(wsIds.map(async wsId => {
+            // Traverse each workspace into its OWN map — prevents ID collisions.
+            // Both Comm and BS use independent P-XXXX sequences that overlap.
+            const commOut: Record<string, ProjectInfo> = {};
+            const bsOut:   Record<string, ProjectInfo> = {};
+
+            const workspaces = [
+                { wsId: "8580344233387908", out: commOut, label: "Comm" },  // EPO – Commercialization
+                { wsId: "8144071119136644", out: bsOut,   label: "BS"   },  // EPO – Business Support
+            ];
+
+            await Promise.all(workspaces.map(async ({ wsId, out, label }) => {
                 const r = await fetch(
                     `https://api.smartsheet.com/2.0/workspaces/${wsId}`,
                     { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
                 );
                 if (!r.ok) {
-                    console.error("[EPO] Workspace fetch failed:", wsId, r.status);
+                    console.error(`[EPO] ${label} workspace fetch failed:`, wsId, r.status);
                     return;
                 }
                 const ws = (await r.json()) as SmartsheetWorkspace;
-                console.log("[EPO] Traversing workspace:", ws.name, "— top folders:", ws.folders?.length ?? 0);
+                console.log(`[EPO] Traversing ${label} workspace:`, ws.name, "— top folders:", ws.folders?.length ?? 0);
                 if (ws.folders?.length) {
                     await Promise.all(ws.folders.map(f => walkFolder(token, f.id, out)));
                 }
+                console.log(`[EPO] ${label} index:`, Object.keys(out).length, "projects");
             }));
-            _projCache = out;
-            console.log("[EPO] /project-info cache built:", Object.keys(out).length, "projects");
-            res.json(out);
+
+            _projCache = { comm: commOut, bs: bsOut };
+            console.log("[EPO] /project-info cache built — Comm:", Object.keys(commOut).length, "| BS:", Object.keys(bsOut).length);
+            res.json(_projCache);
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             console.error("[EPO] /project-info error:", msg);

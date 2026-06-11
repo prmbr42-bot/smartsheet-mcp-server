@@ -10,8 +10,6 @@ import { registerDiscussionAttachmentTools } from "./tools/discussions-attachmen
 import { registerSearchTools } from "./tools/search.js";
 import { initSmartsheetClient } from "./services/smartsheet.js";
 // ── Server Factory ────────────────────────────────────────────────────────────
-// Creates a fresh MCP server instance with all tools registered.
-// We create one per session so each session has isolated state.
 function createServer() {
     const server = new McpServer({
         name: "smartsheet-mcp-server",
@@ -29,17 +27,132 @@ if (envToken) {
     initSmartsheetClient(envToken);
 }
 // ── Transport: Streamable HTTP with session management ────────────────────────
-// Copilot Studio requires stateful sessions:
-//   1. POST /mcp with initialize request  → returns Mcp-Session-Id header
-//   2. POST /mcp with initialized notification (same session ID)
-//   3. POST /mcp with tools/list (same session ID)
-//   4. POST /mcp with tools/call (same session ID)
 async function runHTTP() {
     const app = express();
     app.use(express.json());
     // Session store: maps session ID → transport
     const sessions = new Map();
-    // Health check
+    // ── Project info: workspace folder traversal ──────────────────────────────
+    // Walks both EPO workspaces recursively. Finds every project folder by name
+    // (P-0077, COM-00086 etc.) and collects the project sheet + RAID log inside.
+    // Cache resets on server restart → new projects are auto-discovered.
+    let _projCache = null;
+    async function walkFolder(token, folderId, out) {
+        try {
+            const r = await fetch(`https://api.smartsheet.com/2.0/folders/${folderId}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+            if (!r.ok)
+                return;
+            const folder = (await r.json());
+            const sheets = folder.sheets ?? [];
+            // Project folder = name starts with a project ID like P-0077 or COM-00086
+            const folderName = (folder.name ?? "").replace(/^_+/, "");
+            const pidMatch = folderName.match(/^([A-Z]+-\d+)/i);
+            if (pidMatch && sheets.length) {
+                const pid = pidMatch[1].toUpperCase();
+                // Prefer sheets whose name starts with "_" as the project sheet
+                // (e.g. _P-0077 Nakano Drinking Concentrates), fall back to
+                // first non-RAID sheet for folders with extra sheets.
+                const raidSheet = sheets.find(s => /raid/i.test(s.name ?? ""));
+                const projSheet = sheets.find(s => /^_/.test(s.name ?? "")) ??
+                    sheets.find(s => !/raid/i.test(s.name ?? ""));
+                out[pid] = {
+                    projectSheetId: projSheet ? String(projSheet.id) : null,
+                    projectSheetPermalink: projSheet ? projSheet.permalink : null,
+                    raidSheetId: raidSheet ? String(raidSheet.id) : null,
+                    raidSheetPermalink: raidSheet ? raidSheet.permalink : null,
+                };
+            }
+            // Recurse into sub-folders in parallel
+            if (folder.folders?.length) {
+                await Promise.all(folder.folders.map(sf => walkFolder(token, sf.id, out)));
+            }
+        }
+        catch {
+            // Skip inaccessible folders silently
+        }
+    }
+    // Returns project sheet + RAID log info for every project in both EPO
+    // workspaces. Result is cached in memory; resets on server restart.
+    app.get("/project-info", async (_req, res) => {
+        const token = process.env.SMARTSHEET_API_TOKEN;
+        if (!token) {
+            res.status(500).json({ error: "SMARTSHEET_API_TOKEN not set" });
+            return;
+        }
+        if (_projCache) {
+            res.json(_projCache);
+            return;
+        }
+        try {
+            // Traverse each workspace into its OWN map — prevents ID collisions.
+            // Both Comm and BS use independent P-XXXX sequences that overlap.
+            const commOut = {};
+            const bsOut = {};
+            const workspaces = [
+                { wsId: "8580344233387908", out: commOut, label: "Comm" }, // EPO – Commercialization
+                { wsId: "8144071119136644", out: bsOut, label: "BS" }, // EPO – Business Support
+            ];
+            await Promise.all(workspaces.map(async ({ wsId, out, label }) => {
+                const r = await fetch(`https://api.smartsheet.com/2.0/workspaces/${wsId}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+                if (!r.ok) {
+                    console.error(`[EPO] ${label} workspace fetch failed:`, wsId, r.status);
+                    return;
+                }
+                const ws = (await r.json());
+                console.log(`[EPO] Traversing ${label} workspace:`, ws.name, "— top folders:", ws.folders?.length ?? 0);
+                if (ws.folders?.length) {
+                    await Promise.all(ws.folders.map(f => walkFolder(token, f.id, out)));
+                }
+                console.log(`[EPO] ${label} index:`, Object.keys(out).length, "projects");
+            }));
+            _projCache = { comm: commOut, bs: bsOut };
+            console.log("[EPO] /project-info cache built — Comm:", Object.keys(commOut).length, "| BS:", Object.keys(bsOut).length);
+            res.json(_projCache);
+        }
+        catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            console.error("[EPO] /project-info error:", msg);
+            res.status(500).json({ error: msg });
+        }
+    });
+    // Clear the project-info cache to force a fresh workspace traversal.
+    // Call via:  POST /project-info/refresh
+    // Or from DevTools console:
+    //   fetch('/project-info/refresh', {method:'POST'}).then(r=>r.json()).then(console.log)
+    app.post("/project-info/refresh", (_req, res) => {
+        _projCache = null;
+        res.json({ ok: true, message: "Cache cleared — next GET /project-info will re-scan" });
+    });
+    // ── Dashboard static file ─────────────────────────────────────────────────
+    app.get("/dashboard", (_req, res) => {
+        res.sendFile("/home/site/wwwroot/epo_utilization_standalone.html");
+    });
+    // ── Generic Smartsheet API proxy ──────────────────────────────────────────
+    // Forwards any /api/* request to https://api.smartsheet.com/2.0{path}
+    // using the server-side SMARTSHEET_API_TOKEN (never exposed to the browser).
+    // Note: Smartsheet /search returns 404 for this service-account token
+    // (search scope not granted). All dashboard features avoid the search API.
+    app.use("/api", async (req, res) => {
+        const token = process.env.SMARTSHEET_API_TOKEN;
+        if (!token) {
+            res.status(500).json({ error: "no token" });
+            return;
+        }
+        try {
+            const qs = Object.keys(req.query).length
+                ? "?" + new URLSearchParams(req.query).toString()
+                : "";
+            const r = await fetch(`https://api.smartsheet.com/2.0${req.path}${qs}`, {
+                headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+            });
+            res.json(await r.json());
+        }
+        catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            res.status(500).json({ error: msg });
+        }
+    });
+    // ── Health check ──────────────────────────────────────────────────────────
     app.get("/health", (_req, res) => {
         res.json({
             status: "ok",
@@ -48,16 +161,14 @@ async function runHTTP() {
             activeSessions: sessions.size,
         });
     });
+    // ── MCP endpoint ──────────────────────────────────────────────────────────
     app.post("/mcp", async (req, res) => {
-        // Per-request token override for multi-tenant scenarios
         const requestToken = req.headers["x-smartsheet-token"];
         if (requestToken) {
             initSmartsheetClient(requestToken);
         }
         const sessionId = req.headers["mcp-session-id"];
-        // ── New session: initialize request ──────────────────────────────────────
         if (!sessionId) {
-            // Must be an initialize request to start a new session
             if (!isInitializeRequest(req.body)) {
                 res.status(400).json({
                     jsonrpc: "2.0",
@@ -77,7 +188,6 @@ async function runHTTP() {
                     sessions.set(sid, transport);
                 },
             });
-            // Clean up session when connection closes
             transport.onclose = () => {
                 sessions.delete(newSessionId);
             };
@@ -86,7 +196,6 @@ async function runHTTP() {
             await transport.handleRequest(req, res, req.body);
             return;
         }
-        // ── Existing session ──────────────────────────────────────────────────────
         const transport = sessions.get(sessionId);
         if (!transport) {
             res.status(404).json({
@@ -101,7 +210,6 @@ async function runHTTP() {
         }
         await transport.handleRequest(req, res, req.body);
     });
-    // Handle session termination (DELETE)
     app.delete("/mcp", async (req, res) => {
         const sessionId = req.headers["mcp-session-id"];
         if (sessionId && sessions.has(sessionId)) {
@@ -129,13 +237,13 @@ async function runStdio() {
 // ── Entry Point ───────────────────────────────────────────────────────────────
 const transport = process.env.TRANSPORT ?? "stdio";
 if (transport === "http") {
-    runHTTP().catch((err) => {
+    runHTTP().catch(err => {
         process.stderr.write(`Fatal: ${err}\n`);
         process.exit(1);
     });
 }
 else {
-    runStdio().catch((err) => {
+    runStdio().catch(err => {
         process.stderr.write(`Fatal: ${err}\n`);
         process.exit(1);
     });
