@@ -1166,6 +1166,7 @@
         var PROJECTS = [], TAB = 'comm', MONTHS = [], CK = '', MX_COMM = {}, MX_BS = {}, COLL = {}, SEL = null;
         var DRILL_PROJS = [], EXPANDED = {}, RAID_CACHE = {};
         var SHOW_ON_HOLD = true;
+        var KPI_PENDING_OPEN = false; // toggles the pending-by-owner breakdown inside the Total Projects KPI tile
         var SHEET_PERMALINKS = {}; // source → API-provided sheet permalink (SSO-aware)
         var BS_CAP = {};           // dept → monthly capacity hours (loaded at runtime from Dept Capacity sheet)
         var BS_FOLDER_INDEX = {};  // normalized folder name → {raidSheetId, projectSheetPermalink, ...}
@@ -1199,7 +1200,7 @@
         function fmtHrs(h) { if (h >= 1000) return (Math.round(h / 10) / 100) + 'k h'; return Math.round(h) + 'h'; }
         function fmtDate(v) { if (!v) return null; var d = pd(v); if (!d) return null; return d.toLocaleString('default', { month: 'short', year: '2-digit' }); }
         function extractProjectId(name) { if (!name) return null; var m = name.match(/^([A-Z]+-\d+)/i); return m ? m[1].toUpperCase() : null; }
-        function isOnHold(status) { return /on.hold|on_hold|onhold|hold/i.test(status || ''); }
+        function isOnHold(status) { return /on.hold|on_hold|onhold|hold|paused/i.test(status || ''); }
 
         /* ════════════════════════════════════════════════════════
            API
@@ -1219,6 +1220,10 @@
         function parseSheet(data, fmap, sc, endCols, durationCol, fs, src) {
             var t2id = {};
             (data.columns || []).forEach(function (c) { t2id[c.title] = c.id; });
+            /* Catch silent column-name mismatches early — these have bitten us before */
+            [sc, fs].forEach(function (col) {
+                if (col && t2id[col] == null) console.warn('[EPO] ' + src + ' — date column "' + col + '" not found on sheet. Available columns containing "date":', Object.keys(t2id).filter(function (k) { return /date/i.test(k); }).join(', '));
+            });
             var EX = /cancelled|rejected|8\s*-|complete/i;
             return (data.rows || []).reduce(function (acc, row) {
                 var by = {};
@@ -1277,6 +1282,8 @@
                 var bsFolder = src === 'Business Support' ? (g('Project Folder') || null) : null;
                 /* BS only: EPO Lead from IT Active Projects report match, if any */
                 var epoLead = (src === 'Business Support' && itActiveEntry) ? itActiveEntry.epoLead : null;
+                /* BS only: normalized IT Function Owner name — used for the pending-by-owner breakdown */
+                var itOwnerName = (src === 'Business Support' && itOwnerRaw) ? normalizeOwnerKey(itOwnerRaw) : null;
                 acc.push({
                     name: nm, status: st, startDate: sd, endDate: ed, source: src, ftes: ftes,
                     rowId: row.id, rowPermalink: row.permalink || null,
@@ -1284,7 +1291,8 @@
                     percentComplete: isNaN(pct) ? null : pct,
                     owner: owner,
                     bsFolder: bsFolder,
-                    epoLead: epoLead
+                    epoLead: epoLead,
+                    itOwnerName: itOwnerName
                 });
                 return acc;
             }, []);
@@ -1611,8 +1619,8 @@
                         ['Anticipated/Actual End Date', 'Revised Target End Date', 'Desired 1st Production Date', 'Original Target End Date'],
                         'Project Owner Estimated Duration (Months)', 'Created date', 'Commercialization');
                     /* Note: 'Project ID' column is fetched automatically — parseSheet reads all columns */
-                    var bs = parseSheet(res[1], BFMAP, 'Enterprise Approval Date',
-                        ['Anticipated End Date', 'Desired Completed Date'], null, 'Created date', 'Business Support');
+                    var bs = parseSheet(res[1], BFMAP, 'Design (Kickoff) Date',
+                        ['Anticipated End Date', 'Desired Completed Date'], null, 'Ent SteerCo Agenda Date', 'Business Support');
                     PROJECTS = comm.concat(bs);
                     MONTHS = mkMonths(); CK = nk();
                     rebuildMatrices();
@@ -1661,8 +1669,8 @@
         }
 
         function renderKPIs(fp, mx) {
-            function ia(s) { return /active|in.progress|test|build|deployment|post.support/i.test(s || ''); }
-            function ip(s) { return /pending|discovery/i.test(s || ''); }
+            function ia(s) { return /active|in.progress|test|build|deployment|post.support|design/i.test(s || ''); }
+            function ip(s) { return /pending|discovery|enterprise.review/i.test(s || ''); }
             var dem = 0, nr = 0, ov = 0;
             var moNow = MONTHS.filter(function (m) { return m.key === CK; })[0];
             var wdNow = moNow ? wdays(moNow.start, moNow.end) : 0;
@@ -1676,6 +1684,14 @@
             fp.forEach(function (p) { });
             var holdKpi = PROJECTS.filter(function (p) { return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && isOnHold(p.status); }).length;
             var acc = ['#52B788', '#52B788', '#2563EB', '#F97316', ov > 0 ? '#EF4444' : '#22C55E'];
+            /* Pending-by-owner breakdown — BS only (Comm has no IT Function Owner field) */
+            var pendingProjects = TAB === 'bs' ? fp.filter(function (p) { return ip(p.status); }) : [];
+            var pendingByOwner = {};
+            pendingProjects.forEach(function (p) {
+                var k = p.itOwnerName || 'Unassigned';
+                (pendingByOwner[k] = pendingByOwner[k] || []).push(p.name);
+            });
+            var pendingOwnerKeys = Object.keys(pendingByOwner).sort();
             var ks = [
                 { v: fp.length, l: 'Total Projects', s: fp.filter(function (p) { return ia(p.status); }).length + ' active · ' + fp.filter(function (p) { return ip(p.status); }).length + ' pending' },
                 { v: Object.keys(mx).length, l: 'Active Departments', s: (TAB === 'comm' ? Object.keys(CAP).length : Object.keys(BS_CAP).length) + ' with defined capacity' },
@@ -1684,9 +1700,21 @@
                 { v: holdKpi, l: 'Projects On Hold', s: SHOW_ON_HOLD ? 'Included in hrs (dimmed)' : 'Currently excluded from hrs' }
             ];
             document.getElementById('kpi-strip').innerHTML = ks.map(function (k, i) {
+                var extra = '';
+                if (i === 0 && pendingProjects.length > 0) {
+                    extra = '<div onclick="event.stopPropagation();KPI_PENDING_OPEN=!KPI_PENDING_OPEN;renderAll();" style="cursor:pointer;color:#2563EB;font-size:10px;margin-top:4px;font-weight:600;user-select:none">'
+                        + (KPI_PENDING_OPEN ? '▾' : '▸') + ' pending by owner</div>';
+                    if (KPI_PENDING_OPEN) {
+                        extra += '<div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.6">'
+                            + pendingOwnerKeys.map(function (k2) {
+                                return '<div title="' + esc(pendingByOwner[k2].join(', ')) + '">' + esc(k2) + ': ' + pendingByOwner[k2].length + '</div>';
+                            }).join('')
+                            + '</div>';
+                    }
+                }
                 return '<div class="kpi-card" style="border-top:3px solid ' + acc[i] + '">'
                     + '<div class="kv" style="color:' + (i >= 3 && k.v > 0 ? acc[i] : 'var(--dark)') + '">' + k.v + '</div>'
-                    + '<div class="kl">' + k.l + '</div><div class="ks">' + k.s + '</div></div>';
+                    + '<div class="kl">' + k.l + '</div><div class="ks">' + k.s + '</div>' + extra + '</div>';
             }).join('');
         }
 
