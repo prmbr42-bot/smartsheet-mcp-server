@@ -1456,22 +1456,36 @@
                 })
                 .then(function (report) {
                     if (!report) return;
+                    /* Smartsheet REPORTS use virtualId/virtualColumnId, not the regular id/columnId
+                       pairing that Sheets use — confirmed via raw API inspection. Fall back to
+                       id/columnId just in case a future report config reverts to that shape. */
                     var t2id = {};
-                    (report.columns || report.reportColumns || []).forEach(function (c) { t2id[c.title] = c.id; });
-                    var pidCol = t2id['Project ID'], deptCol = t2id['Owning Department'], leadCol = t2id['EPO Lead'];
+                    (report.columns || report.reportColumns || []).forEach(function (c) {
+                        var cid = c.virtualId != null ? c.virtualId : c.id;
+                        t2id[c.title] = cid;
+                    });
+                    var pidCol = t2id['Project ID'] != null ? t2id['Project ID'] : t2id['ID'];
+                    var deptCol = t2id['Owning Department'];
+                    var leadCol = t2id['EPO Lead'];
                     if (pidCol == null || deptCol == null) {
                         console.warn('[EPO] IT Active Projects report — missing expected columns. Available:', Object.keys(t2id).join(', '));
                         return;
                     }
                     var idx = {};
                     (report.rows || []).forEach(function (row) {
-                        var by = {};
-                        (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
-                        var pid = by[pidCol]; if (!pid) return;
+                        var byVal = {}, byDisp = {};
+                        (row.cells || []).forEach(function (c) {
+                            var cid = c.virtualColumnId != null ? c.virtualColumnId : c.columnId;
+                            byVal[cid] = c.value != null ? c.value : null;
+                            byDisp[cid] = c.displayValue != null ? c.displayValue : null;
+                        });
+                        var pid = byVal[pidCol]; if (!pid) return;
                         pid = String(pid).trim().toUpperCase();
-                        var rawDept = by[deptCol];
+                        var rawDept = byVal[deptCol];
                         var dept = rawDept ? (IT_DEPT_ABBREV[String(rawDept).trim()] || String(rawDept).trim()) : null;
-                        var lead = leadCol != null ? by[leadCol] : null;
+                        /* EPO Lead is a Contact column — prefer the friendly displayValue (name)
+                           over the raw value (email) for UI purposes */
+                        var lead = leadCol != null ? (byDisp[leadCol] || byVal[leadCol]) : null;
                         if (dept) idx[pid] = { dept: dept, epoLead: lead || null };
                     });
                     IT_ACTIVE_INDEX = idx;
