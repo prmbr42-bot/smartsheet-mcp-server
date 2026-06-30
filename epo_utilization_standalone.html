@@ -1102,15 +1102,15 @@
         /* IT Function Owner (person) → IT & Digital dept.
            Source: BS Portfolio Master Sheet "IT Function Owner" column.
            Confirmed by Jerry: James Ko is replacing Bob Crane on Analytics;
-           Matt Gretencord's projects map to Application Development (not Power Apps);
-           Jerry Coppage owns a dedicated "EPO" dept. */
+           Matt Gretencord's projects map to Application Development (not Power Apps).
+           Jerry Coppage no longer appears as an IT Owner — tracked separately under
+           "EPO Lead" going forward, outside the IT & Digital dept breakdown. */
         var OWNER_TO_DEPT = {
             'Kevin Biggers': 'Master Data',
             'Kraig Schenewerk': 'Infrastructure',
             'Bob Crane': 'Analytics',
             'James Ko': 'Analytics',
-            'Matt Gretencord': 'Application Development',
-            'Jerry Coppage': 'EPO'
+            'Matt Gretencord': 'Application Development'
         };
 
         /* ── DEPARTMENT GROUPS ── */
@@ -1143,7 +1143,7 @@
             /* ── Multi-dept groups ── */
             { label: 'Finance & Accounting', color: '#1E3A8A', depts: ['FP&A', 'Accounts Payable', 'Accounts Receivable', 'Costing', 'Accounting'] },
             { label: 'Operations', color: '#1E3A8A', depts: ['Bulk Operations', 'Bottling Operations', 'Warehousing', 'Continuous Improvement', 'Engineering'] },
-            { label: 'IT & Digital', color: '#1E3A8A', depts: ['Analytics', 'Application Development', 'Infrastructure', 'Master Data', 'Power Apps', 'EPO'] }
+            { label: 'IT & Digital', color: '#1E3A8A', depts: ['Analytics', 'Application Development', 'Infrastructure', 'Master Data', 'Power Apps'] }
         ];
 
         /* ── STATE ── */
@@ -1546,7 +1546,7 @@
             /* Swap methodology bar */
             document.getElementById('mbar').innerHTML = TAB === 'comm'
                 ? '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap &nbsp;|&nbsp; Capacity = Dept FTE × 8 hrs/day × Working Days in Month &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet'
-                : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
+                : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
             renderKPIs(fp, mx); renderHM();
         }
 
