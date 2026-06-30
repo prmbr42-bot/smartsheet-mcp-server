@@ -1113,6 +1113,22 @@
             'Matt Gretencord': 'Application Development'
         };
 
+        /* "IT Function Owner" is a Smartsheet Contact column — its API value can come
+           through as a display name ("Kevin Biggers") OR an email address
+           ("kevin.biggers@mizkan.com") depending on how the cell was set. Normalize
+           emails to "Firstname Lastname" so lookups against OWNER_TO_DEPT work either way. */
+        function normalizeOwnerKey(raw) {
+            if (!raw) return null;
+            var s = String(raw).trim();
+            if (s.indexOf('@') > -1) {
+                var local = s.split('@')[0];
+                s = local.split(/[._]+/).filter(Boolean).map(function (p) {
+                    return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+                }).join(' ');
+            }
+            return s;
+        }
+
         /* ── DEPARTMENT GROUPS ── */
         var COMM_GROUPS = [
             { label: 'Sales', color: '#0D2818', depts: ['Sales'] },
@@ -1153,6 +1169,7 @@
         var SHEET_PERMALINKS = {}; // source → API-provided sheet permalink (SSO-aware)
         var BS_CAP = {};           // dept → monthly capacity hours (loaded at runtime from Dept Capacity sheet)
         var BS_FOLDER_INDEX = {};  // normalized folder name → {raidSheetId, projectSheetPermalink, ...}
+        var IT_ACTIVE_INDEX = {};  // Project ID → {dept, epoLead} from the "IT Active Projects" report (authoritative dept signal)
 
         /* ════════════════════════════════════════════════════════
            UTILITIES
@@ -1226,12 +1243,19 @@
                    month-overlap distribution in buildMX spreads them automatically. */
                 if (src === 'Business Support') {
                     var itOwnerRaw = g('IT Function Owner');
-                    var itDept = itOwnerRaw ? OWNER_TO_DEPT[String(itOwnerRaw).trim()] : null;
                     var itHrsRaw = g('IT Owner Estimated Hours');
                     /* Strict numeric check — Smartsheet returns numeric cells as JS numbers;
                        text entries (e.g. "320-500", free-text notes) are intentionally skipped
                        rather than guessed at, per Jerry — cleanup happens on the sheet. */
                     var itHrs = (typeof itHrsRaw === 'number' && isFinite(itHrsRaw) && itHrsRaw > 0) ? itHrsRaw : null;
+                    /* Dept attribution priority:
+                       1. IT Active Projects report (explicit "Owning Department" per project — authoritative)
+                       2. IT Function Owner name inference (OWNER_TO_DEPT) — fallback for projects not yet
+                          tracked on the report (e.g. Master Data, Infrastructure aren't on it currently) */
+                    var pidLookup = (g('Project ID') || extractProjectId(nm) || null);
+                    pidLookup = pidLookup ? String(pidLookup).trim().toUpperCase() : null;
+                    var itActiveEntry = pidLookup ? IT_ACTIVE_INDEX[pidLookup] : null;
+                    var itDept = itActiveEntry ? itActiveEntry.dept : (itOwnerRaw ? OWNER_TO_DEPT[normalizeOwnerKey(itOwnerRaw)] : null);
                     if (itDept && itHrs) {
                         var _is = pd(sd), _ie = pd(ed);
                         if (_is && _ie && _is <= _ie) {
@@ -1251,13 +1275,16 @@
                 var projectId = rawPid ? String(rawPid).trim().toUpperCase() : null;
                 /* BS only: folder name from "Project Folder" column — used for RAID + project sheet lookup */
                 var bsFolder = src === 'Business Support' ? (g('Project Folder') || null) : null;
+                /* BS only: EPO Lead from IT Active Projects report match, if any */
+                var epoLead = (src === 'Business Support' && itActiveEntry) ? itActiveEntry.epoLead : null;
                 acc.push({
                     name: nm, status: st, startDate: sd, endDate: ed, source: src, ftes: ftes,
                     rowId: row.id, rowPermalink: row.permalink || null,
                     projectId: projectId,
                     percentComplete: isNaN(pct) ? null : pct,
                     owner: owner,
-                    bsFolder: bsFolder
+                    bsFolder: bsFolder,
+                    epoLead: epoLead
                 });
                 return acc;
             }, []);
@@ -1288,7 +1315,8 @@
                             rowId: p.rowId, rowPermalink: p.rowPermalink, projectId: p.projectId,
                             percentComplete: p.percentComplete, owner: p.owner,
                             startDate: p.startDate, endDate: p.endDate,
-                            bsFolder: p.bsFolder || null
+                            bsFolder: p.bsFolder || null,
+                            epoLead: p.epoLead || null
                         });
                     });
                 });
@@ -1384,6 +1412,73 @@
                 })
                 .catch(function (e) {
                     console.warn('[EPO] BS capacity load failed — BS depts will show FTE demand (uncapacitated):', e.message);
+                });
+        }
+
+        /* "Owning Department" abbreviations on the IT Active Projects report → full dept names
+           used everywhere else in the dashboard (BS_GROUPS, capacity sheet, etc). */
+        var IT_DEPT_ABBREV = {
+            'App Dev': 'Application Development',
+            'Power App': 'Power Apps',
+            'Power Apps': 'Power Apps',
+            'Analytics': 'Analytics',
+            'Master Data': 'Master Data',
+            'Infrastructure': 'Infrastructure'
+        };
+
+        /* IT Active Projects is a Smartsheet REPORT (not a sheet) — different endpoint,
+           but same generic /api proxy handles it transparently.
+           Discovery path: BS workspace → Intake & Management → Enterprise Portfolio Reports
+           → report named "IT Active Projects". This is the authoritative dept signal —
+           explicit Owning Department per project — used to override the
+           IT Function Owner name-inference (OWNER_TO_DEPT) wherever a Project ID match exists. */
+        function loadITActiveProjects() {
+            var BS_WS = '8144071119136644';
+            return ssGet('/workspaces/' + BS_WS)
+                .then(function (ws) {
+                    var folders = ws.folders || [];
+                    var intakeFolder = folders.find(function (f) { return /intake\s*&?\s*management/i.test(f.name || ''); });
+                    if (!intakeFolder) { console.warn('[EPO] Intake & Management folder not found'); return null; }
+                    return ssGet('/folders/' + intakeFolder.id);
+                })
+                .then(function (intakeContents) {
+                    if (!intakeContents) return null;
+                    var reportsFolder = (intakeContents.folders || []).find(function (f) { return /enterprise\s*portfolio\s*reports/i.test(f.name || ''); });
+                    if (!reportsFolder) { console.warn('[EPO] Enterprise Portfolio Reports folder not found'); return null; }
+                    return ssGet('/folders/' + reportsFolder.id);
+                })
+                .then(function (reportsContents) {
+                    if (!reportsContents) return null;
+                    var report = (reportsContents.reports || []).find(function (r) { return /^it\s*active\s*projects$/i.test((r.name || '').trim()); });
+                    if (!report) { console.warn('[EPO] "IT Active Projects" report not found in Enterprise Portfolio Reports'); return null; }
+                    console.log('[EPO] Found IT Active Projects report:', report.name, 'id:', report.id);
+                    return ssGet('/reports/' + report.id);
+                })
+                .then(function (report) {
+                    if (!report) return;
+                    var t2id = {};
+                    (report.columns || report.reportColumns || []).forEach(function (c) { t2id[c.title] = c.id; });
+                    var pidCol = t2id['Project ID'], deptCol = t2id['Owning Department'], leadCol = t2id['EPO Lead'];
+                    if (pidCol == null || deptCol == null) {
+                        console.warn('[EPO] IT Active Projects report — missing expected columns. Available:', Object.keys(t2id).join(', '));
+                        return;
+                    }
+                    var idx = {};
+                    (report.rows || []).forEach(function (row) {
+                        var by = {};
+                        (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
+                        var pid = by[pidCol]; if (!pid) return;
+                        pid = String(pid).trim().toUpperCase();
+                        var rawDept = by[deptCol];
+                        var dept = rawDept ? (IT_DEPT_ABBREV[String(rawDept).trim()] || String(rawDept).trim()) : null;
+                        var lead = leadCol != null ? by[leadCol] : null;
+                        if (dept) idx[pid] = { dept: dept, epoLead: lead || null };
+                    });
+                    IT_ACTIVE_INDEX = idx;
+                    console.log('[EPO] IT Active Projects index built —', Object.keys(idx).length, 'projects');
+                })
+                .catch(function (e) {
+                    console.warn('[EPO] IT Active Projects report load failed — falling back to IT Function Owner inference only:', e.message);
                 });
         }
 
@@ -1485,13 +1580,14 @@
         }
 
         function loadData() {
-            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {};
+            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; IT_ACTIVE_INDEX = {};
             document.getElementById('load-msg').textContent = 'Fetching Commercialization + Business Support…';
             Promise.all([
                 ssGet('/sheets/' + COMM_ID + '?include=rowPermalink'),
                 ssGet('/sheets/' + BS_ID + '?include=rowPermalink'),
                 buildRaidIndex(),
-                loadBSCapacity()
+                loadBSCapacity(),
+                loadITActiveProjects()
             ])
                 .then(function (res) {
                     /* Store API-provided sheet permalinks — SSO-aware, correct encoded format */
@@ -1712,6 +1808,7 @@
                 if (ex) {
                     h += '<div class="pc-detail">';
                     if (p.owner) h += '<div class="det-row"><span class="det-lbl">OWNER</span><span class="det-val">' + esc(p.owner) + '</span></div>';
+                    if (p.epoLead) h += '<div class="det-row"><span class="det-lbl">EPO LEAD</span><span class="det-val">' + esc(p.epoLead) + '</span></div>';
                     var sd = fmtDate(p.startDate), ed = fmtDate(p.endDate);
                     if (sd || ed) h += '<div class="det-row"><span class="det-lbl">SPAN</span><span class="det-val">' + (sd || '?') + ' → ' + (ed || '?') + '</span></div>';
                     h += '<div class="det-row"><span class="det-lbl">FTE ALLOC</span><span class="det-val">' + p.fte + ' FTE → ' + fmtHrs(p.hours) + ' this month</span></div>';
