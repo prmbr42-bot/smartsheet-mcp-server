@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>EPO Resource Utilization</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: #F7FAF8;
+            font-family: 'Barlow', sans-serif;
+            -webkit-font-smoothing: antialiased
+        }
+
+        :root {
+            --dark: #0D2818;
+            --deep: #1B4D35;
+            --mint: #52B788;
+            --blue: #2563EB;
+            --cream: #F0EDE6;
+            --border: #E2E8F0;
+            --text: #1A2E1E;
+            --muted: #6B7280
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, .15);
+            border-radius: 3px
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(16px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0)
+            }
+        }
+
+        @keyframes fadeDown {
+            from {
+                opacity: 0;
+                transform: translateY(-6px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        /* ── HEADER ── */
+        .s-hdr {
+            background: var(--dark);
+            color: #fff;
+            padding: 13px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .28)
+        }
+
+        .h-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: .025em
+        }
+
+        .h-sub {
+            font-size: 11px;
+            color: rgba(255, 255, 255, .5);
+            margin-top: 1px
+        }
+
+        .hdr-r {
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        #hdr-ts {
+            font-size: 11px;
+            color: rgba(255, 255, 255, .38)
+        }
+
+        #btn-refresh {
+            background: var(--mint);
+            color: var(--dark);
+            border: none;
+            border-radius: 3px;
+            padding: 6px 13px;
+            font-family: 'Barlow', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer
+        }
+
+        #btn-refresh:disabled {
+            background: rgba(255, 255, 255, .07);
+            color: rgba(255, 255, 255, .25);
+            cursor: not-allowed
+        }
+
+        /* ── TAB BAR ── */
+        .tab-bar {
+            background: var(--deep);
+            padding: 0 24px;
+            display: flex;
+            align-items: stretch
+        }
+
+        .tab {
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, .6);
+            font-family: 'Barlow', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            letter-spacing: .03em;
+            transition: color .15s
+        }
+
+        .tab:hover {
+            color: rgba(255, 255, 255, .9)
+        }
+
+        .tab.active {
+            color: #fff;
+            border-bottom-color: var(--mint);
+            background: rgba(255, 255, 255, .05)
+        }
+
+        #tab-count {
+            margin-left: auto;
+            font-size: 11px;
+            color: rgba(255, 255, 255, .32);
+            display: flex;
+            align-items: center
+        }
+
+        /* ── STATES ── */
+        #loading-state {
+            padding: 60px;
+            text-align: center
+        }
+
+        .spinner {
+            width: 34px;
+            height: 34px;
+            border: 3px solid var(--mint);
+            border-top-color: transparent;
+            border-radius: 50%;
+            margin: 0 auto 14px;
+            animation: spin .8s linear infinite
+        }
+
+        .spinner-sm {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--mint);
+            border-top-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin .7s linear infinite;
+            vertical-align: middle;
+            margin-right: 5px
+        }
+
+        #load-msg {
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 600
+        }
+
+        .l-sub {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 4px
+        }
+
+        #error-state {
+            margin: 24px;
+            padding: 16px;
+            background: #FEF2F2;
+            border-radius: 8px;
+            border: 1px solid #FECACA;
+            display: none
+        }
+
+        .e-title {
+            font-weight: 700;
+            color: #991B1B;
+            margin-bottom: 4px
+        }
+
+        #error-msg {
+            color: #B91C1C;
+            font-size: 13px;
+            margin-bottom: 10px
+        }
+
+        #btn-retry {
+            padding: 6px 14px;
+            background: #EF4444;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px
+        }
+
+        /* ── DATA VIEW ── */
+        #data-view {
+            display: none
+        }
+
+        .kpi-strip {
+            padding: 14px 24px 0;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px
+        }
+
+        .kpi-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .07)
+        }
+
+        .kv {
+            font-size: 26px;
+            font-weight: 800;
+            font-family: 'Barlow Condensed', sans-serif
+        }
+
+        .kl {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            margin-top: 2px
+        }
+
+        .ks {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 1px
+        }
+
+        /* ── HEATMAP ── */
+        .hm-wrap {
+            padding: 14px 24px 24px
+        }
+
+        .hm-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+            overflow: hidden
+        }
+
+        .hm-head {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px
+        }
+
+        .hm-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            font-size: 14px;
+            color: var(--dark);
+            letter-spacing: .04em
+        }
+
+        .legend {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        .li {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        .ls {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px
+        }
+
+        .mbar {
+            padding: 5px 16px;
+            background: #F0FDF4;
+            border-bottom: 1px solid #D1FAE5;
+            font-size: 11px;
+            color: #065F46
+        }
+
+        .tscroll {
+            overflow-x: auto
+        }
+
+        .htbl {
+            border-collapse: collapse;
+            min-width: 960px;
+            width: 100%;
+            font-size: 12px
+        }
+
+        .th-d {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: var(--dark);
+            color: #fff;
+            padding: 8px 14px;
+            text-align: left;
+            min-width: 210px;
+            width: 210px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: .05em
+        }
+
+        .th-m {
+            background: var(--dark);
+            color: rgba(255, 255, 255, .75);
+            padding: 6px 2px;
+            text-align: center;
+            min-width: 68px;
+            width: 68px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 600;
+            font-size: 11px;
+            border-left: 1px solid rgba(255, 255, 255, .06)
+        }
+
+        .th-m.now {
+            background: var(--deep);
+            color: var(--mint);
+            font-weight: 800;
+            border-left: 2px solid var(--mint)
+        }
+
+        .now-tag {
+            font-size: 8px;
+            margin-top: 1px
+        }
+
+        .grp-hdr td {
+            color: #fff;
+            padding: 6px 14px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            user-select: none;
+            border-top: 2px solid var(--mint)
+        }
+
+        .dtd {
+            position: sticky;
+            left: 0;
+            z-index: 4;
+            padding: 0 14px;
+            min-width: 210px;
+            width: 210px;
+            border-right: 2px solid var(--border)
+        }
+
+        .dinn {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 38px
+        }
+
+        .dnm {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 140px
+        }
+
+        .ctd {
+            height: 38px;
+            text-align: center;
+            padding: 0 2px;
+            transition: background .1s;
+            border: 1px solid transparent
+        }
+
+        .ctd.cl {
+            cursor: pointer
+        }
+
+        .ctd.cl:hover {
+            filter: brightness(.9)
+        }
+
+        .ctd.sel {
+            border: 2px solid #2563EB !important;
+            background: #DBEAFE !important
+        }
+
+        .ctd.cur {
+            border: 1px solid rgba(82, 183, 136, .3)
+        }
+
+        .cv {
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 36px
+        }
+
+        .fnote {
+            padding: 7px 16px;
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        /* ── DRILL PANEL ── */
+        #drill {
+            position: fixed;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 420px;
+            background: #fff;
+            box-shadow: -4px 0 24px rgba(0, 0, 0, .13);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            animation: fadeIn .2s ease-out
+        }
+
+        .dh {
+            background: var(--dark);
+            color: #fff;
+            padding: 16px 20px 13px;
+            flex-shrink: 0
+        }
+
+        .dtop {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start
+        }
+
+        .ddept {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            line-height: 1.2
+        }
+
+        .dmon {
+            font-size: 12px;
+            color: rgba(255, 255, 255, .55);
+            margin-top: 3px
+        }
+
+        #btn-close {
+            background: rgba(255, 255, 255, .1);
+            border: none;
+            color: #fff;
+            border-radius: 3px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 14px
+        }
+
+        .dstats {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            flex-wrap: wrap
+        }
+
+        .sl {
+            font-size: 10px;
+            color: rgba(255, 255, 255, .4);
+            letter-spacing: .05em
+        }
+
+        .sv {
+            font-size: 20px;
+            font-weight: 800;
+            font-family: 'Barlow Condensed', sans-serif
+        }
+
+        .su {
+            font-size: 11px;
+            font-weight: 400;
+            opacity: .6
+        }
+
+        .ubar {
+            margin-top: 10px;
+            height: 5px;
+            background: rgba(255, 255, 255, .13);
+            border-radius: 3px;
+            overflow: hidden
+        }
+
+        .ufill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width .4s
+        }
+
+        .dlist {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px
+        }
+
+        .dlhdr {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: .07em;
+            margin-bottom: 8px
+        }
+
+        /* ── PROJECT CARDS ── */
+        .pc {
+            margin-bottom: 8px;
+            border-radius: 7px;
+            border: 1px solid #DDD6CE;
+            overflow: hidden;
+            background: var(--cream)
+        }
+
+        .pc-head {
+            padding: 9px 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px
+        }
+
+        .pc-head:hover {
+            background: #E8E4DC
+        }
+
+        .pc-left {
+            flex: 1;
+            min-width: 0
+        }
+
+        .pc-name {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--dark);
+            line-height: 1.35;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .pc-meta {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            margin-top: 3px;
+            flex-wrap: wrap
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 2px;
+            letter-spacing: .02em
+        }
+
+        .bc {
+            background: #D1FAE5;
+            color: #065F46
+        }
+
+        .bb {
+            background: #DBEAFE;
+            color: #1E3A8A
+        }
+
+        .bh {
+            background: #FEF9C3;
+            color: #92400E;
+            border: 1px solid #FDE68A
+        }
+
+        .ps {
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        .hold-dim {
+            opacity: .52
+        }
+
+        .btn-toggle-hold {
+            border-radius: 3px;
+            padding: 4px 11px;
+            font-family: 'Barlow', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            letter-spacing: .02em;
+            transition: all .15s
+        }
+
+        .btn-toggle-hold.on {
+            background: rgba(254, 249, 195, .2);
+            color: #FDE68A;
+            border: 1px solid rgba(253, 230, 138, .4)
+        }
+
+        .btn-toggle-hold.off {
+            background: rgba(255, 255, 255, .08);
+            color: rgba(255, 255, 255, .45);
+            border: 1px solid rgba(255, 255, 255, .12)
+        }
+
+        .pc-right {
+            text-align: right;
+            flex-shrink: 0
+        }
+
+        .pc-hrs {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            font-size: 16px;
+            color: var(--dark)
+        }
+
+        .pc-share {
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        .pc-toggle {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px
+        }
+
+        .sbar {
+            margin: 5px 12px 8px;
+            height: 3px;
+            background: #E5E7EB;
+            border-radius: 2px;
+            overflow: hidden
+        }
+
+        .sfill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width .3s
+        }
+
+        /* ── EXPANDED CARD DETAIL ── */
+        .pc-detail {
+            background: #fff;
+            border-top: 1px solid #E5E7EB;
+            padding: 10px 12px;
+            animation: fadeDown .15s ease-out
+        }
+
+        .det-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 7px;
+            font-size: 11px
+        }
+
+        .det-lbl {
+            color: var(--muted);
+            font-weight: 600;
+            letter-spacing: .03em;
+            flex-shrink: 0;
+            margin-right: 8px
+        }
+
+        .det-val {
+            color: var(--text);
+            font-weight: 500;
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 220px
+        }
+
+        .prog-wrap {
+            margin-bottom: 7px
+        }
+
+        .prog-lbl {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 3px
+        }
+
+        .prog-bar {
+            height: 5px;
+            background: #E5E7EB;
+            border-radius: 3px;
+            overflow: hidden
+        }
+
+        .prog-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: var(--mint);
+            transition: width .4s
+        }
+
+        .ss-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            padding: 5px 10px;
+            background: var(--dark);
+            color: #fff;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-decoration: none;
+            letter-spacing: .02em
+        }
+
+        .ss-link:hover {
+            background: #1a3828
+        }
+
+        /* ── RAID SECTION ── */
+        .raid-section {
+            margin-top: 10px;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 8px
+        }
+
+        .raid-hdr {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px
+        }
+
+        .raid-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: .08em
+        }
+
+        .raid-counts {
+            display: flex;
+            gap: 5px
+        }
+
+        .raid-ct {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 2px
+        }
+
+        .rc-risk {
+            background: #FFEDD5;
+            color: #9A3412
+        }
+
+        .rc-issue {
+            background: #FEE2E2;
+            color: #991B1B
+        }
+
+        .rc-action {
+            background: #DBEAFE;
+            color: #1E3A8A
+        }
+
+        .rc-decision {
+            background: #EDE9FE;
+            color: #5B21B6
+        }
+
+        .raid-empty {
+            font-size: 11px;
+            color: var(--muted);
+            font-style: italic;
+            padding: 4px 0
+        }
+
+        .raid-entry {
+            margin-bottom: 5px;
+            padding: 6px 8px;
+            background: #F8F6F3;
+            border-radius: 4px;
+            border-left: 3px solid #D1D5DB
+        }
+
+        .raid-entry.risk {
+            border-left-color: #F97316
+        }
+
+        .raid-entry.issue {
+            border-left-color: #EF4444
+        }
+
+        .raid-entry.action {
+            border-left-color: #3B82F6
+        }
+
+        .raid-entry.decision {
+            border-left-color: #8B5CF6
+        }
+
+        .raid-entry-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 6px
+        }
+
+        .raid-desc {
+            font-size: 11px;
+            color: var(--dark);
+            font-weight: 500;
+            line-height: 1.4;
+            flex: 1
+        }
+
+        .raid-impact {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 2px;
+            white-space: nowrap;
+            flex-shrink: 0
+        }
+
+        .imp-high {
+            background: #FEE2E2;
+            color: #991B1B
+        }
+
+        .imp-med {
+            background: #FFEDD5;
+            color: #9A3412
+        }
+
+        .imp-low {
+            background: #F0FDF4;
+            color: #166534
+        }
+
+        .raid-sub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 2px
+        }
+
+        .raid-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            margin-top: 7px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--blue);
+            text-decoration: none;
+            letter-spacing: .02em
+        }
+
+        .raid-link:hover {
+            text-decoration: underline
+        }
+
+        .raid-loading {
+            font-size: 11px;
+            color: var(--muted);
+            padding: 4px 0
+        }
+
+        .dfoot {
+            padding: 9px 16px;
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--muted);
+            background: #FAFAFA;
+            flex-shrink: 0
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="s-hdr">
+        <div>
+            <div class="h-title">EPO RESOURCE UTILIZATION</div>
+            <div class="h-sub" id="h-sub">Commercialization · Hours-Based · Live Smartsheet</div>
+        </div>
+        <div class="hdr-r">
+            <span id="hdr-ts"></span>
+            <button id="btn-refresh" type="button">↻ Refresh</button>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab active" id="tab-comm" type="button">Commercialization</button>
+        <button class="tab" id="tab-bs" type="button">Business Support</button>
+        <span id="tab-count"></span>
+        <button class="btn-toggle-hold on" id="btn-hold" type="button"
+            title="On Hold projects are included in calculations but dimmed — click to exclude">&#9646; On Hold:
+            Included</button>
+    </div>
+
+    <div id="loading-state">
+        <div class="spinner"></div>
+        <div id="load-msg">Fetching live data from Smartsheet…</div>
+        <div class="l-sub">Commercialization + Business Support · Direct REST API</div>
+    </div>
+
+    <div id="error-state">
+        <div class="e-title">Data Fetch Error</div>
+        <div id="error-msg"></div>
+        <button id="btn-retry" type="button">Retry</button>
+    </div>
+
+    <div id="data-view">
+        <div class="kpi-strip" id="kpi-strip"></div>
+        <div class="hm-wrap">
+            <div class="hm-card">
+                <div class="hm-head">
+                    <div class="hm-title" id="hm-title">RESOURCE UTILIZATION BY FUNCTION × MONTH</div>
+                    <div class="legend">
+                        <div class="li">
+                            <div class="ls" style="background:#F0FDF4;border:1px solid #BBF7D0"></div>≤ 50%
+                        </div>
+                        <div class="li">
+                            <div class="ls" style="background:#DCFCE7;border:1px solid #86EFAC"></div>50–75%
+                        </div>
+                        <div class="li">
+                            <div class="ls" style="background:#FEF9C3;border:1px solid #FDE047"></div>75–90%
+                        </div>
+                        <div class="li">
+                            <div class="ls" style="background:#FFEDD5;border:1px solid #FB923C"></div>90–100%
+                        </div>
+                        <div class="li">
+                            <div class="ls" style="background:#FEE2E2;border:1px solid #F87171"></div>&gt; 100%
+                        </div>
+                        <span style="color:#D1D5DB;font-size:11px">· Gray = no capacity defined · Click cell to drill
+                            down</span>
+                    </div>
+                </div>
+                <div class="mbar" id="mbar">
+                    <strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap &nbsp;|&nbsp;
+                    Capacity = Dept FTE × 8 hrs/day × Working Days in Month &nbsp;|&nbsp;
+                    <span style="color:#6EE7B7">●</span> Live Smartsheet
+                </div>
+                <div class="tscroll">
+                    <table class="htbl" id="htbl"></table>
+                </div>
+                <div id="hm-footer" class="fnote" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="drill">
+        <div class="dh">
+            <div class="dtop">
+                <div>
+                    <div class="ddept" id="d-dept"></div>
+                    <div class="dmon" id="d-mon"></div>
+                </div>
+                <button id="btn-close" type="button">✕</button>
+            </div>
+            <div class="dstats" id="d-stats"></div>
+            <div class="ubar" id="ubar" style="display:none">
+                <div class="ufill" id="ufill"></div>
+            </div>
+        </div>
+        <div class="dlist">
+            <div class="dlhdr" id="d-lhdr"></div>
+            <div id="d-projs"></div>
+        </div>
+        <div class="dfoot">Click any project to expand · Hours = FTE × 8 hrs/day × working-days overlap</div>
+    </div>
+
+    <script>
+        'use strict';
+
+        /* ════════════════════════════════════════════════════════
+           CONFIG
+        ════════════════════════════════════════════════════════ */
+        var SS = '/api';
+        var COMM_ID = '6139100361871236';
+        var BS_ID = '2416337407135620';
+        var HRS = 8; // 1 FTE = 8 hrs/working day = 40 hrs/week
+
+        /* ── CAPACITY (FTE) ── */
+        var CAP = {
+            'EHS&S': 2, 'Finance': 0.9, 'HR': 2, 'IT': 5, 'Legal': 2, 'Marketing': 3,
+            'Ops/Engineering FE': 2, 'Ops/Engineering MS': 2,
+            'Procurement Co-man': 0.25, 'Procurement ING': 0.5, 'Procurement PKG/Repack': 1.75,
+            'Quality/Regulatory': 4.8, 'R&D - Packaging': 3, 'R&D - Product/Process': 6.7,
+            'Sales': 5, 'Supply Chain': 3
+        };
+
+        /* ── FTE COLUMN MAPS ── */
+        var CFMAP = {
+            'Sales FTE': 'Sales', 'Marketing FTE': 'Marketing', 'IT FTE': 'IT',
+            'R&D - Product/Process FTE': 'R&D - Product/Process', 'R&D - Packaging FTE': 'R&D - Packaging',
+            'Ops/Engineering MS FTE': 'Ops/Engineering MS', 'Ops/Engineering FE FTE': 'Ops/Engineering FE',
+            'Supply Chain FTE': 'Supply Chain', 'Procurement Co-man FTE': 'Procurement Co-man',
+            'Procurement PKG/Repack FTE': 'Procurement PKG/Repack', 'Procurement ING FTE': 'Procurement ING',
+            'Quality/Regulatory FTE': 'Quality/Regulatory',
+            'Finance FTE': 'Finance', 'Legal FTE': 'Legal', 'EHS&S FTE': 'EHS&S', 'HR FTE': 'HR'
+        };
+        var BFMAP = {
+            'Sales FTE': 'Sales', 'Marketing FTE': 'Marketing',
+            'R&D FTE': 'R&D (Business Support)',
+            'Supply Chain FTE': 'Supply Chain', 'Procurement FTE': 'Procurement',
+            'Quality/Regulatory FTE': 'Quality/Regulatory', 'FP&A FTE': 'FP&A',
+            'EHS&S FTE': 'EHS&S', 'HR FTE': 'HR', 'AP FTE': 'Accounts Payable', 'AR FTE': 'Accounts Receivable',
+            'Costing FTE': 'Costing', 'Customer Service FTE': 'Customer Service',
+            'Sales Operations FTE': 'Sales Operations', 'Bulk Operations FTE': 'Bulk Operations',
+            'Bottling Operations FTE': 'Bottling Operations', 'Warehousing FTE': 'Warehousing',
+            'Continuous Improvement FTE': 'Continuous Improvement',
+            'Engineering FTE': 'Engineering', 'Accounting FTE': 'Accounting'
+            /* NOTE: Analytics/App Dev/Infrastructure/Master Data/Power Apps FTE columns
+               intentionally removed — IT & Digital depts now derive hours from
+               "IT Function Owner" + "IT Owner Estimated Hours" via OWNER_TO_DEPT (see below) */
+        };
+
+        /* IT Function Owner (person) → IT & Digital dept.
+           Source: BS Portfolio Master Sheet "IT Function Owner" column.
+           Confirmed by Jerry: James Ko is replacing Bob Crane on Analytics;
+           Matt Gretencord's projects map to Application Development (not Power Apps);
+           Jerry Coppage owns a dedicated "EPO" dept. */
+        var OWNER_TO_DEPT = {
+            'Kevin Biggers': 'Master Data',
+            'Kraig Schenewerk': 'Infrastructure',
+            'Bob Crane': 'Analytics',
+            'James Ko': 'Analytics',
+            'Matt Gretencord': 'Application Development',
+            'Jerry Coppage': 'EPO'
+        };
+
+        /* ── DEPARTMENT GROUPS ── */
+        var COMM_GROUPS = [
+            { label: 'Sales', color: '#0D2818', depts: ['Sales'] },
+            { label: 'Marketing', color: '#0D2818', depts: ['Marketing'] },
+            { label: 'Quality/Regulatory', color: '#0D2818', depts: ['Quality/Regulatory'] },
+            { label: 'Supply Chain', color: '#0D2818', depts: ['Supply Chain'] },
+            { label: 'Finance', color: '#0D2818', depts: ['Finance'] },
+            { label: 'Legal', color: '#0D2818', depts: ['Legal'] },
+            { label: 'EHS&S', color: '#0D2818', depts: ['EHS&S'] },
+            { label: 'HR', color: '#0D2818', depts: ['HR'] },
+            { label: 'R&D', color: '#1B4D35', depts: ['R&D - Product/Process', 'R&D - Packaging'] },
+            { label: 'Operations & Engineering', color: '#1B4D35', depts: ['Ops/Engineering MS', 'Ops/Engineering FE'] },
+            { label: 'Procurement', color: '#1B4D35', depts: ['Procurement Co-man', 'Procurement PKG/Repack', 'Procurement ING'] },
+            { label: 'IT', color: '#1B4D35', depts: ['IT'] }
+        ];
+        var BS_GROUPS = [
+            /* ── Single-dept collapsible (main cross-functional functions) ── */
+            { label: 'Sales', color: '#0D2818', depts: ['Sales'] },
+            { label: 'Marketing', color: '#0D2818', depts: ['Marketing'] },
+            { label: 'Quality/Regulatory', color: '#0D2818', depts: ['Quality/Regulatory'] },
+            { label: 'Supply Chain', color: '#0D2818', depts: ['Supply Chain'] },
+            { label: 'EHS&S', color: '#0D2818', depts: ['EHS&S'] },
+            { label: 'HR', color: '#0D2818', depts: ['HR'] },
+            { label: 'R&D', color: '#0D2818', depts: ['R&D (Business Support)'] },
+            { label: 'Procurement', color: '#0D2818', depts: ['Procurement'] },
+            { label: 'Customer Service', color: '#0D2818', depts: ['Customer Service'] },
+            { label: 'Sales Operations', color: '#0D2818', depts: ['Sales Operations'] },
+            /* ── Multi-dept groups ── */
+            { label: 'Finance & Accounting', color: '#1E3A8A', depts: ['FP&A', 'Accounts Payable', 'Accounts Receivable', 'Costing', 'Accounting'] },
+            { label: 'Operations', color: '#1E3A8A', depts: ['Bulk Operations', 'Bottling Operations', 'Warehousing', 'Continuous Improvement', 'Engineering'] },
+            { label: 'IT & Digital', color: '#1E3A8A', depts: ['Analytics', 'Application Development', 'Infrastructure', 'Master Data', 'Power Apps', 'EPO'] }
+        ];
+
+        /* ── STATE ── */
+        var PROJECTS = [], TAB = 'comm', MONTHS = [], CK = '', MX_COMM = {}, MX_BS = {}, COLL = {}, SEL = null;
+        var DRILL_PROJS = [], EXPANDED = {}, RAID_CACHE = {};
+        var SHOW_ON_HOLD = true;
+        var SHEET_PERMALINKS = {}; // source → API-provided sheet permalink (SSO-aware)
+        var BS_CAP = {};           // dept → monthly capacity hours (loaded at runtime from Dept Capacity sheet)
+        var BS_FOLDER_INDEX = {};  // normalized folder name → {raidSheetId, projectSheetPermalink, ...}
+
+        /* ════════════════════════════════════════════════════════
+           UTILITIES
+        ════════════════════════════════════════════════════════ */
+        function mkMonths() {
+            var a = [], n = new Date();
+            for (var i = -1; i < 13; i++) {
+                var d = new Date(n.getFullYear(), n.getMonth() + i, 1);
+                var y = d.getFullYear(), m = d.getMonth();
+                var k = y + '-' + String(m + 1).padStart(2, '0');
+                var lbl = d.toLocaleString('default', { month: 'short' }) + " '" + String(y).slice(2);
+                a.push({ key: k, label: lbl, start: new Date(y, m, 1), end: new Date(y, m + 1, 0) });
+            }
+            return a;
+        }
+        function wdays(s, e) {
+            if (!s || !e || s > e) return 0;
+            var a = new Date(s); a.setHours(0, 0, 0, 0);
+            var b = new Date(e); b.setHours(0, 0, 0, 0);
+            var t = Math.round((b - a) / 86400000) + 1, w = Math.floor(t / 7) * 5, dow = a.getDay();
+            for (var i = 0; i < t % 7; i++) { var d = (dow + i) % 7; if (d >= 1 && d <= 5) w++; }
+            return w;
+        }
+        function pd(v) { if (!v || v === 'null' || v === "#INVALID DATA TYPE") return null; var d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+        function nk() { var n = new Date(); return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0'); }
+        function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function fmtHrs(h) { if (h >= 1000) return (Math.round(h / 10) / 100) + 'k h'; return Math.round(h) + 'h'; }
+        function fmtDate(v) { if (!v) return null; var d = pd(v); if (!d) return null; return d.toLocaleString('default', { month: 'short', year: '2-digit' }); }
+        function extractProjectId(name) { if (!name) return null; var m = name.match(/^([A-Z]+-\d+)/i); return m ? m[1].toUpperCase() : null; }
+        function isOnHold(status) { return /on.hold|on_hold|onhold|hold/i.test(status || ''); }
+
+        /* ════════════════════════════════════════════════════════
+           API
+        ════════════════════════════════════════════════════════ */
+        function ssGet(path) {
+            return fetch(SS + path, { method: 'GET', headers: { 'Accept': 'application/json' } })
+                .then(function (r) {
+                    if (r.status === 401) throw new Error('Smartsheet 401 — check API token configuration on the server.');
+                    if (!r.ok) throw new Error('Smartsheet API error ' + r.status);
+                    return r.json();
+                });
+        }
+
+        /* ════════════════════════════════════════════════════════
+           PARSE SHEET  — now captures rowId, owner, percentComplete, projectId
+        ════════════════════════════════════════════════════════ */
+        function parseSheet(data, fmap, sc, endCols, durationCol, fs, src) {
+            var t2id = {};
+            (data.columns || []).forEach(function (c) { t2id[c.title] = c.id; });
+            var EX = /cancelled|rejected|8\s*-|complete/i;
+            return (data.rows || []).reduce(function (acc, row) {
+                var by = {};
+                (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
+                function g(t) { var id = t2id[t]; return (id != null && by[id] != null) ? by[id] : null; }
+                var st = String(g('Status') || '');
+                if (EX.test(st)) return acc;
+                var nm = g('Project Name'); if (!nm) return acc;
+                var sd = g(sc) || g(fs) || null;
+                var ed = null;
+                var cols = Array.isArray(endCols) ? endCols : [endCols];
+                for (var i = 0; i < cols.length; i++) { var v = g(cols[i]); if (v) { ed = v; break; } }
+                if (!ed && durationCol) {
+                    var dur = parseFloat(g(durationCol)); var startD = pd(sd);
+                    if (!isNaN(dur) && dur > 0 && startD) { var endD = new Date(startD); endD.setDate(endD.getDate() + Math.round(dur * 30.44)); ed = endD.toISOString().split('T')[0]; }
+                }
+                var ftes = {};
+                Object.keys(fmap).forEach(function (col) { var v = parseFloat(g(col)); if (!isNaN(v) && v > 0) ftes[fmap[col]] = v; });
+                /* BS IT & Digital: derive dept hours from "IT Function Owner" + "IT Owner Estimated Hours"
+                   instead of per-dept FTE columns. Total project hours are converted into an
+                   effective FTE (hours ÷ 8 ÷ working-days-in-project-span) so the existing
+                   month-overlap distribution in buildMX spreads them automatically. */
+                if (src === 'Business Support') {
+                    var itOwnerRaw = g('IT Function Owner');
+                    var itDept = itOwnerRaw ? OWNER_TO_DEPT[String(itOwnerRaw).trim()] : null;
+                    var itHrsRaw = g('IT Owner Estimated Hours');
+                    /* Strict numeric check — Smartsheet returns numeric cells as JS numbers;
+                       text entries (e.g. "320-500", free-text notes) are intentionally skipped
+                       rather than guessed at, per Jerry — cleanup happens on the sheet. */
+                    var itHrs = (typeof itHrsRaw === 'number' && isFinite(itHrsRaw) && itHrsRaw > 0) ? itHrsRaw : null;
+                    if (itDept && itHrs) {
+                        var _is = pd(sd), _ie = pd(ed);
+                        if (_is && _ie && _is <= _ie) {
+                            var totalWd = wdays(_is, _ie);
+                            if (totalWd > 0) {
+                                var effFte = itHrs / (HRS * totalWd);
+                                if (effFte > 0) ftes[itDept] = effFte;
+                            }
+                        }
+                    }
+                }
+                /* NEW: additional fields for drill panel */
+                var pct = parseFloat(g('% Complete') || g('Percent Complete') || g('% Completion') || 0);
+                var owner = g('Project Owner') || g('Owner') || g('Project Lead') || g('Assigned To') || null;
+                /* NEW: use explicit Project ID column first, fall back to regex on name */
+                var rawPid = g('Project ID') || extractProjectId(nm) || null;
+                var projectId = rawPid ? String(rawPid).trim().toUpperCase() : null;
+                /* BS only: folder name from "Project Folder" column — used for RAID + project sheet lookup */
+                var bsFolder = src === 'Business Support' ? (g('Project Folder') || null) : null;
+                acc.push({
+                    name: nm, status: st, startDate: sd, endDate: ed, source: src, ftes: ftes,
+                    rowId: row.id, rowPermalink: row.permalink || null,
+                    projectId: projectId,
+                    percentComplete: isNaN(pct) ? null : pct,
+                    owner: owner,
+                    bsFolder: bsFolder
+                });
+                return acc;
+            }, []);
+        }
+
+        /* ════════════════════════════════════════════════════════
+           HOURS MATRIX
+           Monthly Hours = FTE × 8 hrs/day × working-days overlap
+        ════════════════════════════════════════════════════════ */
+        function buildMX(projs) {
+            var mx = {};
+            projs.forEach(function (p) {
+                var s = pd(p.startDate), e = pd(p.endDate);
+                if (!s || !e || s > e) return;
+                Object.keys(p.ftes || {}).forEach(function (dept) {
+                    var fte = p.ftes[dept]; if (!fte || fte <= 0) return;
+                    if (!mx[dept]) mx[dept] = {};
+                    MONTHS.forEach(function (mo) {
+                        var os = new Date(Math.max(s.getTime(), mo.start.getTime()));
+                        var oe = new Date(Math.min(e.getTime(), mo.end.getTime()));
+                        if (os > oe) return;
+                        var od = wdays(os, oe); if (!od) return;
+                        var hrs = fte * HRS * od;
+                        if (!mx[dept][mo.key]) mx[dept][mo.key] = { totalHours: 0, projects: [] };
+                        mx[dept][mo.key].totalHours += hrs;
+                        mx[dept][mo.key].projects.push({
+                            name: p.name, hours: hrs, fte: fte, source: p.source, status: p.status,
+                            rowId: p.rowId, rowPermalink: p.rowPermalink, projectId: p.projectId,
+                            percentComplete: p.percentComplete, owner: p.owner,
+                            startDate: p.startDate, endDate: p.endDate,
+                            bsFolder: p.bsFolder || null
+                        });
+                    });
+                });
+            });
+            Object.keys(mx).forEach(function (d) {
+                Object.keys(mx[d]).forEach(function (k) { mx[d][k].projects.sort(function (a, b) { return b.hours - a.hours; }); });
+            });
+            return mx;
+        }
+
+        /* ── COLOUR ── */
+        function clr(pct, hc, hrs) {
+            if (!hc) { if (!hrs || hrs < 0.1) return { bg: '#FAFAFA', tx: '#D1D5DB' }; if (hrs < 8) return { bg: '#F3F4F6', tx: '#6B7280' }; if (hrs < 40) return { bg: '#E5E7EB', tx: '#374151' }; return { bg: '#D1D5DB', tx: '#111827' }; }
+            if (!hrs || hrs < 0.1) return { bg: '#FAFAFA', tx: '#D1D5DB' };
+            if (pct <= 0.5) return { bg: '#F0FDF4', tx: '#166534' }; if (pct <= 0.75) return { bg: '#DCFCE7', tx: '#14532D' };
+            if (pct <= 0.9) return { bg: '#FEF9C3', tx: '#713F12' }; if (pct <= 1) return { bg: '#FFEDD5', tx: '#9A3412' };
+            return { bg: '#FEE2E2', tx: '#991B1B' };
+        }
+
+        /* ════════════════════════════════════════════════════════
+           RAID LOG
+           Strategy: at load time, search once for "Raid Log" sheets
+           and build a projectId → sheetId index using parentObjectName.
+           At drill time, fetch the specific sheet from the index.
+        ════════════════════════════════════════════════════════ */
+        var RAID_INDEX = { comm: {}, bs: {} }; // keyed by source → projectId — prevents ID collisions between Comm/BS
+
+        function raidKey(src) { return src === 'Commercialization' ? 'comm' : 'bs'; }
+        function raidEntry(src, pid) { var k = raidKey(src); return (RAID_INDEX[k] && RAID_INDEX[k][pid]) || null; }
+
+        /* ════════════════════════════════════════════════════════
+           BS CAPACITY SHEET
+           Discovery path: BS workspace → "Reference Sheets" folder → "Department Capacity" sheet
+           Result: BS_CAP = { deptName: monthlyHours, ... }
+           The generic /api proxy forwards workspace + folder requests transparently.
+        ════════════════════════════════════════════════════════ */
+        function parseCapacitySheet(sheet) {
+            var t2id = {};
+            (sheet.columns || []).forEach(function (c) { t2id[c.title] = c.id; });
+            /* Try common column name patterns for dept and hours */
+            var DEPT_COLS = ['Department', 'Department Name', 'Dept', 'Function', 'Team', 'Name'];
+            var HRS_COLS = ['Capacity/Month (Hours)', 'Monthly Capacity (Hours)', 'Monthly Capacity',
+                'Capacity (Hours)', 'Capacity (Hrs/Month)', 'Capacity (Hrs)',
+                'Capacity', 'Hrs/Month', 'Hours/Month', 'Monthly Hours', 'Hours'];
+            var deptCol = DEPT_COLS.find(function (n) { return t2id[n] != null; });
+            var hrsCol = HRS_COLS.find(function (n) { return t2id[n] != null; });
+            if (!deptCol || !hrsCol) {
+                console.warn('[EPO] parseCapacitySheet — could not find expected columns. Available:', Object.keys(t2id).join(', '));
+                return {};
+            }
+            var cap = {};
+            (sheet.rows || []).forEach(function (row) {
+                var by = {};
+                (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
+                var dept = by[t2id[deptCol]];
+                var hrs = parseFloat(by[t2id[hrsCol]]);
+                if (dept && !isNaN(hrs) && hrs > 0) cap[String(dept).trim()] = hrs;
+            });
+            console.log('[EPO] BS capacity parsed (' + Object.keys(cap).length + ' depts):', cap);
+            return cap;
+        }
+
+        function loadBSCapacity() {
+            var BS_WS = '8144071119136644';
+            return ssGet('/workspaces/' + BS_WS)
+                .then(function (ws) {
+                    /* Look for "Reference Sheets" folder at workspace root first */
+                    var folders = ws.folders || [];
+                    var refFolder = folders.find(function (f) { return /reference\s*sheets/i.test(f.name || ''); });
+                    if (refFolder) return ssGet('/folders/' + refFolder.id);
+                    /* Not at root — try one level deeper (some workspaces have a top-level org folder) */
+                    return Promise.all(folders.map(function (f) {
+                        return ssGet('/folders/' + f.id).catch(function () { return null; });
+                    })).then(function (fds) {
+                        for (var i = 0; i < fds.length; i++) {
+                            if (!fds[i]) continue;
+                            var rf = (fds[i].folders || []).find(function (sf) { return /reference\s*sheets/i.test(sf.name || ''); });
+                            if (rf) return ssGet('/folders/' + rf.id);
+                        }
+                        return null;
+                    });
+                })
+                .then(function (refContents) {
+                    if (!refContents) { console.warn('[EPO] Reference Sheets folder not found in BS workspace'); return null; }
+                    var capSheet = (refContents.sheets || []).find(function (s) { return /department\s*capacity/i.test(s.name || ''); });
+                    if (!capSheet) { console.warn('[EPO] Department Capacity sheet not found in Reference Sheets'); return null; }
+                    console.log('[EPO] Found BS capacity sheet:', capSheet.name, 'id:', capSheet.id);
+                    return ssGet('/sheets/' + capSheet.id);
+                })
+                .then(function (sheet) {
+                    if (!sheet) return;
+                    BS_CAP = parseCapacitySheet(sheet);
+                })
+                .catch(function (e) {
+                    console.warn('[EPO] BS capacity load failed — BS depts will show FTE demand (uncapacitated):', e.message);
+                });
+        }
+
+        function buildRaidIndex() {
+            /* /project-info returns {comm:{...},bs:{...}} — separate maps prevent P-0053 Comm
+               from colliding with P-0053 BS (both workspaces use overlapping P-XXXX sequences) */
+            return fetch('/project-info', { headers: { 'Accept': 'application/json' } })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('/project-info returned ' + r.status + ' — check route in src/index.ts');
+                    return r.json();
+                })
+                .then(function (data) {
+                    RAID_INDEX = { comm: {}, bs: {} };
+                    Object.keys(data.comm || {}).forEach(function (pid) { RAID_INDEX.comm[pid] = data.comm[pid]; });
+                    Object.keys(data.bs || {}).forEach(function (pid) { RAID_INDEX.bs[pid] = data.bs[pid]; });
+                    /* BS name-indexed folder map (keyed by normalized folder name) */
+                    BS_FOLDER_INDEX = {};
+                    Object.keys(data.bsByName || {}).forEach(function (key) { BS_FOLDER_INDEX[key] = data.bsByName[key]; });
+                    var cp = Object.keys(RAID_INDEX.comm).filter(function (k) { return RAID_INDEX.comm[k].projectSheetPermalink; }).length;
+                    var bp = Object.keys(RAID_INDEX.bs).filter(function (k) { return RAID_INDEX.bs[k].projectSheetPermalink; }).length;
+                    var cr = Object.keys(RAID_INDEX.comm).filter(function (k) { return RAID_INDEX.comm[k].raidSheetId; }).length;
+                    var br = Object.keys(RAID_INDEX.bs).filter(function (k) { return RAID_INDEX.bs[k].raidSheetId; }).length;
+                    var bn = Object.keys(BS_FOLDER_INDEX).length;
+                    var bnr = Object.keys(BS_FOLDER_INDEX).filter(function (k) { return BS_FOLDER_INDEX[k].raidSheetId; }).length;
+                    console.log('[EPO] Index — Comm:', Object.keys(RAID_INDEX.comm).length, '(' + cp + ' proj, ' + cr + ' RAID) | BS:', Object.keys(RAID_INDEX.bs).length, '(' + bp + ' proj, ' + br + ' RAID) | BS by-name:', bn, '(' + bnr + ' RAID)');
+                })
+                .catch(function (e) { console.error('[EPO] buildRaidIndex FAILED:', e.message); });
+        }
+        function parseRaidEntries(sheet) {
+            var t2id = {};
+            (sheet.columns || []).forEach(function (c) { t2id[c.title] = c.id; });
+            return (sheet.rows || []).reduce(function (acc, row) {
+                var by = {};
+                (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
+                function g(t) { var id = t2id[t]; return (id != null && by[id] != null) ? String(by[id]) : ''; };
+                var desc = g('Description'); if (!desc) return acc;
+                acc.push({
+                    id: g('ID'), category: g('RAID Category'), description: desc,
+                    status: g('Status'), assignedTo: g('Assigned To'),
+                    probability: g('Probability'), impact: g('Impact'),
+                    actionTaken: g('Action Taken'), dueDate: g('Due Date')
+                });
+                return acc;
+            }, []);
+        }
+
+        function loadRaid(projectId, projSource, bsFolder, callback) {
+            /* For BS projects that have a folder name: look up via BS_FOLDER_INDEX.
+               For Comm (or BS without a folder name): use P-XXXX RAID_INDEX lookup. */
+            var isBSFolder = projSource === 'Business Support' && bsFolder;
+            var cacheKey = isBSFolder
+                ? 'bs-folder:' + bsFolder.toLowerCase().trim()
+                : raidKey(projSource) + ':' + projectId;
+            if (!projectId && !isBSFolder) { callback(null); return; }
+            if (RAID_CACHE[cacheKey] !== undefined) { callback(RAID_CACHE[cacheKey]); return; }
+            var entry = isBSFolder
+                ? (BS_FOLDER_INDEX[bsFolder.toLowerCase().trim()] || null)
+                : raidEntry(projSource, projectId);
+            var raidSheetId = entry && entry.raidSheetId;
+            if (!raidSheetId) { RAID_CACHE[cacheKey] = null; callback(null); return; }
+            ssGet('/sheets/' + raidSheetId)
+                .then(function (sheet) {
+                    var entries = parseRaidEntries(sheet);
+                    RAID_CACHE[cacheKey] = { entries: entries, permalink: sheet.permalink || (entry.raidSheetPermalink) || null };
+                    console.log('[EPO] RAID loaded for', cacheKey, '-', entries.length, 'entries');
+                    callback(RAID_CACHE[cacheKey]);
+                })
+                .catch(function (e) {
+                    console.warn('[EPO] RAID fetch failed for', cacheKey, ':', e.message);
+                    RAID_CACHE[cacheKey] = null; callback(null);
+                });
+        }
+
+        function fetchRaidSheet(projectId, sheetId, callback) {
+            ssGet('/sheets/' + sheetId)
+                .then(function (sheet) {
+                    var entries = parseRaidEntries(sheet);
+                    var permalink = sheet.permalink || ('https://app.smartsheet.com/sheets/' + sheetId);
+                    RAID_CACHE[projectId] = { entries: entries, permalink: permalink, sheetId: sheetId };
+                    console.log('[EPO] RAID loaded for', projectId, entries.length, 'entries');
+                    callback(RAID_CACHE[projectId]);
+                })
+                .catch(function (e) {
+                    console.error('[EPO] RAID sheet fetch error for', projectId, sheetId, e.message);
+                    RAID_CACHE[projectId] = null; callback(null);
+                });
+        }
+
+        /* ════════════════════════════════════════════════════════
+           LOAD DATA
+        ════════════════════════════════════════════════════════ */
+        function rebuildMatrices() {
+            var commAll = PROJECTS.filter(function (p) { return p.source === 'Commercialization'; });
+            var bsAll = PROJECTS.filter(function (p) { return p.source === 'Business Support'; });
+            var commUse = SHOW_ON_HOLD ? commAll : commAll.filter(function (p) { return !isOnHold(p.status); });
+            var bsUse = SHOW_ON_HOLD ? bsAll : bsAll.filter(function (p) { return !isOnHold(p.status); });
+            MX_COMM = buildMX(commUse);
+            MX_BS = buildMX(bsUse);
+        }
+
+        function loadData() {
+            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {};
+            document.getElementById('load-msg').textContent = 'Fetching Commercialization + Business Support…';
+            Promise.all([
+                ssGet('/sheets/' + COMM_ID + '?include=rowPermalink'),
+                ssGet('/sheets/' + BS_ID + '?include=rowPermalink'),
+                buildRaidIndex(),
+                loadBSCapacity()
+            ])
+                .then(function (res) {
+                    /* Store API-provided sheet permalinks — SSO-aware, correct encoded format */
+                    SHEET_PERMALINKS['Commercialization'] = res[0].permalink || ('https://app.smartsheet.com/sheets/' + COMM_ID);
+                    SHEET_PERMALINKS['Business Support'] = res[1].permalink || ('https://app.smartsheet.com/sheets/' + BS_ID);
+                    var comm = parseSheet(res[0], CFMAP, 'Charter Gate Approval Date',
+                        ['Anticipated/Actual End Date', 'Revised Target End Date', 'Desired 1st Production Date', 'Original Target End Date'],
+                        'Project Owner Estimated Duration (Months)', 'Created date', 'Commercialization');
+                    /* Note: 'Project ID' column is fetched automatically — parseSheet reads all columns */
+                    var bs = parseSheet(res[1], BFMAP, 'Enterprise Approval Date',
+                        ['Anticipated End Date', 'Desired Completed Date'], null, 'Created date', 'Business Support');
+                    PROJECTS = comm.concat(bs);
+                    MONTHS = mkMonths(); CK = nk();
+                    rebuildMatrices();
+                    renderAll();
+                    document.getElementById('hdr-ts').textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    setLoad(false);
+                })
+                .catch(function (e) {
+                    document.getElementById('loading-state').style.display = 'none';
+                    document.getElementById('data-view').style.display = 'none';
+                    document.getElementById('error-state').style.display = 'block';
+                    document.getElementById('error-msg').textContent = e.message;
+                    var b = document.getElementById('btn-refresh'); b.disabled = false; b.textContent = '↻  Refresh';
+                });
+        }
+
+        function curMX() { return TAB === 'comm' ? MX_COMM : MX_BS; }
+        function curGroups() { return TAB === 'comm' ? COMM_GROUPS : BS_GROUPS; }
+        function curProjects() {
+            return PROJECTS.filter(function (p) {
+                if (p.source !== (TAB === 'comm' ? 'Commercialization' : 'Business Support')) return false;
+                if (!SHOW_ON_HOLD && isOnHold(p.status)) return false;
+                return true;
+            });
+        }
+
+        /* ════════════════════════════════════════════════════════
+           RENDER
+        ════════════════════════════════════════════════════════ */
+        function renderAll() {
+            var fp = curProjects(), mx = curMX();
+            var holdCount = PROJECTS.filter(function (p) {
+                return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && isOnHold(p.status);
+            }).length;
+            var label = TAB === 'comm' ? 'Commercialization' : 'Business Support';
+            document.getElementById('h-sub').textContent = label + ' · Hours-Based · Live Smartsheet';
+            document.getElementById('hm-title').textContent = label.toUpperCase() + ' — RESOURCE UTILIZATION BY FUNCTION × MONTH';
+            var countTxt = fp.length + ' projects · ' + Object.keys(mx).length + ' active depts';
+            if (holdCount) countTxt += ' · ' + holdCount + ' on hold ' + (SHOW_ON_HOLD ? '(included, dimmed)' : '(excluded)');
+            document.getElementById('tab-count').textContent = countTxt;
+            /* Swap methodology bar */
+            document.getElementById('mbar').innerHTML = TAB === 'comm'
+                ? '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap &nbsp;|&nbsp; Capacity = Dept FTE × 8 hrs/day × Working Days in Month &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet'
+                : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
+            renderKPIs(fp, mx); renderHM();
+        }
+
+        function renderKPIs(fp, mx) {
+            function ia(s) { return /active|in.progress|test|build|deployment|post.support/i.test(s || ''); }
+            function ip(s) { return /pending|discovery/i.test(s || ''); }
+            var dem = 0, nr = 0, ov = 0;
+            var moNow = MONTHS.filter(function (m) { return m.key === CK; })[0];
+            var wdNow = moNow ? wdays(moNow.start, moNow.end) : 0;
+            Object.keys(mx).forEach(function (d) {
+                var cell = mx[d][CK]; if (!cell) return;
+                dem += cell.totalHours;
+                /* Tab-aware capacity: Comm uses FTE×8×wdays; BS uses monthly hours from capacity sheet */
+                var capH = TAB === 'comm' ? (CAP[d] ? CAP[d] * HRS * wdNow : null) : (BS_CAP[d] || null);
+                if (capH) { if (cell.totalHours >= capH * 0.9) nr++; if (cell.totalHours > capH) ov++; }
+            });
+            fp.forEach(function (p) { });
+            var holdKpi = PROJECTS.filter(function (p) { return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && isOnHold(p.status); }).length;
+            var acc = ['#52B788', '#52B788', '#2563EB', '#F97316', ov > 0 ? '#EF4444' : '#22C55E'];
+            var ks = [
+                { v: fp.length, l: 'Total Projects', s: fp.filter(function (p) { return ia(p.status); }).length + ' active · ' + fp.filter(function (p) { return ip(p.status); }).length + ' pending' },
+                { v: Object.keys(mx).length, l: 'Active Departments', s: (TAB === 'comm' ? Object.keys(CAP).length : Object.keys(BS_CAP).length) + ' with defined capacity' },
+                { v: fmtHrs(dem), l: 'Current Month Hour Demand', s: 'FTE × 8 hrs/day × working days' },
+                { v: nr, l: 'Depts Near Capacity', s: '≥ 90% hours utilized this month' },
+                { v: holdKpi, l: 'Projects On Hold', s: SHOW_ON_HOLD ? 'Included in hrs (dimmed)' : 'Currently excluded from hrs' }
+            ];
+            document.getElementById('kpi-strip').innerHTML = ks.map(function (k, i) {
+                return '<div class="kpi-card" style="border-top:3px solid ' + acc[i] + '">'
+                    + '<div class="kv" style="color:' + (i >= 3 && k.v > 0 ? acc[i] : 'var(--dark)') + '">' + k.v + '</div>'
+                    + '<div class="kl">' + k.l + '</div><div class="ks">' + k.s + '</div></div>';
+            }).join('');
+        }
+
+        function renderHM() {
+            var mx = curMX(), groups = curGroups();
+            var h = '<thead><tr><th class="th-d">DEPARTMENT</th>';
+            MONTHS.forEach(function (mo) { var ic = mo.key === CK; h += '<th class="th-m' + (ic ? ' now' : '') + '">' + mo.label + (ic ? '<div class="now-tag">▲ NOW</div>' : '') + '</th>'; });
+            h += '</tr></thead><tbody>';
+            groups.forEach(function (g) {
+                /* Skip entire group if none of its departments have any data */
+                var groupHasData = g.depts.some(function (dept) {
+                    var dm = mx[dept] || {};
+                    return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
+                });
+                if (!groupHasData) return;
+                var ic = !!COLL[g.label];
+                /* Show dept count only for multi-dept groups; fix singular/plural */
+                var visibleDepts = g.depts.filter(function (dept) {
+                    var dm = mx[dept] || {};
+                    return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
+                });
+                var cntLabel = visibleDepts.length > 1 ? ' <span style="font-weight:400;margin-left:8px;opacity:0.6;font-size:11px">(' + visibleDepts.length + ' depts)</span>' : '';
+                h += '<tr class="grp-hdr" data-grp="' + esc(g.label) + '"><td colspan="' + (MONTHS.length + 1) + '" style="background:' + g.color + '">' + (ic ? '▶' : '▼') + '&nbsp;&nbsp;' + esc(g.label).toUpperCase() + cntLabel + '</td></tr>';
+                if (ic) return;
+                g.depts.forEach(function (dept, di) {
+                    var dm = mx[dept] || {};
+                    /* Hide department row if it has no FTE demand in any visible month */
+                    var hasData = Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
+                    if (!hasData) return;
+                    var rb = di % 2 === 0 ? '#ffffff' : '#FAFEF9';
+                    h += '<tr style="background:' + rb + ';border-bottom:1px solid var(--border)">';
+                    /* Tab-aware capacity label in the sticky dept column */
+                    var capDisp, hasCapacity;
+                    if (TAB === 'comm') { var cFte = CAP[dept]; hasCapacity = !!cFte; capDisp = cFte ? cFte + ' FTE' : '—'; }
+                    else { var cHrs = BS_CAP[dept]; hasCapacity = !!cHrs; capDisp = cHrs ? cHrs + ' h/mo' : '—'; }
+                    h += '<td class="dtd" style="background:' + rb + '"><div class="dinn"><span class="dnm" title="' + esc(dept) + '">' + esc(dept) + '</span><span style="font-size:10px;color:' + (hasCapacity ? 'var(--muted)' : '#E5E7EB') + '">' + esc(capDisp) + '</span></div></td>';
+                    MONTHS.forEach(function (mo) {
+                        var cell = dm[mo.key], hrs = cell ? cell.totalHours : 0;
+                        /* Tab-aware capH: Comm = FTE×8×wdays; BS = fixed monthly hours from capacity sheet */
+                        var capH = TAB === 'comm' ? (CAP[dept] ? CAP[dept] * HRS * wdays(mo.start, mo.end) : null) : (BS_CAP[dept] || null);
+                        var pct = capH ? hrs / capH : null, cl = clr(pct, hasCapacity, hrs);
+                        var is = SEL && SEL.dept === dept && SEL.mk === mo.key, ic2 = mo.key === CK;
+                        var cs = 'ctd' + (hrs > 0 ? ' cl' : '') + (is ? ' sel' : '') + (ic2 && !is ? ' cur' : '');
+                        /* Capacitated → %; BS uncapacitated fallback → FTE demand; Comm uncapacitated → raw hours */
+                        var display = '';
+                        if (hrs > 0.1) {
+                            if (capH) { display = Math.round(pct * 100) + '%'; }
+                            else if (TAB === 'bs') {
+                                var wdMo = wdays(mo.start, mo.end);
+                                var fteDemand = wdMo > 0 ? hrs / (HRS * wdMo) : 0;
+                                display = fteDemand > 0 ? fteDemand.toFixed(2) : '';
+                            } else { display = fmtHrs(hrs); }
+                        }
+                        h += '<td class="' + cs + '" style="background:' + (is ? '#DBEAFE' : cl.bg) + '"' + (hrs > 0 ? ' data-dept="' + esc(dept) + '" data-mk="' + mo.key + '"' : '') + '>' + (display ? '<div class="cv" style="color:' + (is ? '#1E40AF' : cl.tx) + '">' + display + '</div>' : '') + '</td>';
+                    });
+                    h += '</tr>';
+                });
+            });
+            h += '</tbody>';
+            document.getElementById('htbl').innerHTML = h;
+            var fp = curProjects(), nf = fp.filter(function (p) { return !p.ftes || !Object.keys(p.ftes).length; }).length;
+            var ft = document.getElementById('hm-footer');
+            if (nf > 0) { ft.textContent = '⚠ ' + nf + ' of ' + fp.length + ' projects have no FTE values and are excluded.'; ft.style.display = 'block'; }
+            else ft.style.display = 'none';
+        }
+
+        /* ════════════════════════════════════════════════════════
+           DRILL PANEL
+        ════════════════════════════════════════════════════════ */
+        function openDrill(dept, mk) {
+            SEL = { dept: dept, mk: mk }; EXPANDED = {};
+            var mx = curMX();
+            var cell = mx[dept] ? mx[dept][mk] : null;
+            var cap = CAP[dept];
+            var mo = MONTHS.filter(function (m) { return m.key === mk; })[0];
+            var capH = cap && mo ? cap * HRS * wdays(mo.start, mo.end) : null;
+            var pct = capH && cell ? cell.totalHours / capH : null;
+            document.getElementById('d-dept').textContent = dept;
+            document.getElementById('d-mon').textContent = mo ? mo.label : mk;
+            var st = '<div><div class="sl">DEMAND</div><div class="sv">' + fmtHrs(cell ? cell.totalHours : 0) + ' <span class="su">hrs</span></div></div>';
+            if (capH) {
+                st += '<div><div class="sl">CAPACITY</div><div class="sv">' + fmtHrs(capH) + ' <span class="su">hrs</span></div></div>';
+                if (cap) st += '<div><div class="sl">FTE BASIS</div><div class="sv">' + cap + ' <span class="su">FTE</span></div></div>';
+                var uc = pct > 1 ? '#FCA5A5' : pct > 0.9 ? '#FED7AA' : '#52B788';
+                st += '<div><div class="sl">UTILIZATION</div><div class="sv" style="color:' + uc + '">' + Math.round(pct * 100) + '%</div></div>';
+                var ub = document.getElementById('ubar'), uf = document.getElementById('ufill');
+                ub.style.display = 'block';
+                uf.style.background = pct > 1 ? '#EF4444' : pct > 0.9 ? '#F97316' : '#52B788';
+                uf.style.width = Math.min(100, (pct || 0) * 100) + '%';
+            } else document.getElementById('ubar').style.display = 'none';
+            document.getElementById('d-stats').innerHTML = st;
+            DRILL_PROJS = cell ? cell.projects : [];
+            document.getElementById('d-lhdr').textContent = DRILL_PROJS.length + ' PROJECT' + (DRILL_PROJS.length !== 1 ? 'S' : '') + ' — click to expand';
+            renderDrillProjs();
+            document.getElementById('drill').style.display = 'flex';
+            document.getElementById('data-view').style.paddingRight = '424px';
+            renderHM();
+        }
+
+        function renderDrillProjs() {
+            var totalH = DRILL_PROJS.reduce(function (s, p) { return s + p.hours; }, 0);
+            document.getElementById('d-projs').innerHTML = DRILL_PROJS.map(function (p, i) {
+                var sh = totalH ? p.hours / totalH : 0;
+                var ic = p.source === 'Commercialization';
+                var hold = isOnHold(p.status);
+                var ex = EXPANDED[i];
+                var sheetId = ic ? COMM_ID : BS_ID;
+                /* Source-aware project sheet link:
+                   Comm → P-XXXX RAID_INDEX lookup | BS → folder-name BS_FOLDER_INDEX lookup */
+                var _raidE = ic
+                    ? raidEntry(p.source, p.projectId)
+                    : (p.bsFolder ? BS_FOLDER_INDEX[p.bsFolder.toLowerCase().trim()] || null : null);
+                var projSheetLink = _raidE && _raidE.projectSheetPermalink || null;
+                var ssLink = projSheetLink
+                    || p.rowPermalink
+                    || (SHEET_PERMALINKS[p.source] ? SHEET_PERMALINKS[p.source] + (p.rowId ? '?rowId=' + p.rowId : '') : null)
+                    || ('https://app.smartsheet.com/sheets/' + (p.source === 'Commercialization' ? COMM_ID : BS_ID));
+                var h = '<div class="pc' + (hold ? ' hold-dim' : '') + '" id="pc-' + i + '">';
+                /* ── Card header (always visible) ── */
+                h += '<div class="pc-head" data-pidx="' + i + '">';
+                h += '<div class="pc-left">';
+                h += '<div class="pc-name" title="' + esc(p.name) + '">' + esc(p.name) + '</div>';
+                h += '<div class="pc-meta"><span class="badge ' + (ic ? 'bc' : 'bb') + '">' + (ic ? 'COMM' : 'BS') + '</span>';
+                if (hold) h += '<span class="badge bh">⏸ ON HOLD</span>';
+                h += '<span class="ps">' + esc(p.status) + '</span>';
+                if (p.projectId) h += '<span class="ps">' + esc(p.projectId) + '</span>';
+                h += '</div></div>';
+                h += '<div class="pc-right"><div class="pc-hrs">' + fmtHrs(p.hours) + '</div><div class="pc-share">' + Math.round(sh * 100) + '% of demand</div><div class="pc-toggle">' + (ex ? '▲ less' : '▼ more') + '</div></div>';
+                h += '</div>';
+                /* ── Share bar ── */
+                h += '<div class="sbar"><div class="sfill" style="background:' + (ic ? '#52B788' : '#2563EB') + ';width:' + Math.round(sh * 100) + '%"></div></div>';
+                /* ── Expanded detail ── */
+                if (ex) {
+                    h += '<div class="pc-detail">';
+                    if (p.owner) h += '<div class="det-row"><span class="det-lbl">OWNER</span><span class="det-val">' + esc(p.owner) + '</span></div>';
+                    var sd = fmtDate(p.startDate), ed = fmtDate(p.endDate);
+                    if (sd || ed) h += '<div class="det-row"><span class="det-lbl">SPAN</span><span class="det-val">' + (sd || '?') + ' → ' + (ed || '?') + '</span></div>';
+                    h += '<div class="det-row"><span class="det-lbl">FTE ALLOC</span><span class="det-val">' + p.fte + ' FTE → ' + fmtHrs(p.hours) + ' this month</span></div>';
+                    if (p.percentComplete != null) {
+                        var pct = Math.round(p.percentComplete);
+                        h += '<div class="prog-wrap"><div class="prog-lbl"><span>% COMPLETE</span><span>' + pct + '%</span></div>';
+                        h += '<div class="prog-bar"><div class="prog-fill" style="width:' + pct + '%"></div></div></div>';
+                    }
+                    h += '<a class="ss-link" href="' + ssLink + '" target="_blank" rel="noopener">' + (projSheetLink ? '⬡ Open Project Sheet ↗' : '⬡ View in Master Sheet ↗') + '</a>';
+                    /* ── RAID section ── */
+                    h += renderRaidSection(p.projectId, p.source, i, ex, p.bsFolder);
+                    h += '</div>';
+                }
+                h += '</div>';
+                return h;
+            }).join('');
+        }
+
+        function renderRaidSection(projectId, projSource, idx, ex, bsFolder) {
+            var isBSFolder = projSource === 'Business Support' && bsFolder;
+            /* Show RAID section if we have a lookup key (Comm: projectId; BS: bsFolder) */
+            if (!isBSFolder && !projectId) return '';
+            var cacheKey = isBSFolder
+                ? 'bs-folder:' + bsFolder.toLowerCase().trim()
+                : raidKey(projSource) + ':' + projectId;
+            var raid = RAID_CACHE[cacheKey];
+            var h = '<div class="raid-section">';
+            h += '<div class="raid-hdr"><span class="raid-title">RAID LOG</span>';
+            if (raid && raid.entries) {
+                var counts = { risk: 0, issue: 0, action: 0, decision: 0 };
+                raid.entries.forEach(function (e) {
+                    var cat = (e.category || '').toLowerCase();
+                    if (cat.indexOf('risk') !== -1) counts.risk++;
+                    else if (cat.indexOf('issue') !== -1) counts.issue++;
+                    else if (cat.indexOf('action') !== -1) counts.action++;
+                    else if (cat.indexOf('decision') !== -1) counts.decision++;
+                });
+                h += '<div class="raid-counts">';
+                if (counts.risk) h += '<span class="raid-ct rc-risk">' + counts.risk + ' Risk</span>';
+                if (counts.issue) h += '<span class="raid-ct rc-issue">' + counts.issue + ' Issue</span>';
+                if (counts.action) h += '<span class="raid-ct rc-action">' + counts.action + ' Action</span>';
+                if (counts.decision) h += '<span class="raid-ct rc-decision">' + counts.decision + ' Decision</span>';
+                h += '</div>';
+            }
+            h += '</div>';
+            if (ex === 'loading') {
+                h += '<div class="raid-loading"><span class="spinner-sm"></span>Loading RAID log…</div>';
+            } else if (raid === null) {
+                var _e = isBSFolder ? (BS_FOLDER_INDEX[bsFolder.toLowerCase().trim()] || null) : raidEntry(projSource, projectId);
+                var projLink = _e && _e.projectSheetPermalink;
+                h += '<div class="raid-empty">RAID log entries require direct Smartsheet access.</div>';
+                if (projLink) h += '<a class="raid-link" href="' + esc(projLink) + '" target="_blank" rel="noopener">📋 Open Project in Smartsheet to view RAID Log ↗</a>';
+            } else if (raid && raid.entries) {
+                if (!raid.entries.length) {
+                    h += '<div class="raid-empty">RAID log is empty — no entries recorded.</div>';
+                } else {
+                    /* Show open entries, max 5 */
+                    var open = raid.entries.filter(function (e) { return !/closed|resolved|complete/i.test(e.status || ''); });
+                    var show = open.length ? open : raid.entries;
+                    show.slice(0, 5).forEach(function (e) {
+                        var cat = (e.category || '').toLowerCase();
+                        var cls = cat.indexOf('risk') !== -1 ? 'risk' : cat.indexOf('issue') !== -1 ? 'issue' : cat.indexOf('action') !== -1 ? 'action' : 'decision';
+                        var imp = (e.impact || '').toLowerCase();
+                        var impCls = imp === 'high' ? 'imp-high' : imp === 'medium' || imp === 'med' ? 'imp-med' : 'imp-low';
+                        h += '<div class="raid-entry ' + cls + '">';
+                        h += '<div class="raid-entry-top">';
+                        h += '<span class="raid-desc">' + esc(e.description.length > 90 ? e.description.slice(0, 90) + '…' : e.description) + '</span>';
+                        if (e.impact) h += '<span class="raid-impact ' + impCls + '">' + esc(e.impact) + '</span>';
+                        h += '</div>';
+                        var sub = [];
+                        if (e.category) sub.push(esc(e.category));
+                        if (e.assignedTo) sub.push(esc(e.assignedTo));
+                        if (e.status) sub.push(esc(e.status));
+                        if (sub.length) h += '<div class="raid-sub">' + sub.join(' · ') + '</div>';
+                        h += '</div>';
+                    });
+                    if (show.length > 5) h += '<div class="raid-sub" style="margin-top:4px">+' + (show.length - 5) + ' more entries</div>';
+                }
+                if (raid.permalink) h += '<a class="raid-link" href="' + esc(raid.permalink) + '" target="_blank" rel="noopener">📋 View Full RAID Log ↗</a>';
+            }
+            h += '</div>';
+            return h;
+        }
+
+        function toggleProject(idx) {
+            var p = DRILL_PROJS[idx];
+            if (!p) return;
+            if (EXPANDED[idx]) {
+                /* Collapse */
+                delete EXPANDED[idx];
+                renderDrillProjs();
+            } else {
+                /* Determine cache key and whether RAID can be loaded */
+                var isBSFolder = p.source === 'Business Support' && p.bsFolder;
+                var cKey = isBSFolder
+                    ? 'bs-folder:' + p.bsFolder.toLowerCase().trim()
+                    : raidKey(p.source) + ':' + p.projectId;
+                var canLoad = isBSFolder || !!p.projectId;
+                if (canLoad && RAID_CACHE[cKey] === undefined) {
+                    EXPANDED[idx] = 'loading';
+                    renderDrillProjs();
+                    loadRaid(p.projectId, p.source, p.bsFolder, function () {
+                        if (EXPANDED[idx]) {
+                            EXPANDED[idx] = true;
+                            renderDrillProjs();
+                        }
+                    });
+                } else {
+                    EXPANDED[idx] = true;
+                    renderDrillProjs();
+                }
+            }
+        }
+
+        function closeDrill() {
+            SEL = null; EXPANDED = {};
+            document.getElementById('drill').style.display = 'none';
+            document.getElementById('data-view').style.paddingRight = '0';
+            renderHM();
+        }
+
+        /* ── UI HELPERS ── */
+        function toggleHold() {
+            SHOW_ON_HOLD = !SHOW_ON_HOLD;
+            var btn = document.getElementById('btn-hold');
+            if (SHOW_ON_HOLD) {
+                btn.textContent = '&#9646; On Hold: Included';
+                btn.className = 'btn-toggle-hold on';
+            } else {
+                btn.textContent = '&#9646; On Hold: Excluded';
+                btn.className = 'btn-toggle-hold off';
+            }
+            EXPANDED = {}; SEL = null;
+            rebuildMatrices();
+            renderAll();
+            closeDrill();
+        }
+
+        function setLoad(on) {
+            document.getElementById('loading-state').style.display = on ? 'block' : 'none';
+            document.getElementById('data-view').style.display = on ? 'none' : 'block';
+            document.getElementById('error-state').style.display = 'none';
+            var b = document.getElementById('btn-refresh'); b.disabled = on; b.textContent = on ? '↻  Loading…' : '↻  Refresh';
+        }
+        function switchTab(t) {
+            TAB = t; SEL = null; EXPANDED = {}; COLL = {};
+            document.getElementById('tab-comm').className = 'tab ' + (t === 'comm' ? 'active' : '');
+            document.getElementById('tab-bs').className = 'tab ' + (t === 'bs' ? 'active' : '');
+            closeDrill(); renderAll();
+        }
+
+        /* ════════════════════════════════════════════════════════
+           EVENT BINDING
+        ════════════════════════════════════════════════════════ */
+        (function init() {
+            document.getElementById('btn-refresh').onclick = function () { loadData(); };
+            document.getElementById('btn-retry').onclick = function () { loadData(); };
+            document.getElementById('btn-close').onclick = function () { closeDrill(); };
+            document.getElementById('tab-comm').onclick = function () { switchTab('comm'); };
+            document.getElementById('tab-bs').onclick = function () { switchTab('bs'); };
+            document.getElementById('btn-hold').onclick = function () { toggleHold(); };
+
+            /* Event delegation — heatmap cells, group headers, project card toggles */
+            document.onclick = function (ev) {
+                var t = ev.target || ev.srcElement;
+                /* Project card toggle — walk up to .pc-head */
+                var pcHead = t;
+                while (pcHead && !(pcHead.className && String(pcHead.className).indexOf('pc-head') !== -1)) pcHead = pcHead.parentNode;
+                if (pcHead && pcHead.getAttribute && pcHead.getAttribute('data-pidx') != null) {
+                    /* Don't toggle if clicking a link */
+                    if (t.tagName === 'A' || t.closest && t.closest('a')) return;
+                    toggleProject(parseInt(pcHead.getAttribute('data-pidx'), 10));
+                    return;
+                }
+                /* Group header */
+                var grpTr = t;
+                while (grpTr && grpTr.tagName !== 'TR') grpTr = grpTr.parentNode;
+                if (grpTr && grpTr.getAttribute && grpTr.getAttribute('data-grp')) {
+                    var lbl = grpTr.getAttribute('data-grp'); COLL[lbl] = !COLL[lbl]; renderHM(); return;
+                }
+                /* Heatmap cell */
+                var td = t;
+                while (td && td.tagName !== 'TD') td = td.parentNode;
+                if (td && td.getAttribute && td.getAttribute('data-dept')) {
+                    openDrill(td.getAttribute('data-dept'), td.getAttribute('data-mk'));
+                }
+            };
+
+            loadData();
+        }());
+    </script>
+</body>
+
+</html>

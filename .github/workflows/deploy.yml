@@ -47,6 +47,7 @@ jobs:
             node_modules/
             package.json
             package-lock.json
+            epo_utilization_standalone.html
           retention-days: 1
 
   deploy:
