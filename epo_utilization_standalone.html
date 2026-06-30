@@ -1015,8 +1015,8 @@
                         <div class="li">
                             <div class="ls" style="background:#FEE2E2;border:1px solid #F87171"></div>&gt; 100%
                         </div>
-                        <span style="color:#D1D5DB;font-size:11px">· Gray = no capacity defined · Click cell to drill
-                            down</span>
+                        <span style="color:#D1D5DB;font-size:11px">· Gray = no capacity defined (shows FTE demand) ·
+                            Click cell to drill down</span>
                     </div>
                 </div>
                 <div class="mbar" id="mbar">
@@ -1737,7 +1737,7 @@
                             else if (TAB === 'bs') {
                                 var wdMo = wdays(mo.start, mo.end);
                                 var fteDemand = wdMo > 0 ? hrs / (HRS * wdMo) : 0;
-                                display = fteDemand > 0 ? fteDemand.toFixed(2) : '';
+                                display = fteDemand > 0 ? fteDemand.toFixed(2) + '<span style="font-size:8px;font-weight:600;opacity:.6"> FTE</span>' : '';
                             } else { display = fmtHrs(hrs); }
                         }
                         h += '<td class="' + cs + '" style="background:' + (is ? '#DBEAFE' : cl.bg) + '"' + (hrs > 0 ? ' data-dept="' + esc(dept) + '" data-mk="' + mo.key + '"' : '') + '>' + (display ? '<div class="cv" style="color:' + (is ? '#1E40AF' : cl.tx) + '">' + display + '</div>' : '') + '</td>';
