@@ -2,5 +2,6 @@
     "appService.zipIgnorePattern": [
         "node_modules{,/**}",
         ".vscode{,/**}"
-    ]
+    ],
+    "sarif-viewer.connectToGithubCodeScanning": "off"
 }
