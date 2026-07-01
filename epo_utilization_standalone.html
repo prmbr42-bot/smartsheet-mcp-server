@@ -956,6 +956,301 @@
             background: #FAFAFA;
             flex-shrink: 0
         }
+
+        /* ── BS VIEW TOGGLE (heatmap ↔ portfolio) ── */
+        .view-toggle {
+            display: none;
+            margin-left: 14px;
+            background: rgba(255, 255, 255, .08);
+            border-radius: 5px;
+            padding: 2px;
+            gap: 2px
+        }
+
+        .view-toggle.show {
+            display: flex
+        }
+
+        .vt-btn {
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, .55);
+            font-family: 'Barlow', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            letter-spacing: .02em;
+            transition: all .15s
+        }
+
+        .vt-btn:hover {
+            color: rgba(255, 255, 255, .85)
+        }
+
+        .vt-btn.active {
+            background: var(--mint);
+            color: var(--dark)
+        }
+
+        /* ── SLICER BAR ── */
+        .slicer-bar {
+            display: none;
+            padding: 10px 24px 0;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center
+        }
+
+        .slicer-bar.show {
+            display: flex
+        }
+
+        .slicer-lbl {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: .05em;
+            text-transform: uppercase
+        }
+
+        .slicer-select {
+            font-family: 'Barlow', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 5px 8px;
+            cursor: pointer;
+            max-width: 200px
+        }
+
+        .slicer-clear {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--blue);
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            text-decoration: underline
+        }
+
+        /* ── PORTFOLIO VIEW ── */
+        .pf-wrap {
+            padding: 14px 24px 24px
+        }
+
+        .pf-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+            overflow: hidden
+        }
+
+        .pf-head {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px
+        }
+
+        .pf-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            font-size: 14px;
+            color: var(--dark);
+            letter-spacing: .04em
+        }
+
+        .pf-body {
+            padding: 6px 0
+        }
+
+        .pf-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        /* Level 1 — Status */
+        .pf-status {
+            border-top: 1px solid var(--border)
+        }
+
+        .pf-status:first-child {
+            border-top: none
+        }
+
+        .pf-status-hdr {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            cursor: pointer;
+            user-select: none;
+            background: #FAFEF9
+        }
+
+        .pf-status-hdr:hover {
+            background: #F0FDF4
+        }
+
+        .pf-status-car {
+            font-size: 10px;
+            color: var(--muted);
+            width: 12px;
+            flex-shrink: 0
+        }
+
+        .pf-status-name {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--dark);
+            letter-spacing: .03em;
+            text-transform: uppercase
+        }
+
+        .pf-status-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 3px;
+            letter-spacing: .03em
+        }
+
+        .pf-status-count {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        /* Level 2 — Dept */
+        .pf-dept {
+            border-top: 1px solid #F1F5F0
+        }
+
+        .pf-dept-hdr {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px 8px 32px;
+            cursor: pointer;
+            user-select: none
+        }
+
+        .pf-dept-hdr:hover {
+            background: #FAFAFA
+        }
+
+        .pf-dept-car {
+            font-size: 9px;
+            color: var(--muted);
+            width: 10px;
+            flex-shrink: 0
+        }
+
+        .pf-dept-name {
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--text)
+        }
+
+        .pf-dept-count {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        /* Level 3 — Sub-dept (IT & Digital → Application Development only) */
+        .pf-subdept {
+            border-top: 1px solid #F6F6F4
+        }
+
+        .pf-subdept-hdr {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px 6px 48px;
+            cursor: pointer;
+            user-select: none
+        }
+
+        .pf-subdept-hdr:hover {
+            background: #FAFAFA
+        }
+
+        .pf-subdept-name {
+            font-weight: 600;
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        .pf-subdept-count {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        /* Project rows */
+        .pf-projs {
+            padding: 2px 16px 8px 32px
+        }
+
+        .pf-projs.pf-projs-sub {
+            padding-left: 48px
+        }
+
+        .pf-proj {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            border-radius: 5px;
+            font-size: 12px
+        }
+
+        .pf-proj:hover {
+            background: #F8F6F3
+        }
+
+        .pf-proj-name {
+            font-weight: 600;
+            color: var(--dark);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 280px
+        }
+
+        .pf-proj-owner {
+            font-size: 10px;
+            color: var(--muted);
+            margin-left: auto;
+            flex-shrink: 0;
+            text-align: right;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .pf-proj-pct {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--mint);
+            flex-shrink: 0;
+            width: 32px;
+            text-align: right
+        }
     </style>
 </head>
 
@@ -975,11 +1270,17 @@
     <div class="tab-bar">
         <button class="tab active" id="tab-comm" type="button">Commercialization</button>
         <button class="tab" id="tab-bs" type="button">Business Support</button>
+        <div class="view-toggle" id="view-toggle">
+            <button class="vt-btn active" id="vt-heatmap" type="button">Heatmap</button>
+            <button class="vt-btn" id="vt-portfolio" type="button">Portfolio</button>
+        </div>
         <span id="tab-count"></span>
         <button class="btn-toggle-hold on" id="btn-hold" type="button"
             title="On Hold projects are included in calculations but dimmed — click to exclude">&#9646; On Hold:
             Included</button>
     </div>
+
+    <div class="slicer-bar" id="slicer-bar"></div>
 
     <div id="loading-state">
         <div class="spinner"></div>
@@ -1028,6 +1329,16 @@
                     <table class="htbl" id="htbl"></table>
                 </div>
                 <div id="hm-footer" class="fnote" style="display:none"></div>
+            </div>
+        </div>
+        <div class="pf-wrap" id="pf-wrap" style="display:none">
+            <div class="pf-card">
+                <div class="pf-head">
+                    <div class="pf-title" id="pf-title">BUSINESS SUPPORT — PORTFOLIO VIEW</div>
+                    <span style="color:#9CA3AF;font-size:11px">Status → Department → Project · Click any row to
+                        expand</span>
+                </div>
+                <div class="pf-body" id="pf-body"></div>
             </div>
         </div>
     </div>
@@ -1129,6 +1440,14 @@
             return s;
         }
 
+        /* Confirmed (7/1/26): the "IT Active Projects" report has NO Project ID / ID
+           column — its first column is literally titled "Primary" and holds the
+           project NAME (e.g. "OTIF/Service Metric Updates"), not a P-XXXX ID. So
+           matching a BS project row to its IT Active Projects report entry has to be
+           keyed on normalized project name, not project ID. Used by both
+           loadITActiveProjects (building IT_ACTIVE_INDEX) and parseSheet (looking it up). */
+        function pfNormName(s) { return String(s || '').trim().replace(/\s+/g, ' ').toUpperCase(); }
+
         /* ── DEPARTMENT GROUPS ── */
         var COMM_GROUPS = [
             { label: 'Sales', color: '#0D2818', depts: ['Sales'] },
@@ -1161,6 +1480,73 @@
             { label: 'Operations', color: '#1E3A8A', depts: ['Bulk Operations', 'Bottling Operations', 'Warehousing', 'Continuous Improvement', 'Engineering'] },
             { label: 'IT & Digital', color: '#1E3A8A', depts: ['Analytics', 'Application Development', 'Infrastructure', 'Master Data', 'Power Apps'] }
         ];
+        /* All depts inside the "IT & Digital" BS_GROUPS bucket — used by Portfolio View
+           to route a project's departments down the IT taxonomy branch vs. the plain
+           Status → Dept → Owner branch used for every other business dept. */
+        var IT_DIGITAL_DEPTS = ['Analytics', 'Application Development', 'Infrastructure', 'Master Data', 'Power Apps'];
+
+        /* ── PORTFOLIO VIEW: IT & Digital taxonomy ──
+           Locked design: Status → IT Main Dept → IT Sub-Dept → Project.
+           Application Development is the only IT main dept that fans out into sub-depts
+           (MDM / App Dev / Power Platform); Analytics and Infrastructure stay standalone
+           (no sub-dept level — their projects sit directly under the main-dept node). */
+        var IT_MAIN_DEPTS = ['Analytics', 'Application Development', 'Infrastructure'];
+        var IT_PORTFOLIO_MAIN = 'Application Development'; // the one main dept with a sub-dept fan-out
+        var IT_SUBDEPT_LABELS = {
+            'Master Data': 'MDM',
+            'Application Development': 'App Dev',
+            'Power Apps': 'Power Platform'
+        };
+
+        /* Portfolio View status ordering — Complete/Cancelled/Rejected are collapsed by
+           default since they're the least actionable day-to-day (now visible here at all
+           because rebuildMatrices()/curProjects() filter them out of the CAPACITY math,
+           but curPortfolioProjects() — used only by this view — does not). Bucket names
+           are chosen to match the sheet's own "{Stage} Date" columns (Design (Kickoff)
+           Date, Build Date, Test Date, Deployment Date, Post Support Date, Complete Date,
+           Cancelled Date — confirmed on the live BS Portfolio Master Sheet, 7/1/26),
+           which is the best signal available for what the Status picklist values likely
+           are. The raw Status column itself is confirmed to follow an "N - Label" pattern
+           (e.g. "8 - Cancelled") — pfNormalizeStatus strips that numeric prefix before
+           matching. Still unconfirmed: the exact label text for Paused/Enterprise
+           Review/Rejected, since we've only seen one live sample row (status "8 -
+           Cancelled"). */
+        var PF_STATUS_ORDER = ['Design', 'Build', 'Test', 'Deployment', 'Post Support', 'Paused', 'Enterprise Review', 'Complete', 'Cancelled', 'Rejected'];
+        var PF_STATUS_COLLAPSED_DEFAULT = { 'Complete': true, 'Cancelled': true, 'Rejected': true };
+        var PF_STATUS_BADGE = {
+            'Design': { bg: '#DBEAFE', tx: '#1E40AF' },
+            'Build': { bg: '#FEF3C7', tx: '#92400E' },
+            'Test': { bg: '#FCE7F3', tx: '#9D174D' },
+            'Deployment': { bg: '#D1FAE5', tx: '#065F46' },
+            'Post Support': { bg: '#E0E7FF', tx: '#3730A3' },
+            'Paused': { bg: '#F3F4F6', tx: '#6B7280' },
+            'Enterprise Review': { bg: '#FEE2E2', tx: '#991B1B' },
+            'Complete': { bg: '#F3F4F6', tx: '#9CA3AF' },
+            'Cancelled': { bg: '#F3F4F6', tx: '#9CA3AF' },
+            'Rejected': { bg: '#FEE2E2', tx: '#B91C1C' }
+        };
+
+        /* Non-IT business depts (Portfolio View): Status → Dept → Owner, no sub-dept level.
+           Confirmed against the live BS Portfolio Master Sheet column list (7/1/26) — naming
+           is NOT a consistent "{Dept} Owner" pattern (casing varies, and Quality/Regulatory's
+           owner column is literally "Quality owner", not "Quality/Regulatory owner"), so this
+           is an explicit map rather than a computed suffix. Canonical dept names on the left
+           match the keys used in BFMAP/ftes/BS_GROUPS/IT_DIGITAL_DEPTS everywhere else in this
+           file. IT & Digital depts are included too — this feeds a fallback only; the IT branch
+           prefers the IT Active Projects report's resources/epoLead/itOwnerName first (see
+           deptOwners construction in parseSheet). */
+        var DEPT_OWNER_COLUMN_MAP = {
+            'Sales': 'Sales owner', 'Marketing': 'Marketing owner', 'R&D (Business Support)': 'R&D owner',
+            'Supply Chain': 'Supply chain owner', 'Procurement': 'Procurement owner', 'Quality/Regulatory': 'Quality owner',
+            'FP&A': 'FP&A owner', 'EHS&S': 'EHS&S owner', 'HR': 'HR owner',
+            'Accounts Payable': 'AP Owner', 'Accounts Receivable': 'AR Owner', 'Costing': 'Costing Owner',
+            'Customer Service': 'Customer Service Owner', 'Sales Operations': 'Sales Operations Owner',
+            'Bulk Operations': 'Bulk Operations Owner', 'Bottling Operations': 'Bottling Operations Owner',
+            'Warehousing': 'Warehousing Owner', 'Continuous Improvement': 'Continuous Improvement Owner',
+            'Engineering': 'Engineering Owner', 'Accounting': 'Accounting Owner',
+            'Analytics': 'Analytics Owner', 'Application Development': 'Application Development Owner',
+            'Infrastructure': 'Infrastructure Owner', 'Master Data': 'Master Data Owner', 'Power Apps': 'Power Apps owner'
+        };
 
         /* ── STATE ── */
         var PROJECTS = [], TAB = 'comm', MONTHS = [], CK = '', MX_COMM = {}, MX_BS = {}, COLL = {}, SEL = null;
@@ -1170,7 +1556,13 @@
         var SHEET_PERMALINKS = {}; // source → API-provided sheet permalink (SSO-aware)
         var BS_CAP = {};           // dept → monthly capacity hours (loaded at runtime from Dept Capacity sheet)
         var BS_FOLDER_INDEX = {};  // normalized folder name → {raidSheetId, projectSheetPermalink, ...}
-        var IT_ACTIVE_INDEX = {};  // Project ID → {dept, epoLead} from the "IT Active Projects" report (authoritative dept signal)
+        var IT_ACTIVE_INDEX = {};  // pfNormName(project name) → {dept, epoLead, resources} from the "IT Active Projects" report (authoritative dept signal — the report has no Project ID column, so this is keyed by normalized project name)
+
+        /* ── BS PORTFOLIO VIEW STATE ── */
+        var BS_VIEW = 'heatmap';         // 'heatmap' | 'portfolio' — toggle within the BS tab
+        var PF_COLL = {};                // Portfolio View: collapsed state per group key (status / dept / sub-dept)
+        var PF_EXPANDED = {};            // Portfolio View: expanded project-drill state, keyed by projectId
+        var PF_SLICER = { dept: null, itOwner: null, itResource: null }; // active Portfolio View slicer filters
 
         /* ════════════════════════════════════════════════════════
            UTILITIES
@@ -1224,13 +1616,18 @@
             [sc, fs].forEach(function (col) {
                 if (col && t2id[col] == null) console.warn('[EPO] ' + src + ' — date column "' + col + '" not found on sheet. Available columns containing "date":', Object.keys(t2id).filter(function (k) { return /date/i.test(k); }).join(', '));
             });
+            /* Complete/Cancelled/Rejected statuses (raw text like "8 - Cancelled" — confirmed
+               live) are excluded from CAPACITY math (heatmap/KPIs) since they don't consume
+               forward-looking hours, but Portfolio View still needs to show them as a status
+               bucket. So rows are no longer dropped here — they're tagged capacityExcluded
+               and filtered out downstream in rebuildMatrices()/curProjects() instead. */
             var EX = /cancelled|rejected|8\s*-|complete/i;
             return (data.rows || []).reduce(function (acc, row) {
                 var by = {};
                 (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
                 function g(t) { var id = t2id[t]; return (id != null && by[id] != null) ? by[id] : null; }
                 var st = String(g('Status') || '');
-                if (EX.test(st)) return acc;
+                var capacityExcluded = EX.test(st);
                 var nm = g('Project Name'); if (!nm) return acc;
                 var sd = g(sc) || g(fs) || null;
                 var ed = null;
@@ -1256,10 +1653,9 @@
                     /* Dept attribution priority:
                        1. IT Active Projects report (explicit "Owning Department" per project — authoritative)
                        2. IT Function Owner name inference (OWNER_TO_DEPT) — fallback for projects not yet
-                          tracked on the report (e.g. Master Data, Infrastructure aren't on it currently) */
-                    var pidLookup = (g('Project ID') || extractProjectId(nm) || null);
-                    pidLookup = pidLookup ? String(pidLookup).trim().toUpperCase() : null;
-                    var itActiveEntry = pidLookup ? IT_ACTIVE_INDEX[pidLookup] : null;
+                          tracked on the report (e.g. Master Data, Infrastructure aren't on it currently)
+                       Matched by normalized project name — the report has no Project ID column. */
+                    var itActiveEntry = IT_ACTIVE_INDEX[pfNormName(nm)] || null;
                     var itDept = itActiveEntry ? itActiveEntry.dept : (itOwnerRaw ? OWNER_TO_DEPT[normalizeOwnerKey(itOwnerRaw)] : null);
                     if (itDept && itHrs) {
                         var _is = pd(sd), _ie = pd(ed);
@@ -1274,7 +1670,7 @@
                 }
                 /* NEW: additional fields for drill panel */
                 var pct = parseFloat(g('% Complete') || g('Percent Complete') || g('% Completion') || 0);
-                var owner = g('Project Owner') || g('Owner') || g('Project Lead') || g('Assigned To') || null;
+                var owner = g('Project Owner') || g('Owner') || g('Project Lead') || g('Assigned To') || g('Business Owner') || null;
                 /* NEW: use explicit Project ID column first, fall back to regex on name */
                 var rawPid = g('Project ID') || extractProjectId(nm) || null;
                 var projectId = rawPid ? String(rawPid).trim().toUpperCase() : null;
@@ -1284,6 +1680,25 @@
                 var epoLead = (src === 'Business Support' && itActiveEntry) ? itActiveEntry.epoLead : null;
                 /* BS only: normalized IT Function Owner name — used for the pending-by-owner breakdown */
                 var itOwnerName = (src === 'Business Support' && itOwnerRaw) ? normalizeOwnerKey(itOwnerRaw) : null;
+                /* BS only: raw IT Resources list from the IT Active Projects report — feeds the
+                   Portfolio View "IT Resources" slicer directly (separate from deptOwners, which
+                   collapses resources into a display string) */
+                var itResources = (src === 'Business Support' && itActiveEntry && itActiveEntry.resources) ? itActiveEntry.resources : [];
+                /* BS only: per-department owner map — feeds Portfolio View's Status → Dept → Owner
+                   grouping for non-IT depts, and Status → IT Main Dept → IT Sub-Dept → Project for
+                   IT & Digital depts. IT depts prefer the IT Active Projects report's resources/
+                   epoLead/itOwnerName (in that order); business depts probe for a "{Dept} Owner"
+                   column on the sheet and fall back to the project's general owner field. */
+                var deptOwners = {};
+                if (src === 'Business Support') {
+                    Object.keys(ftes).forEach(function (dept) {
+                        if (IT_DIGITAL_DEPTS.indexOf(dept) > -1) {
+                            deptOwners[dept] = (itActiveEntry && itActiveEntry.resources && itActiveEntry.resources.length) ? itActiveEntry.resources.join(', ') : (epoLead || itOwnerName || owner || null);
+                        } else {
+                            deptOwners[dept] = g(DEPT_OWNER_COLUMN_MAP[dept] || (dept + ' Owner')) || owner || null;
+                        }
+                    });
+                }
                 acc.push({
                     name: nm, status: st, startDate: sd, endDate: ed, source: src, ftes: ftes,
                     rowId: row.id, rowPermalink: row.permalink || null,
@@ -1292,7 +1707,10 @@
                     owner: owner,
                     bsFolder: bsFolder,
                     epoLead: epoLead,
-                    itOwnerName: itOwnerName
+                    itOwnerName: itOwnerName,
+                    itResources: itResources,
+                    deptOwners: deptOwners,
+                    capacityExcluded: capacityExcluded
                 });
                 return acc;
             }, []);
@@ -1324,7 +1742,8 @@
                             percentComplete: p.percentComplete, owner: p.owner,
                             startDate: p.startDate, endDate: p.endDate,
                             bsFolder: p.bsFolder || null,
-                            epoLead: p.epoLead || null
+                            epoLead: p.epoLead || null,
+                            deptOwner: (p.deptOwners && p.deptOwners[dept]) || null
                         });
                     });
                 });
@@ -1472,10 +1891,21 @@
                         var cid = c.virtualId != null ? c.virtualId : c.id;
                         t2id[c.title] = cid;
                     });
-                    var pidCol = t2id['Project ID'] != null ? t2id['Project ID'] : t2id['ID'];
+                    /* Confirmed (7/1/26) against the live report field list: there is no "Project ID"
+                       or "ID" column at all — the report's first/primary column is literally titled
+                       "Primary" and its values are project NAMES (e.g. "OTIF/Service Metric Updates"),
+                       not P-XXXX IDs. So matching keys off normalized project name via pfNormName. */
+                    var nameCol = t2id['Primary'] != null ? t2id['Primary'] : t2id['Project Name'];
                     var deptCol = t2id['Owning Department'];
                     var leadCol = t2id['EPO Lead'];
-                    if (pidCol == null || deptCol == null) {
+                    /* Resources — feeds the Portfolio View "IT Resources" slicer. Confirmed against
+                       the live BS Portfolio Master Sheet (7/1/26): the column is "Resources Assigned",
+                       not "IT Resources"/"Resources" as originally guessed. (No "Sub-Department"
+                       column exists on the sheet — IT sub-dept fan-out already comes for free from
+                       which per-dept FTE column is populated, i.e. the dept key itself, so
+                       getPortfolioDeptKey doesn't need a separate sub-dept signal.) */
+                    var resourcesCol = t2id['Resources Assigned'] != null ? t2id['Resources Assigned'] : (t2id['IT Resources'] != null ? t2id['IT Resources'] : t2id['Resources']);
+                    if (nameCol == null || deptCol == null) {
                         console.warn('[EPO] IT Active Projects report — missing expected columns. Available:', Object.keys(t2id).join(', '));
                         return;
                     }
@@ -1487,14 +1917,18 @@
                             byVal[cid] = c.value != null ? c.value : null;
                             byDisp[cid] = c.displayValue != null ? c.displayValue : null;
                         });
-                        var pid = byVal[pidCol]; if (!pid) return;
-                        pid = String(pid).trim().toUpperCase();
+                        var nameKey = byVal[nameCol]; if (!nameKey) return;
+                        nameKey = pfNormName(nameKey);
                         var rawDept = byVal[deptCol];
                         var dept = rawDept ? (IT_DEPT_ABBREV[String(rawDept).trim()] || String(rawDept).trim()) : null;
                         /* EPO Lead is a Contact column — prefer the friendly displayValue (name)
                            over the raw value (email) for UI purposes */
                         var lead = leadCol != null ? (byDisp[leadCol] || byVal[leadCol]) : null;
-                        if (dept) idx[pid] = { dept: dept, epoLead: lead || null };
+                        /* Resources Assigned may be a multi-contact column — split on comma if it
+                           comes through as a single joined string */
+                        var resourcesRaw = resourcesCol != null ? (byDisp[resourcesCol] || byVal[resourcesCol]) : null;
+                        var resources = resourcesRaw ? String(resourcesRaw).split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
+                        if (dept) idx[nameKey] = { dept: dept, epoLead: lead || null, resources: resources };
                     });
                     IT_ACTIVE_INDEX = idx;
                     console.log('[EPO] IT Active Projects index built —', Object.keys(idx).length, 'projects');
@@ -1595,14 +2029,17 @@
         function rebuildMatrices() {
             var commAll = PROJECTS.filter(function (p) { return p.source === 'Commercialization'; });
             var bsAll = PROJECTS.filter(function (p) { return p.source === 'Business Support'; });
-            var commUse = SHOW_ON_HOLD ? commAll : commAll.filter(function (p) { return !isOnHold(p.status); });
-            var bsUse = SHOW_ON_HOLD ? bsAll : bsAll.filter(function (p) { return !isOnHold(p.status); });
+            /* Capacity math (heatmap) still excludes Complete/Cancelled/Rejected — only
+               Portfolio View (curPortfolioProjects) sees the full set. */
+            function capOk(p) { return !p.capacityExcluded; }
+            var commUse = commAll.filter(function (p) { return capOk(p) && (SHOW_ON_HOLD || !isOnHold(p.status)); });
+            var bsUse = bsAll.filter(function (p) { return capOk(p) && (SHOW_ON_HOLD || !isOnHold(p.status)); });
             MX_COMM = buildMX(commUse);
             MX_BS = buildMX(bsUse);
         }
 
         function loadData() {
-            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; IT_ACTIVE_INDEX = {};
+            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; IT_ACTIVE_INDEX = {}; PF_COLL = {}; PF_EXPANDED = {};
             document.getElementById('load-msg').textContent = 'Fetching Commercialization + Business Support…';
             Promise.all([
                 ssGet('/sheets/' + COMM_ID + '?include=rowPermalink'),
@@ -1642,6 +2079,18 @@
         function curProjects() {
             return PROJECTS.filter(function (p) {
                 if (p.source !== (TAB === 'comm' ? 'Commercialization' : 'Business Support')) return false;
+                if (p.capacityExcluded) return false;
+                if (!SHOW_ON_HOLD && isOnHold(p.status)) return false;
+                return true;
+            });
+        }
+        /* Portfolio View sees the FULL status range — including Complete/Cancelled/Rejected,
+           which curProjects() (heatmap/KPI) deliberately excludes since they don't consume
+           forward-looking capacity. Same tab + on-hold filtering, just without the
+           capacityExcluded cut. */
+        function curPortfolioProjects() {
+            return PROJECTS.filter(function (p) {
+                if (p.source !== (TAB === 'comm' ? 'Commercialization' : 'Business Support')) return false;
                 if (!SHOW_ON_HOLD && isOnHold(p.status)) return false;
                 return true;
             });
@@ -1653,7 +2102,7 @@
         function renderAll() {
             var fp = curProjects(), mx = curMX();
             var holdCount = PROJECTS.filter(function (p) {
-                return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && isOnHold(p.status);
+                return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && !p.capacityExcluded && isOnHold(p.status);
             }).length;
             var label = TAB === 'comm' ? 'Commercialization' : 'Business Support';
             document.getElementById('h-sub').textContent = label + ' · Hours-Based · Live Smartsheet';
@@ -1665,7 +2114,13 @@
             document.getElementById('mbar').innerHTML = TAB === 'comm'
                 ? '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap &nbsp;|&nbsp; Capacity = Dept FTE × 8 hrs/day × Working Days in Month &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet'
                 : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
-            renderKPIs(fp, mx); renderHM();
+            /* View toggle only applies to BS */
+            document.getElementById('view-toggle').className = 'view-toggle' + (TAB === 'bs' ? ' show' : '');
+            document.querySelector('.hm-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'portfolio') ? 'none' : 'block';
+            document.getElementById('pf-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'portfolio') ? 'block' : 'none';
+            renderKPIs(fp, mx);
+            if (TAB === 'bs' && BS_VIEW === 'portfolio') { renderPortfolioView(); } else { renderHM(); }
+            renderSlicers();
         }
 
         function renderKPIs(fp, mx) {
@@ -1682,7 +2137,7 @@
                 if (capH) { if (cell.totalHours >= capH * 0.9) nr++; if (cell.totalHours > capH) ov++; }
             });
             fp.forEach(function (p) { });
-            var holdKpi = PROJECTS.filter(function (p) { return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && isOnHold(p.status); }).length;
+            var holdKpi = PROJECTS.filter(function (p) { return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && !p.capacityExcluded && isOnHold(p.status); }).length;
             var acc = ['#52B788', '#52B788', '#2563EB', '#F97316', ov > 0 ? '#EF4444' : '#22C55E'];
             /* Pending-by-owner breakdown — BS only (Comm has no IT Function Owner field) */
             var pendingProjects = TAB === 'bs' ? fp.filter(function (p) { return ip(p.status); }) : [];
@@ -1779,6 +2234,216 @@
             var ft = document.getElementById('hm-footer');
             if (nf > 0) { ft.textContent = '⚠ ' + nf + ' of ' + fp.length + ' projects have no FTE values and are excluded.'; ft.style.display = 'block'; }
             else ft.style.display = 'none';
+        }
+
+        /* ════════════════════════════════════════════════════════
+           PORTFOLIO VIEW (BS only) — Status → Dept (→ Sub-Dept) → Project
+           Toggled via BS_VIEW; independent of the heatmap's hours math —
+           this is a status/ownership view, not a capacity view.
+        ════════════════════════════════════════════════════════ */
+
+        /* Maps a raw dept name (as used in p.ftes / BS_GROUPS) to its Portfolio View
+           branch. IT & Digital's "Application Development" main dept fans out into
+           three sub-depts (MDM / App Dev / Power Platform); Analytics and
+           Infrastructure stand alone; every other dept is a plain business dept. */
+        function getPortfolioDeptKey(dept) {
+            if (dept === 'Master Data' || dept === 'Power Apps' || dept === 'Application Development') {
+                return { branch: 'it', mainDept: IT_PORTFOLIO_MAIN, subDept: dept, subDeptLabel: IT_SUBDEPT_LABELS[dept] || dept };
+            }
+            if (IT_MAIN_DEPTS.indexOf(dept) > -1) {
+                return { branch: 'it', mainDept: dept, subDept: null, subDeptLabel: null };
+            }
+            return { branch: 'business', mainDept: dept, subDept: null, subDeptLabel: null };
+        }
+
+        /* Loose status-text matcher — confirmed live sample (Status="8 - Cancelled") shows
+           raw values follow an "N - Label" or "N-Label" numeric prefix pattern, so that's
+           stripped before matching. Beyond that, real BS status strings vary in
+           punctuation/casing — anything that doesn't match a known bucket falls back to
+           its trimmed raw value so it still renders (just outside the locked
+           PF_STATUS_ORDER sort). */
+        function pfNormalizeStatus(raw) {
+            var s = String(raw || '').trim().replace(/^\d+\s*-\s*/, '');
+            if (!s) return 'Unspecified';
+            if (/cancel/i.test(s)) return 'Cancelled';
+            if (/reject/i.test(s)) return 'Rejected';
+            if (/enterprise.?review/i.test(s)) return 'Enterprise Review';
+            if (/post.?support/i.test(s)) return 'Post Support';
+            if (/paused|on.?hold/i.test(s)) return 'Paused';
+            if (/complete|closed|done/i.test(s)) return 'Complete';
+            if (/deploy/i.test(s)) return 'Deployment';
+            if (/test|uat|\bqa\b/i.test(s)) return 'Test';
+            if (/build|develop/i.test(s)) return 'Build';
+            if (/design|discovery|scoping|kickoff/i.test(s)) return 'Design';
+            return s;
+        }
+        function pfStatusSort(a, b) {
+            var ia = PF_STATUS_ORDER.indexOf(a), ib = PF_STATUS_ORDER.indexOf(b);
+            if (ia === -1 && ib === -1) return a.localeCompare(b);
+            if (ia === -1) return 1; if (ib === -1) return -1;
+            return ia - ib;
+        }
+
+        /* Builds the slicer option lists from whatever's currently in the BS project
+           set, then renders the Dept / IT Owner / IT Resources dropdowns. */
+        function renderSlicers() {
+            var bar = document.getElementById('slicer-bar');
+            if (TAB !== 'bs' || BS_VIEW !== 'portfolio') { bar.className = 'slicer-bar'; bar.innerHTML = ''; return; }
+            var fp = curPortfolioProjects();
+            var deptSet = {}, ownerSet = {}, resSet = {};
+            fp.forEach(function (p) {
+                Object.keys(p.ftes || {}).forEach(function (dept) { deptSet[getPortfolioDeptKey(dept).mainDept] = true; });
+                if (p.itOwnerName) ownerSet[p.itOwnerName] = true;
+                (p.itResources || []).forEach(function (r) { if (r) resSet[r] = true; });
+            });
+            var depts = Object.keys(deptSet).sort();
+            var owners = Object.keys(ownerSet).sort();
+            var resources = Object.keys(resSet).sort();
+            function opts(list, cur) {
+                return '<option value="">All</option>' + list.map(function (v) {
+                    return '<option value="' + esc(v) + '"' + (cur === v ? ' selected' : '') + '>' + esc(v) + '</option>';
+                }).join('');
+            }
+            var anyActive = PF_SLICER.dept || PF_SLICER.itOwner || PF_SLICER.itResource;
+            bar.innerHTML =
+                '<span class="slicer-lbl">Filter</span>'
+                + '<select class="slicer-select" id="sl-dept"><optgroup label="Dept">' + opts(depts, PF_SLICER.dept) + '</optgroup></select>'
+                + '<select class="slicer-select" id="sl-owner"><optgroup label="IT Owner">' + opts(owners, PF_SLICER.itOwner) + '</optgroup></select>'
+                + '<select class="slicer-select" id="sl-res"><optgroup label="IT Resource">' + opts(resources, PF_SLICER.itResource) + '</optgroup></select>'
+                + (anyActive ? '<button class="slicer-clear" id="sl-clear" type="button">Clear filters</button>' : '');
+            bar.className = 'slicer-bar show';
+            document.getElementById('sl-dept').onchange = function () { PF_SLICER.dept = this.value || null; renderPortfolioView(); renderSlicers(); };
+            document.getElementById('sl-owner').onchange = function () { PF_SLICER.itOwner = this.value || null; renderPortfolioView(); renderSlicers(); };
+            document.getElementById('sl-res').onchange = function () { PF_SLICER.itResource = this.value || null; renderPortfolioView(); renderSlicers(); };
+            var clearBtn = document.getElementById('sl-clear');
+            if (clearBtn) clearBtn.onclick = function () { PF_SLICER = { dept: null, itOwner: null, itResource: null }; renderPortfolioView(); renderSlicers(); };
+        }
+
+        /* Builds the Status → Dept → (Sub-Dept →) Project tree from curPortfolioProjects()
+           (the full status range, unlike curProjects()), applying active PF_SLICER
+           filters, then renders it into #pf-body. */
+        function renderPortfolioView() {
+            var body = document.getElementById('pf-body');
+            var fp = curPortfolioProjects();
+            var tree = {}; // status -> { it:{dept:{sub:{projs:[]}, projs:[]}}, business:{dept:{projs:[]}} }
+            var totalRows = 0;
+            fp.forEach(function (p) {
+                var status = pfNormalizeStatus(p.status);
+                Object.keys(p.ftes || {}).forEach(function (dept) {
+                    var pk = getPortfolioDeptKey(dept);
+                    if (PF_SLICER.dept && pk.mainDept !== PF_SLICER.dept) return;
+                    if (PF_SLICER.itOwner && p.itOwnerName !== PF_SLICER.itOwner) return;
+                    if (PF_SLICER.itResource && (p.itResources || []).indexOf(PF_SLICER.itResource) === -1) return;
+                    if (!tree[status]) tree[status] = {};
+                    if (!tree[status][pk.mainDept]) tree[status][pk.mainDept] = { branch: pk.branch, subs: {}, projs: [] };
+                    var node = tree[status][pk.mainDept];
+                    var row = {
+                        projectId: p.projectId, name: p.name, status: p.status,
+                        owner: (p.deptOwners && p.deptOwners[dept]) || p.owner || null,
+                        percentComplete: p.percentComplete,
+                        rowPermalink: p.rowPermalink, epoLead: p.epoLead, hold: isOnHold(p.status)
+                    };
+                    totalRows++;
+                    if (pk.subDept) {
+                        if (!node.subs[pk.subDept]) node.subs[pk.subDept] = { label: pk.subDeptLabel, projs: [] };
+                        node.subs[pk.subDept].projs.push(row);
+                    } else {
+                        node.projs.push(row);
+                    }
+                });
+            });
+            if (!totalRows) {
+                body.innerHTML = '<div class="pf-empty">No projects match the current filters' + (TAB === 'bs' ? '.' : ' for this tab.') + '</div>';
+                return;
+            }
+            var statuses = Object.keys(tree).sort(pfStatusSort);
+            var h = '';
+            statuses.forEach(function (status) {
+                var depts = tree[status];
+                var deptKeys = Object.keys(depts);
+                var statusCount = deptKeys.reduce(function (n, dk) {
+                    return n + depts[dk].projs.length + Object.keys(depts[dk].subs).reduce(function (m, sk) { return m + depts[dk].subs[sk].projs.length; }, 0);
+                }, 0);
+                var scKey = 'status:' + status;
+                var collapsed = PF_COLL.hasOwnProperty(scKey) ? PF_COLL[scKey] : !!PF_STATUS_COLLAPSED_DEFAULT[status];
+                var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
+                h += '<div class="pf-status">';
+                h += '<div class="pf-status-hdr" data-pfkey="' + esc(scKey) + '">'
+                    + '<span class="pf-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
+                    + '<span class="pf-status-name">' + esc(status) + '</span>'
+                    + '<span class="pf-status-badge" style="background:' + badge.bg + ';color:' + badge.tx + '">' + statusCount + '</span>'
+                    + '<span class="pf-status-count">' + deptKeys.length + ' dept' + (deptKeys.length === 1 ? '' : 's') + '</span>'
+                    + '</div>';
+                if (!collapsed) {
+                    deptKeys.sort().forEach(function (dk) {
+                        var dnode = depts[dk];
+                        var subKeys = Object.keys(dnode.subs);
+                        var deptCount = dnode.projs.length + subKeys.reduce(function (m, sk) { return m + dnode.subs[sk].projs.length; }, 0);
+                        var dcKey = 'dept:' + status + ':' + dk;
+                        var dCollapsed = !!PF_COLL[dcKey];
+                        h += '<div class="pf-dept">';
+                        h += '<div class="pf-dept-hdr" data-pfkey="' + esc(dcKey) + '">'
+                            + '<span class="pf-dept-car">' + (dCollapsed ? '▶' : '▼') + '</span>'
+                            + '<span class="pf-dept-name">' + esc(dk) + '</span>'
+                            + '<span class="pf-dept-count">' + deptCount + '</span>'
+                            + '</div>';
+                        if (!dCollapsed) {
+                            if (dnode.projs.length) h += renderPFProjectRows(dnode.projs, '', 'status:' + status + '|dept:' + dk);
+                            subKeys.sort().forEach(function (sk) {
+                                var snode = dnode.subs[sk];
+                                var sub2Key = 'sub:' + status + ':' + dk + ':' + sk;
+                                var sCollapsed = !!PF_COLL[sub2Key];
+                                h += '<div class="pf-subdept">';
+                                h += '<div class="pf-subdept-hdr" data-pfkey="' + esc(sub2Key) + '">'
+                                    + '<span class="pf-dept-car">' + (sCollapsed ? '▶' : '▼') + '</span>'
+                                    + '<span class="pf-subdept-name">' + esc(snode.label || sk) + '</span>'
+                                    + '<span class="pf-subdept-count">' + snode.projs.length + '</span>'
+                                    + '</div>';
+                                if (!sCollapsed) h += renderPFProjectRows(snode.projs, 'pf-projs-sub', 'status:' + status + '|dept:' + dk + '|sub:' + sk);
+                                h += '</div>';
+                            });
+                        }
+                        h += '</div>';
+                    });
+                }
+                h += '</div>';
+            });
+            body.innerHTML = h;
+        }
+
+        function renderPFProjectRows(projs, extraClass, keyPrefix) {
+            projs.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+            return '<div class="pf-projs ' + extraClass + '">' + projs.map(function (r, i) {
+                var rowKey = keyPrefix + '|proj:' + (r.projectId || r.name || i);
+                var pct = (typeof r.percentComplete === 'number' && !isNaN(r.percentComplete)) ? Math.round(r.percentComplete <= 1 ? r.percentComplete * 100 : r.percentComplete) + '%' : '';
+                var expanded = !!PF_EXPANDED[rowKey];
+                var row = '<div class="pf-proj' + (r.hold ? ' hold-dim' : '') + '" data-pfrow="' + esc(rowKey) + '" style="cursor:pointer">'
+                    + '<span class="pf-proj-name" title="' + esc(r.name) + '">' + esc(r.name) + '</span>'
+                    + (pct ? '<span class="pf-proj-pct">' + pct + '</span>' : '')
+                    + '<span class="pf-proj-owner" title="' + esc(r.owner || '') + '">' + esc(r.owner || 'Unassigned') + '</span>'
+                    + '</div>';
+                if (expanded) {
+                    row += '<div class="pc-detail" style="margin:0 8px 8px">'
+                        + '<div class="det-row"><span class="det-lbl">PROJECT ID</span><span class="det-val">' + esc(r.projectId || '—') + '</span></div>'
+                        + '<div class="det-row"><span class="det-lbl">STATUS</span><span class="det-val">' + esc(r.status || '—') + '</span></div>'
+                        + '<div class="det-row"><span class="det-lbl">DEPT OWNER</span><span class="det-val">' + esc(r.owner || '—') + '</span></div>'
+                        + (r.epoLead ? '<div class="det-row"><span class="det-lbl">EPO LEAD</span><span class="det-val">' + esc(r.epoLead) + '</span></div>' : '')
+                        + (r.rowPermalink ? '<a class="ss-link" href="' + esc(r.rowPermalink) + '" target="_blank" rel="noopener">Open in Smartsheet ↗</a>' : '')
+                        + '</div>';
+                }
+                return row;
+            }).join('') + '</div>';
+        }
+        function togglePFProject(key) { PF_EXPANDED[key] = !PF_EXPANDED[key]; renderPortfolioView(); }
+
+        function setBSView(v) {
+            BS_VIEW = v;
+            document.getElementById('vt-heatmap').className = 'vt-btn' + (v === 'heatmap' ? ' active' : '');
+            document.getElementById('vt-portfolio').className = 'vt-btn' + (v === 'portfolio' ? ' active' : '');
+            document.querySelector('.hm-wrap').style.display = (TAB === 'bs' && v === 'portfolio') ? 'none' : 'block';
+            document.getElementById('pf-wrap').style.display = (TAB === 'bs' && v === 'portfolio') ? 'block' : 'none';
+            renderSlicers();
+            if (TAB === 'bs' && v === 'portfolio') renderPortfolioView();
         }
 
         /* ════════════════════════════════════════════════════════
@@ -1996,9 +2661,11 @@
             var b = document.getElementById('btn-refresh'); b.disabled = on; b.textContent = on ? '↻  Loading…' : '↻  Refresh';
         }
         function switchTab(t) {
-            TAB = t; SEL = null; EXPANDED = {}; COLL = {};
+            TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'heatmap'; PF_COLL = {}; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null };
             document.getElementById('tab-comm').className = 'tab ' + (t === 'comm' ? 'active' : '');
             document.getElementById('tab-bs').className = 'tab ' + (t === 'bs' ? 'active' : '');
+            document.getElementById('vt-heatmap').className = 'vt-btn active';
+            document.getElementById('vt-portfolio').className = 'vt-btn';
             closeDrill(); renderAll();
         }
 
@@ -2012,6 +2679,8 @@
             document.getElementById('tab-comm').onclick = function () { switchTab('comm'); };
             document.getElementById('tab-bs').onclick = function () { switchTab('bs'); };
             document.getElementById('btn-hold').onclick = function () { toggleHold(); };
+            document.getElementById('vt-heatmap').onclick = function () { setBSView('heatmap'); };
+            document.getElementById('vt-portfolio').onclick = function () { setBSView('portfolio'); };
 
             /* Event delegation — heatmap cells, group headers, project card toggles */
             document.onclick = function (ev) {
@@ -2024,6 +2693,20 @@
                     if (t.tagName === 'A' || t.closest && t.closest('a')) return;
                     toggleProject(parseInt(pcHead.getAttribute('data-pidx'), 10));
                     return;
+                }
+                /* Portfolio View — individual project row expand/collapse */
+                var pfRow = t;
+                while (pfRow && !(pfRow.getAttribute && pfRow.getAttribute('data-pfrow'))) pfRow = pfRow.parentNode;
+                if (pfRow && pfRow.getAttribute && pfRow.getAttribute('data-pfrow')) {
+                    if (t.tagName === 'A' || t.closest && t.closest('a')) return;
+                    togglePFProject(pfRow.getAttribute('data-pfrow')); return;
+                }
+                /* Portfolio View tree — status / dept / sub-dept collapse toggles */
+                var pfHdr = t;
+                while (pfHdr && !(pfHdr.getAttribute && pfHdr.getAttribute('data-pfkey'))) pfHdr = pfHdr.parentNode;
+                if (pfHdr && pfHdr.getAttribute && pfHdr.getAttribute('data-pfkey')) {
+                    var pk = pfHdr.getAttribute('data-pfkey');
+                    PF_COLL[pk] = !PF_COLL[pk]; renderPortfolioView(); return;
                 }
                 /* Group header */
                 var grpTr = t;
