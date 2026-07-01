@@ -408,6 +408,39 @@
             border-top: 2px solid var(--mint)
         }
 
+        .hm-status-hdr td {
+            background: var(--dark);
+            color: #fff;
+            padding: 9px 14px;
+            cursor: pointer;
+            user-select: none;
+            border-top: 3px solid var(--mint);
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .hm-status-car {
+            font-size: 10px;
+            opacity: .7;
+            flex-shrink: 0
+        }
+
+        .hm-status-name {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            font-size: 13px;
+            letter-spacing: .04em
+        }
+
+        .hm-status-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 3px;
+            letter-spacing: .03em
+        }
+
         .dtd {
             position: sticky;
             left: 0;
@@ -1562,7 +1595,9 @@
         var BS_VIEW = 'heatmap';         // 'heatmap' | 'portfolio' — toggle within the BS tab
         var PF_COLL = {};                // Portfolio View: collapsed state per group key (status / dept / sub-dept)
         var PF_EXPANDED = {};            // Portfolio View: expanded project-drill state, keyed by projectId
-        var PF_SLICER = { dept: null, itOwner: null, itResource: null }; // active Portfolio View slicer filters
+        var PF_SLICER = { dept: null, itOwner: null, itResource: null }; // active Portfolio View + Heatmap slicer filters (shared — BS only)
+        var HM_STATUS_COLL = {};  // Heatmap Status-first grouping (BS only): collapse state per status
+        var HM_MX_BY_STATUS = {}; // Heatmap Status-first grouping (BS only): status → dept → monthKey → {totalHours,projects}, rebuilt each renderHM() call — openDrill reads from here
 
         /* ════════════════════════════════════════════════════════
            UTILITIES
@@ -2039,7 +2074,7 @@
         }
 
         function loadData() {
-            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; IT_ACTIVE_INDEX = {}; PF_COLL = {}; PF_EXPANDED = {};
+            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; IT_ACTIVE_INDEX = {}; PF_COLL = {}; PF_EXPANDED = {}; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {};
             document.getElementById('load-msg').textContent = 'Fetching Commercialization + Business Support…';
             Promise.all([
                 ssGet('/sheets/' + COMM_ID + '?include=rowPermalink'),
@@ -2173,26 +2208,29 @@
             }).join('');
         }
 
-        function renderHM() {
-            var mx = curMX(), groups = curGroups();
-            var h = '<thead><tr><th class="th-d">DEPARTMENT</th>';
-            MONTHS.forEach(function (mo) { var ic = mo.key === CK; h += '<th class="th-m' + (ic ? ' now' : '') + '">' + mo.label + (ic ? '<div class="now-tag">▲ NOW</div>' : '') + '</th>'; });
-            h += '</tr></thead><tbody>';
+        /* Renders the existing dept-group → dept-row → month-cell table body for a given
+           matrix. collPrefix scopes COLL collapse keys (so the same dept-group label
+           collapsed under one Status doesn't also collapse it under another); status is
+           passed through purely for SEL comparison + the cell's data-hmstatus attribute
+           (both null for Comm, which has no Status-first wrapping). */
+        function renderHMGroupsHTML(mx, groups, collPrefix, status) {
+            var h = '';
             groups.forEach(function (g) {
+                var collKey = collPrefix + g.label;
                 /* Skip entire group if none of its departments have any data */
                 var groupHasData = g.depts.some(function (dept) {
                     var dm = mx[dept] || {};
                     return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
                 });
                 if (!groupHasData) return;
-                var ic = !!COLL[g.label];
+                var ic = !!COLL[collKey];
                 /* Show dept count only for multi-dept groups; fix singular/plural */
                 var visibleDepts = g.depts.filter(function (dept) {
                     var dm = mx[dept] || {};
                     return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
                 });
                 var cntLabel = visibleDepts.length > 1 ? ' <span style="font-weight:400;margin-left:8px;opacity:0.6;font-size:11px">(' + visibleDepts.length + ' depts)</span>' : '';
-                h += '<tr class="grp-hdr" data-grp="' + esc(g.label) + '"><td colspan="' + (MONTHS.length + 1) + '" style="background:' + g.color + '">' + (ic ? '▶' : '▼') + '&nbsp;&nbsp;' + esc(g.label).toUpperCase() + cntLabel + '</td></tr>';
+                h += '<tr class="grp-hdr" data-grp="' + esc(collKey) + '"><td colspan="' + (MONTHS.length + 1) + '" style="background:' + g.color + '">' + (ic ? '▶' : '▼') + '&nbsp;&nbsp;' + esc(g.label).toUpperCase() + cntLabel + '</td></tr>';
                 if (ic) return;
                 g.depts.forEach(function (dept, di) {
                     var dm = mx[dept] || {};
@@ -2208,10 +2246,13 @@
                     h += '<td class="dtd" style="background:' + rb + '"><div class="dinn"><span class="dnm" title="' + esc(dept) + '">' + esc(dept) + '</span><span style="font-size:10px;color:' + (hasCapacity ? 'var(--muted)' : '#E5E7EB') + '">' + esc(capDisp) + '</span></div></td>';
                     MONTHS.forEach(function (mo) {
                         var cell = dm[mo.key], hrs = cell ? cell.totalHours : 0;
-                        /* Tab-aware capH: Comm = FTE×8×wdays; BS = fixed monthly hours from capacity sheet */
+                        /* Tab-aware capH: Comm = FTE×8×wdays; BS = fixed monthly hours from capacity sheet.
+                           Capacity is always the dept's FULL monthly capacity — when status-split, each
+                           status row shows its slice of that same total, so the % values across every
+                           status group for one dept/month sum back to today's (unsplit) total. */
                         var capH = TAB === 'comm' ? (CAP[dept] ? CAP[dept] * HRS * wdays(mo.start, mo.end) : null) : (BS_CAP[dept] || null);
                         var pct = capH ? hrs / capH : null, cl = clr(pct, hasCapacity, hrs);
-                        var is = SEL && SEL.dept === dept && SEL.mk === mo.key, ic2 = mo.key === CK;
+                        var is = SEL && SEL.dept === dept && SEL.mk === mo.key && (SEL.status || null) === (status || null), ic2 = mo.key === CK;
                         var cs = 'ctd' + (hrs > 0 ? ' cl' : '') + (is ? ' sel' : '') + (ic2 && !is ? ' cur' : '');
                         /* Capacitated → %; BS uncapacitated fallback → FTE demand; Comm uncapacitated → raw hours */
                         var display = '';
@@ -2223,11 +2264,65 @@
                                 display = fteDemand > 0 ? fteDemand.toFixed(2) + '<span style="font-size:8px;font-weight:600;opacity:.6"> FTE</span>' : '';
                             } else { display = fmtHrs(hrs); }
                         }
-                        h += '<td class="' + cs + '" style="background:' + (is ? '#DBEAFE' : cl.bg) + '"' + (hrs > 0 ? ' data-dept="' + esc(dept) + '" data-mk="' + mo.key + '"' : '') + '>' + (display ? '<div class="cv" style="color:' + (is ? '#1E40AF' : cl.tx) + '">' + display + '</div>' : '') + '</td>';
+                        var attrs = hrs > 0 ? (' data-dept="' + esc(dept) + '" data-mk="' + mo.key + '"' + (status ? ' data-hmstatus="' + esc(status) + '"' : '')) : '';
+                        h += '<td class="' + cs + '" style="background:' + (is ? '#DBEAFE' : cl.bg) + '"' + attrs + '>' + (display ? '<div class="cv" style="color:' + (is ? '#1E40AF' : cl.tx) + '">' + display + '</div>' : '') + '</td>';
                     });
                     h += '</tr>';
                 });
             });
+            return h;
+        }
+
+        function renderHM() {
+            var groups = curGroups();
+            var h = '<thead><tr><th class="th-d">' + (TAB === 'bs' ? 'STATUS / DEPARTMENT' : 'DEPARTMENT') + '</th>';
+            MONTHS.forEach(function (mo) { var ic = mo.key === CK; h += '<th class="th-m' + (ic ? ' now' : '') + '">' + mo.label + (ic ? '<div class="now-tag">▲ NOW</div>' : '') + '</th>'; });
+            h += '</tr></thead><tbody>';
+            if (TAB === 'bs') {
+                /* Status-first grouping (BS only — Comm's status taxonomy is unverified, so
+                   Comm keeps the original dept-first layout below). Starts from the same
+                   capacity-eligible set rebuildMatrices() uses (curProjects() already strips
+                   Complete/Cancelled/Rejected + respects the On Hold toggle), further
+                   narrowed by the shared Dept/IT Owner/IT Resources slicer, then partitioned
+                   by status and re-matrixed per status via buildMX so each status's row
+                   shows only its own slice of hours. */
+                var baseProjs = applyPFSlicer(curProjects());
+                var byStatus = {};
+                baseProjs.forEach(function (p) {
+                    var st = pfNormalizeStatus(p.status);
+                    (byStatus[st] = byStatus[st] || []).push(p);
+                });
+                HM_MX_BY_STATUS = {};
+                var statuses = Object.keys(byStatus).sort(pfStatusSort);
+                var renderedAny = false;
+                statuses.forEach(function (status) {
+                    var mxStatus = buildMX(byStatus[status]);
+                    HM_MX_BY_STATUS[status] = mxStatus;
+                    var statusHasData = groups.some(function (g) {
+                        return g.depts.some(function (dept) {
+                            var dm = mxStatus[dept] || {};
+                            return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
+                        });
+                    });
+                    if (!statusHasData) return;
+                    renderedAny = true;
+                    var collapsed = HM_STATUS_COLL.hasOwnProperty(status) ? HM_STATUS_COLL[status] : false;
+                    var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
+                    var cnt = byStatus[status].length;
+                    h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (MONTHS.length + 1) + '">'
+                        + '<span class="hm-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
+                        + '<span class="hm-status-name">' + esc(status).toUpperCase() + '</span>'
+                        + '<span class="hm-status-badge" style="background:' + badge.bg + ';color:' + badge.tx + '">' + cnt + ' project' + (cnt === 1 ? '' : 's') + '</span>'
+                        + '</td></tr>';
+                    if (collapsed) return;
+                    h += renderHMGroupsHTML(mxStatus, groups, status + '::', status);
+                });
+                if (!renderedAny) {
+                    h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:40px 20px;text-align:center;color:var(--muted)">No projects match the current filters.</td></tr>';
+                }
+            } else {
+                h += renderHMGroupsHTML(curMX(), groups, '', null);
+            }
             h += '</tbody>';
             document.getElementById('htbl').innerHTML = h;
             var fp = curProjects(), nf = fp.filter(function (p) { return !p.ftes || !Object.keys(p.ftes).length; }).length;
@@ -2254,6 +2349,23 @@
                 return { branch: 'it', mainDept: dept, subDept: null, subDeptLabel: null };
             }
             return { branch: 'business', mainDept: dept, subDept: null, subDeptLabel: null };
+        }
+
+        /* Shared PF_SLICER project-level filter — used by both Portfolio View and the
+           Heatmap's Status-first BS mode so "Dept / IT Owner / IT Resources" behave
+           identically in either view. Dept filtering is at the mainDept level (matches
+           getPortfolioDeptKey), so filtering to "Application Development" also keeps
+           its Master Data / Power Apps sub-dept projects. */
+        function applyPFSlicer(projs) {
+            return projs.filter(function (p) {
+                if (PF_SLICER.itOwner && p.itOwnerName !== PF_SLICER.itOwner) return false;
+                if (PF_SLICER.itResource && (p.itResources || []).indexOf(PF_SLICER.itResource) === -1) return false;
+                if (PF_SLICER.dept) {
+                    var hasDept = Object.keys(p.ftes || {}).some(function (d) { return getPortfolioDeptKey(d).mainDept === PF_SLICER.dept; });
+                    if (!hasDept) return false;
+                }
+                return true;
+            });
         }
 
         /* Loose status-text matcher — confirmed live sample (Status="8 - Cancelled") shows
@@ -2288,7 +2400,7 @@
            set, then renders the Dept / IT Owner / IT Resources dropdowns. */
         function renderSlicers() {
             var bar = document.getElementById('slicer-bar');
-            if (TAB !== 'bs' || BS_VIEW !== 'portfolio') { bar.className = 'slicer-bar'; bar.innerHTML = ''; return; }
+            if (TAB !== 'bs') { bar.className = 'slicer-bar'; bar.innerHTML = ''; return; }
             var fp = curPortfolioProjects();
             var deptSet = {}, ownerSet = {}, resSet = {};
             fp.forEach(function (p) {
@@ -2312,11 +2424,13 @@
                 + '<select class="slicer-select" id="sl-res"><optgroup label="IT Resource">' + opts(resources, PF_SLICER.itResource) + '</optgroup></select>'
                 + (anyActive ? '<button class="slicer-clear" id="sl-clear" type="button">Clear filters</button>' : '');
             bar.className = 'slicer-bar show';
-            document.getElementById('sl-dept').onchange = function () { PF_SLICER.dept = this.value || null; renderPortfolioView(); renderSlicers(); };
-            document.getElementById('sl-owner').onchange = function () { PF_SLICER.itOwner = this.value || null; renderPortfolioView(); renderSlicers(); };
-            document.getElementById('sl-res').onchange = function () { PF_SLICER.itResource = this.value || null; renderPortfolioView(); renderSlicers(); };
+            /* renderAll() re-dispatches to whichever BS_VIEW is active (Heatmap or Portfolio),
+               keeps both in sync with the same filter state either way. */
+            document.getElementById('sl-dept').onchange = function () { PF_SLICER.dept = this.value || null; renderAll(); };
+            document.getElementById('sl-owner').onchange = function () { PF_SLICER.itOwner = this.value || null; renderAll(); };
+            document.getElementById('sl-res').onchange = function () { PF_SLICER.itResource = this.value || null; renderAll(); };
             var clearBtn = document.getElementById('sl-clear');
-            if (clearBtn) clearBtn.onclick = function () { PF_SLICER = { dept: null, itOwner: null, itResource: null }; renderPortfolioView(); renderSlicers(); };
+            if (clearBtn) clearBtn.onclick = function () { PF_SLICER = { dept: null, itOwner: null, itResource: null }; renderAll(); };
         }
 
         /* Builds the Status → Dept → (Sub-Dept →) Project tree from curPortfolioProjects()
@@ -2324,16 +2438,17 @@
            filters, then renders it into #pf-body. */
         function renderPortfolioView() {
             var body = document.getElementById('pf-body');
-            var fp = curPortfolioProjects();
+            var fp = applyPFSlicer(curPortfolioProjects());
             var tree = {}; // status -> { it:{dept:{sub:{projs:[]}, projs:[]}}, business:{dept:{projs:[]}} }
             var totalRows = 0;
             fp.forEach(function (p) {
                 var status = pfNormalizeStatus(p.status);
                 Object.keys(p.ftes || {}).forEach(function (dept) {
                     var pk = getPortfolioDeptKey(dept);
+                    /* applyPFSlicer already confirmed this project touches SOME matching dept —
+                       still need this per-iteration check for multi-dept projects so only the
+                       matching dept's row gets built, not every dept the project happens to touch */
                     if (PF_SLICER.dept && pk.mainDept !== PF_SLICER.dept) return;
-                    if (PF_SLICER.itOwner && p.itOwnerName !== PF_SLICER.itOwner) return;
-                    if (PF_SLICER.itResource && (p.itResources || []).indexOf(PF_SLICER.itResource) === -1) return;
                     if (!tree[status]) tree[status] = {};
                     if (!tree[status][pk.mainDept]) tree[status][pk.mainDept] = { branch: pk.branch, subs: {}, projs: [] };
                     var node = tree[status][pk.mainDept];
@@ -2443,22 +2558,28 @@
             document.querySelector('.hm-wrap').style.display = (TAB === 'bs' && v === 'portfolio') ? 'none' : 'block';
             document.getElementById('pf-wrap').style.display = (TAB === 'bs' && v === 'portfolio') ? 'block' : 'none';
             renderSlicers();
-            if (TAB === 'bs' && v === 'portfolio') renderPortfolioView();
+            if (TAB === 'bs' && v === 'portfolio') renderPortfolioView(); else renderHM();
         }
 
         /* ════════════════════════════════════════════════════════
            DRILL PANEL
         ════════════════════════════════════════════════════════ */
-        function openDrill(dept, mk) {
-            SEL = { dept: dept, mk: mk }; EXPANDED = {};
-            var mx = curMX();
+        function openDrill(dept, mk, status) {
+            SEL = { dept: dept, mk: mk, status: status || null }; EXPANDED = {};
+            /* Status-scoped cell (BS Status-first heatmap) reads from the per-status matrix
+               built during the last renderHM() pass; otherwise (Comm, or BS with no status
+               wrapping) falls back to the full-tab matrix as before. */
+            var mx = (status && HM_MX_BY_STATUS[status]) ? HM_MX_BY_STATUS[status] : curMX();
             var cell = mx[dept] ? mx[dept][mk] : null;
-            var cap = CAP[dept];
             var mo = MONTHS.filter(function (m) { return m.key === mk; })[0];
-            var capH = cap && mo ? cap * HRS * wdays(mo.start, mo.end) : null;
+            /* Tab-aware capacity — was previously always reading Comm's FTE-based CAP map
+               regardless of tab, which silently broke the capacity/utilization stats for
+               every BS drill. */
+            var cap = TAB === 'comm' ? CAP[dept] : null; // FTE basis only exists for Comm
+            var capH = TAB === 'comm' ? (cap ? cap * HRS * wdays(mo.start, mo.end) : null) : (BS_CAP[dept] || null);
             var pct = capH && cell ? cell.totalHours / capH : null;
             document.getElementById('d-dept').textContent = dept;
-            document.getElementById('d-mon').textContent = mo ? mo.label : mk;
+            document.getElementById('d-mon').textContent = (mo ? mo.label : mk) + (status ? ' · ' + status : '');
             var st = '<div><div class="sl">DEMAND</div><div class="sv">' + fmtHrs(cell ? cell.totalHours : 0) + ' <span class="su">hrs</span></div></div>';
             if (capH) {
                 st += '<div><div class="sl">CAPACITY</div><div class="sv">' + fmtHrs(capH) + ' <span class="su">hrs</span></div></div>';
@@ -2661,7 +2782,7 @@
             var b = document.getElementById('btn-refresh'); b.disabled = on; b.textContent = on ? '↻  Loading…' : '↻  Refresh';
         }
         function switchTab(t) {
-            TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'heatmap'; PF_COLL = {}; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null };
+            TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'heatmap'; PF_COLL = {}; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {};
             document.getElementById('tab-comm').className = 'tab ' + (t === 'comm' ? 'active' : '');
             document.getElementById('tab-bs').className = 'tab ' + (t === 'bs' ? 'active' : '');
             document.getElementById('vt-heatmap').className = 'vt-btn active';
@@ -2708,6 +2829,14 @@
                     var pk = pfHdr.getAttribute('data-pfkey');
                     PF_COLL[pk] = !PF_COLL[pk]; renderPortfolioView(); return;
                 }
+                /* Heatmap Status-first grouping (BS) — status header row collapse toggle */
+                var hmStatusTr = t;
+                while (hmStatusTr && hmStatusTr.tagName !== 'TR') hmStatusTr = hmStatusTr.parentNode;
+                if (hmStatusTr && hmStatusTr.getAttribute && hmStatusTr.getAttribute('data-hmstatushdr')) {
+                    var hs = hmStatusTr.getAttribute('data-hmstatushdr');
+                    var curCollapsed = HM_STATUS_COLL.hasOwnProperty(hs) ? HM_STATUS_COLL[hs] : false;
+                    HM_STATUS_COLL[hs] = !curCollapsed; renderHM(); return;
+                }
                 /* Group header */
                 var grpTr = t;
                 while (grpTr && grpTr.tagName !== 'TR') grpTr = grpTr.parentNode;
@@ -2718,7 +2847,7 @@
                 var td = t;
                 while (td && td.tagName !== 'TD') td = td.parentNode;
                 if (td && td.getAttribute && td.getAttribute('data-dept')) {
-                    openDrill(td.getAttribute('data-dept'), td.getAttribute('data-mk'));
+                    openDrill(td.getAttribute('data-dept'), td.getAttribute('data-mk'), td.getAttribute('data-hmstatus') || null);
                 }
             };
 
