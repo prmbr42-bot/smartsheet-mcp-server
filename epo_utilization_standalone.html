@@ -810,6 +810,44 @@
             transition: width .4s
         }
 
+        /* Portfolio View expanded project detail — deliberately NOT .det-row/.pc-detail's
+   space-between layout, since those rows span the full page width here (unlike
+   the drill panel's fixed 420px), which stretches label/value apart on wide
+   screens. Fixed-width label + tight gap keeps them anchored together instead. */
+        .pf-proj-detail {
+            background: #fff;
+            border-top: 1px solid #E5E7EB;
+            padding: 10px 12px;
+            margin: 0 8px 8px;
+            border-radius: 0 0 6px 6px;
+            animation: fadeDown .15s ease-out;
+            max-width: 520px
+        }
+
+        .pf-det-row {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 6px;
+            font-size: 11px
+        }
+
+        .pf-det-lbl {
+            color: var(--muted);
+            font-weight: 600;
+            letter-spacing: .03em;
+            flex-shrink: 0;
+            width: 100px
+        }
+
+        .pf-det-val {
+            color: var(--text);
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
         .ss-link {
             display: inline-flex;
             align-items: center;
@@ -2538,11 +2576,11 @@
                     + '<span class="pf-proj-owner" title="' + esc(r.owner || '') + '">' + esc(r.owner || 'Unassigned') + '</span>'
                     + '</div>';
                 if (expanded) {
-                    row += '<div class="pc-detail" style="margin:0 8px 8px">'
-                        + '<div class="det-row"><span class="det-lbl">PROJECT ID</span><span class="det-val">' + esc(r.projectId || '—') + '</span></div>'
-                        + '<div class="det-row"><span class="det-lbl">STATUS</span><span class="det-val">' + esc(r.status || '—') + '</span></div>'
-                        + '<div class="det-row"><span class="det-lbl">DEPT OWNER</span><span class="det-val">' + esc(r.owner || '—') + '</span></div>'
-                        + (r.epoLead ? '<div class="det-row"><span class="det-lbl">EPO LEAD</span><span class="det-val">' + esc(r.epoLead) + '</span></div>' : '')
+                    row += '<div class="pf-proj-detail">'
+                        + '<div class="pf-det-row"><span class="pf-det-lbl">PROJECT ID</span><span class="pf-det-val">' + esc(r.projectId || '—') + '</span></div>'
+                        + '<div class="pf-det-row"><span class="pf-det-lbl">STATUS</span><span class="pf-det-val">' + esc(r.status || '—') + '</span></div>'
+                        + '<div class="pf-det-row"><span class="pf-det-lbl">DEPT OWNER</span><span class="pf-det-val">' + esc(r.owner || '—') + '</span></div>'
+                        + (r.epoLead ? '<div class="pf-det-row"><span class="pf-det-lbl">EPO LEAD</span><span class="pf-det-val">' + esc(r.epoLead) + '</span></div>' : '')
                         + (r.rowPermalink ? '<a class="ss-link" href="' + esc(r.rowPermalink) + '" target="_blank" rel="noopener">Open in Smartsheet ↗</a>' : '')
                         + '</div>';
                 }
