@@ -1128,217 +1128,15 @@
             text-decoration: underline
         }
 
-        /* ── PORTFOLIO VIEW ── */
-        .pf-wrap {
-            padding: 14px 24px 24px
-        }
-
-        .pf-card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
-            overflow: hidden
-        }
-
-        .pf-head {
-            padding: 10px 16px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 8px
-        }
-
+        /* .pf-title kept — still used by the Gantt header. The rest of the Portfolio
+   View tree CSS (status/dept/sub-dept/project-row classes) was removed
+   7/2/26 along with the Portfolio View tab itself. */
         .pf-title {
             font-family: 'Barlow Condensed', sans-serif;
             font-weight: 800;
             font-size: 14px;
             color: var(--dark);
             letter-spacing: .04em
-        }
-
-        .pf-body {
-            padding: 6px 0
-        }
-
-        .pf-empty {
-            padding: 40px 20px;
-            text-align: center;
-            color: var(--muted);
-            font-size: 13px
-        }
-
-        /* Level 1 — Status */
-        .pf-status {
-            border-top: 1px solid var(--border)
-        }
-
-        .pf-status:first-child {
-            border-top: none
-        }
-
-        .pf-status-hdr {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 16px;
-            cursor: pointer;
-            user-select: none;
-            background: #FAFEF9
-        }
-
-        .pf-status-hdr:hover {
-            background: #F0FDF4
-        }
-
-        .pf-status-car {
-            font-size: 10px;
-            color: var(--muted);
-            width: 12px;
-            flex-shrink: 0
-        }
-
-        .pf-status-name {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-weight: 700;
-            font-size: 13px;
-            color: var(--dark);
-            letter-spacing: .03em;
-            text-transform: uppercase
-        }
-
-        .pf-status-badge {
-            font-size: 9px;
-            font-weight: 700;
-            padding: 2px 7px;
-            border-radius: 3px;
-            letter-spacing: .03em
-        }
-
-        .pf-status-count {
-            margin-left: auto;
-            font-size: 11px;
-            color: var(--muted)
-        }
-
-        /* Level 2 — Dept */
-        .pf-dept {
-            border-top: 1px solid #F1F5F0
-        }
-
-        .pf-dept-hdr {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px 8px 32px;
-            cursor: pointer;
-            user-select: none
-        }
-
-        .pf-dept-hdr:hover {
-            background: #FAFAFA
-        }
-
-        .pf-dept-car {
-            font-size: 9px;
-            color: var(--muted);
-            width: 10px;
-            flex-shrink: 0
-        }
-
-        .pf-dept-name {
-            font-weight: 700;
-            font-size: 12px;
-            color: var(--text)
-        }
-
-        .pf-dept-count {
-            margin-left: auto;
-            font-size: 10px;
-            color: var(--muted)
-        }
-
-        /* Level 3 — Sub-dept (IT & Digital → Application Development only) */
-        .pf-subdept {
-            border-top: 1px solid #F6F6F4
-        }
-
-        .pf-subdept-hdr {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 16px 6px 48px;
-            cursor: pointer;
-            user-select: none
-        }
-
-        .pf-subdept-hdr:hover {
-            background: #FAFAFA
-        }
-
-        .pf-subdept-name {
-            font-weight: 600;
-            font-size: 11px;
-            color: var(--muted)
-        }
-
-        .pf-subdept-count {
-            margin-left: auto;
-            font-size: 10px;
-            color: var(--muted)
-        }
-
-        /* Project rows */
-        .pf-projs {
-            padding: 2px 16px 8px 32px
-        }
-
-        .pf-projs.pf-projs-sub {
-            padding-left: 48px
-        }
-
-        .pf-proj {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 6px 8px;
-            border-radius: 5px;
-            font-size: 12px
-        }
-
-        .pf-proj:hover {
-            background: #F8F6F3
-        }
-
-        .pf-proj-name {
-            font-weight: 600;
-            color: var(--dark);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 280px
-        }
-
-        .pf-proj-owner {
-            font-size: 10px;
-            color: var(--muted);
-            margin-left: auto;
-            flex-shrink: 0;
-            text-align: right;
-            max-width: 160px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap
-        }
-
-        .pf-proj-pct {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--mint);
-            flex-shrink: 0;
-            width: 32px;
-            text-align: right
         }
 
         /* ── GANTT VIEW ── */
@@ -1551,7 +1349,6 @@
         <button class="tab" id="tab-bs" type="button">Business Support</button>
         <div class="view-toggle" id="view-toggle">
             <button class="vt-btn active" id="vt-heatmap" type="button">Heatmap</button>
-            <button class="vt-btn" id="vt-portfolio" type="button">Portfolio</button>
             <button class="vt-btn" id="vt-gantt" type="button">Gantt</button>
         </div>
         <span id="tab-count"></span>
@@ -1609,16 +1406,6 @@
                     <table class="htbl" id="htbl"></table>
                 </div>
                 <div id="hm-footer" class="fnote" style="display:none"></div>
-            </div>
-        </div>
-        <div class="pf-wrap" id="pf-wrap" style="display:none">
-            <div class="pf-card">
-                <div class="pf-head">
-                    <div class="pf-title" id="pf-title">BUSINESS SUPPORT — PORTFOLIO VIEW</div>
-                    <span style="color:#9CA3AF;font-size:11px">Status → Department → Project · Click any row to
-                        expand</span>
-                </div>
-                <div class="pf-body" id="pf-body"></div>
             </div>
         </div>
         <div class="gantt-wrap" id="gantt-wrap" style="display:none">
@@ -1895,7 +1682,6 @@
 
         /* ── BS PORTFOLIO VIEW STATE ── */
         var BS_VIEW = 'heatmap';         // 'heatmap' | 'portfolio' — toggle within the BS tab
-        var PF_COLL = {};                // Portfolio View: collapsed state per group key (status / dept / sub-dept)
         var PF_EXPANDED = {};            // Portfolio View: expanded project-drill state, keyed by projectId
         var PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; // active Portfolio View + Heatmap slicer filters (shared — BS only)
         var HM_STATUS_COLL = {};  // Heatmap Status-first grouping (BS only): collapse state per status
@@ -2036,8 +1822,12 @@
                        dropped from the dashboard (7/1 meeting) even if it still appears as a raw
                        value here. */
                     var rawOwningDept = g('Owning Department');
-                    var itDept = rawOwningDept ? (IT_DEPT_ABBREV[String(rawOwningDept).trim()] || String(rawOwningDept).trim()) : null;
-                    if (itDept === 'Infrastructure' || IT_DIGITAL_DEPTS.indexOf(itDept) === -1) itDept = null;
+                    var rawOwningDeptTrimmed = rawOwningDept ? String(rawOwningDept).trim() : '';
+                    var itDept = rawOwningDeptTrimmed ? (IT_DEPT_ABBREV_CI[rawOwningDeptTrimmed.toLowerCase()] || null) : null;
+                    if (itDept === 'Infrastructure') itDept = null;
+                    if (rawOwningDeptTrimmed && !itDept) {
+                        console.warn('[EPO] Unrecognized "Owning Department" value: "' + rawOwningDeptTrimmed + '" on project "' + nm + '" — not mapped to any IT & Digital dept, so this project will show as unattributed. Add it to IT_DEPT_ABBREV if it should map to one.');
+                    }
                     if (itDept && itHrs) {
                         var _is = pd(sd), _ie = pd(ed);
                         if (_is && _ie && _is <= _ie) {
@@ -2074,6 +1864,11 @@
                 var businessOwner = (src === 'Business Support') ? (g('Business Owner') || null) : null;
                 var statusUpdate = (src === 'Business Support') ? (g('Current Status Update') || null) : null;
                 var entSteerCoDate = (src === 'Business Support') ? (g('Ent SteerCo Agenda Date') || null) : null;
+                /* Project Context — confirmed column on the master sheet. Only surfaced
+                   in the Design/Enterprise Review click-in detail popup (7/2/26), which
+                   needs the high-level "what is this project" info before a project has
+                   reached Build stage. */
+                var projectContext = (src === 'Business Support') ? (g('Project Context') || null) : null;
                 /* Priority rework (7/1 meeting #8): new High/Medium/Low dropdown, separate
                    from the existing integer "Project Priority" column — Jerry confirmed
                    it's a NEW column but hasn't given the exact title yet, so this reads
@@ -2119,6 +1914,7 @@
                     businessOwner: businessOwner,
                     statusUpdate: statusUpdate,
                     entSteerCoDate: entSteerCoDate,
+                    projectContext: projectContext,
                     priorityTier: priorityTier,
                     buildDate: buildDateRaw,
                     deptOwners: deptOwners,
@@ -2305,17 +2101,37 @@
 
         /* "Owning Department" raw values (master sheet, read directly per 7/1 meeting)
            → full canonical dept names used everywhere else in the dashboard (BS_GROUPS,
-           capacity sheet, etc). Mostly identity mappings — kept as a lookup table in
-           case the picklist uses a shorthand form somewhere. */
+           capacity sheet, etc). Includes plausible spelling/casing variants defensively,
+           since the previous exact-match-only version was silently excluding any value
+           that didn't match byte-for-byte (case AND spelling) — root cause of the
+           "Owning Department is populated but the project still shows unattributed"
+           bug (7/2/26). Matching itself is case-insensitive (see IT_DEPT_ABBREV_CI
+           below) on top of this table, so casing differences alone can't cause a miss
+           anymore either. */
         var IT_DEPT_ABBREV = {
             'App Dev': 'Application Development',
+            'Application Dev': 'Application Development',
+            'Applications Development': 'Application Development', // plural variant — seen in the wild
+            'App Development': 'Application Development',
             'Power App': 'Power Apps',
             'Power Apps': 'Power Apps',
+            'PowerApps': 'Power Apps',
+            'Power Platform': 'Power Apps',
             'Analytics': 'Analytics',
             'Master Data': 'Master Data',
+            'Master Data Management': 'Master Data',
+            'MDM': 'Master Data',
             'EDI': 'EDI',
             'Infrastructure': 'Infrastructure' // still mapped for completeness, but filtered out downstream (see parseSheet) — Infrastructure is dropped from the dashboard entirely per 7/1 meeting
         };
+        /* Case-insensitive lookup built once from IT_DEPT_ABBREV, plus identity
+           entries for the canonical dept names themselves (so "application
+           development" in any casing matches even without an explicit alias). */
+        var IT_DEPT_ABBREV_CI = {};
+        Object.keys(IT_DEPT_ABBREV).forEach(function (k) { IT_DEPT_ABBREV_CI[k.toLowerCase()] = IT_DEPT_ABBREV[k]; });
+        IT_DIGITAL_DEPTS.concat(['Infrastructure']).forEach(function (d) {
+            if (!IT_DEPT_ABBREV_CI[d.toLowerCase()]) IT_DEPT_ABBREV_CI[d.toLowerCase()] = d;
+        });
 
         /* IT Active Projects is a Smartsheet REPORT (not a sheet) — different endpoint,
            but same generic /api proxy handles it transparently.
@@ -2506,7 +2322,7 @@
         }
 
         function loadData() {
-            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; IT_ACTIVE_INDEX = {}; PF_COLL = {}; PF_EXPANDED = {}; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
+            setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; IT_ACTIVE_INDEX = {}; PF_EXPANDED = {}; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
             document.getElementById('load-msg').textContent = 'Fetching Commercialization + Business Support…';
             Promise.all([
                 ssGet('/sheets/' + COMM_ID + '?include=rowPermalink'),
@@ -2551,10 +2367,13 @@
                 return true;
             });
         }
-        /* Portfolio View sees the FULL status range — including Complete/Cancelled/Rejected,
-           which curProjects() (heatmap/KPI) deliberately excludes since they don't consume
-           forward-looking capacity. Same tab + on-hold filtering, just without the
-           capacityExcluded cut. */
+        /* Full status range — including Complete/Cancelled — which curProjects()
+           (heatmap/KPI) deliberately excludes since they don't consume forward-looking
+           capacity. Same tab + on-hold filtering, just without the capacityExcluded
+           cut. Function name is a holdover from when Portfolio View (removed 7/2/26)
+           was its main consumer — still used by Gantt, the slicer bar, and the KPI
+           strip, all of which need the full range, so kept as-is rather than
+           renamed. */
         function curPortfolioProjects() {
             return PROJECTS.filter(function (p) {
                 if (p.source !== (TAB === 'comm' ? 'Commercialization' : 'Business Support')) return false;
@@ -2583,13 +2402,11 @@
                 : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
             /* View toggle only applies to BS */
             document.getElementById('view-toggle').className = 'view-toggle' + (TAB === 'bs' ? ' show' : '');
-            var showHM = !(TAB === 'bs' && (BS_VIEW === 'portfolio' || BS_VIEW === 'gantt'));
+            var showHM = !(TAB === 'bs' && BS_VIEW === 'gantt');
             document.querySelector('.hm-wrap').style.display = showHM ? 'block' : 'none';
-            document.getElementById('pf-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'portfolio') ? 'block' : 'none';
             document.getElementById('gantt-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'gantt') ? 'block' : 'none';
             renderKPIs(fp, mx);
-            if (TAB === 'bs' && BS_VIEW === 'portfolio') renderPortfolioView();
-            else if (TAB === 'bs' && BS_VIEW === 'gantt') renderGantt();
+            if (TAB === 'bs' && BS_VIEW === 'gantt') renderGantt();
             else renderHM();
             renderSlicers();
         }
@@ -2755,6 +2572,13 @@
 
         function renderHMGroupsHTML(mx, groups, collPrefix, status) {
             var h = '';
+            /* BS has only one BS_GROUPS entry ("IT & Digital") since the non-IT dept
+               exclusion (7/1 meeting) — showing its header row is redundant clutter
+               when every dept on screen is already IT & Digital by definition. Removed
+               for BS (7/2/26); Comm still has multiple named groups, so its headers
+               stay. When skipped, dept rows always render — there's no header left to
+               collapse against. */
+            var showGroupHeader = TAB !== 'bs';
             groups.forEach(function (g) {
                 var collKey = collPrefix + g.label;
                 /* Skip entire group if none of its departments have any data */
@@ -2763,14 +2587,16 @@
                     return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
                 });
                 if (!groupHasData) return;
-                var ic = !!COLL[collKey];
+                var ic = showGroupHeader ? !!COLL[collKey] : false;
                 /* Show dept count only for multi-dept groups; fix singular/plural */
                 var visibleDepts = g.depts.filter(function (dept) {
                     var dm = mx[dept] || {};
                     return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
                 });
                 var cntLabel = visibleDepts.length > 1 ? ' <span style="font-weight:400;margin-left:8px;opacity:0.6;font-size:11px">(' + visibleDepts.length + ' depts)</span>' : '';
-                h += '<tr class="grp-hdr" data-grp="' + esc(collKey) + '"><td colspan="' + (MONTHS.length + 1) + '" style="background:' + g.color + '">' + (ic ? '▶' : '▼') + '&nbsp;&nbsp;' + esc(g.label).toUpperCase() + cntLabel + '</td></tr>';
+                if (showGroupHeader) {
+                    h += '<tr class="grp-hdr" data-grp="' + esc(collKey) + '"><td colspan="' + (MONTHS.length + 1) + '" style="background:' + g.color + '">' + (ic ? '▶' : '▼') + '&nbsp;&nbsp;' + esc(g.label).toUpperCase() + cntLabel + '</td></tr>';
+                }
                 if (ic) return;
                 g.depts.forEach(function (dept, di) {
                     var dm = mx[dept] || {};
@@ -2849,6 +2675,40 @@
                 + '</td></tr>';
         }
 
+        /* Click-in detail popup for Design/Enterprise Review rows (7/2/26, per
+           Jerry) — shows the same fields as the inline meta line, PLUS Project
+           Context, PLUS the full (untruncated, wrapped) Status Update for Design.
+           Deliberately its OWN function rather than reusing the generic
+           renderPFRowDetailHTML (Portfolio/Gantt's detail block, which includes a
+           RAID log lookup) — Jerry asked for "the same fields, plus Project
+           Context", not the full Build+ detail treatment, and there could be many
+           pre-Build projects, so skipping RAID here avoids firing off a lot of
+           unnecessary RAID API calls for projects that haven't started delivery. */
+        function renderHMExemptRowDetailHTML(status, p) {
+            var h = '<div class="pf-proj-detail">';
+            h += '<div class="pf-det-row"><span class="pf-det-lbl">PROJECT ID</span><span class="pf-det-val">' + esc(p.projectId || '—') + '</span></div>';
+            h += '<div class="pf-det-row"><span class="pf-det-lbl">BUSINESS OWNER</span><span class="pf-det-val">' + esc(p.businessOwner || '—') + '</span></div>';
+            if (status === 'Design') {
+                if (p.itOwnerName) h += '<div class="pf-det-row"><span class="pf-det-lbl">IT OWNER</span><span class="pf-det-val">' + esc(p.itOwnerName) + '</span></div>';
+                if (p.itResources && p.itResources.length) h += '<div class="pf-det-row"><span class="pf-det-lbl">RESOURCES</span><span class="pf-det-val">' + esc(p.itResources.join(', ')) + '</span></div>';
+                if (p.itEstHrs) h += '<div class="pf-det-row"><span class="pf-det-lbl">IT EST. HOURS</span><span class="pf-det-val">' + fmtHrs(p.itEstHrs) + '</span></div>';
+                if (p.endDate) h += '<div class="pf-det-row"><span class="pf-det-lbl">ANTICIPATED END</span><span class="pf-det-val">' + esc(fmtDate(p.endDate) || p.endDate) + '</span></div>';
+            } else if (p.entSteerCoDate) { // Enterprise Review
+                h += '<div class="pf-det-row"><span class="pf-det-lbl">STEERCO DATE</span><span class="pf-det-val">' + esc(fmtDate(p.entSteerCoDate) || p.entSteerCoDate) + '</span></div>';
+            }
+            if (p.projectContext) h += '<div style="margin-top:8px"><div class="pf-det-lbl" style="margin-bottom:3px">PROJECT CONTEXT</div><div style="font-size:11px;color:var(--text);line-height:1.5;white-space:pre-wrap">' + esc(p.projectContext) + '</div></div>';
+            if (status === 'Design' && p.statusUpdate) h += '<div style="margin-top:8px"><div class="pf-det-lbl" style="margin-bottom:3px">STATUS UPDATE</div><div style="font-size:11px;color:var(--text);font-style:italic;line-height:1.5;white-space:pre-wrap">"' + esc(p.statusUpdate) + '"</div></div>';
+            if (p.rowPermalink) h += '<div style="margin-top:8px"><a class="ss-link" href="' + esc(p.rowPermalink) + '" target="_blank" rel="noopener">Open in Smartsheet ↗</a></div>';
+            h += '</div>';
+            return h;
+        }
+        /* Toggle for the above — deliberately separate from togglePFProject since
+           that also kicks off RAID loading (not wanted here, see comment above). */
+        function toggleHMExemptRow(key) {
+            PF_EXPANDED[key] = !PF_EXPANDED[key];
+            renderHM();
+        }
+
         function renderHMExemptGroupHTML(status, projs) {
             var h = '';
             var byDept = {};
@@ -2865,7 +2725,9 @@
                 var list = byDept[dept];
                 list.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
                 h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:6px 14px 3px 20px;font-weight:700;font-size:11px;color:var(--dark);background:#FAFEF9;border-top:1px solid var(--border)">' + esc(dept) + ' <span style="font-weight:400;color:var(--muted)">(' + list.length + ')</span></td></tr>';
-                list.forEach(function (p) {
+                list.forEach(function (p, i) {
+                    var rowKey = 'hmexempt|status:' + status + '|dept:' + dept + '|proj:' + (p.projectId || p.name || i);
+                    var expanded = !!PF_EXPANDED[rowKey];
                     var meta;
                     if (status === 'Design') {
                         meta = [
@@ -2881,11 +2743,11 @@
                             p.entSteerCoDate ? ('SteerCo: ' + esc(fmtDate(p.entSteerCoDate) || p.entSteerCoDate)) : null
                         ].filter(Boolean).join(' · ');
                     }
-                    h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:5px 14px 5px 34px;font-size:12px;background:#fff;border-bottom:1px solid #F6F6F4">'
+                    h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:5px 14px 5px 34px;font-size:12px;background:#fff;border-bottom:1px solid #F6F6F4;cursor:pointer" data-hmexemptrow="' + esc(rowKey) + '">'
                         + '<div style="font-weight:600;color:var(--text)">' + esc(p.name) + '</div>'
                         + (meta ? '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + meta + '</div>' : '')
-                        + (status === 'Design' && p.statusUpdate ? '<div style="font-size:10px;color:var(--text);margin-top:3px;font-style:italic">"' + esc(p.statusUpdate.length > 140 ? p.statusUpdate.slice(0, 140) + '…' : p.statusUpdate) + '"</div>' : '')
                         + '</td></tr>';
+                    if (expanded) h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:0">' + renderHMExemptRowDetailHTML(status, p) + '</td></tr>';
                 });
             });
             return h;
@@ -2937,17 +2799,6 @@
                     }
                     var mxStatus = rollupAppDevMX(buildMX(projs));
                     HM_MX_BY_STATUS[status] = mxStatus;
-                    var statusHasData = groups.some(function (g) {
-                        return g.depts.some(function (dept) {
-                            var dm = mxStatus[dept] || {};
-                            return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
-                        });
-                    });
-                    if (!statusHasData) return;
-                    renderedAny = true;
-                    var collapsed = HM_STATUS_COLL.hasOwnProperty(status) ? HM_STATUS_COLL[status] : false;
-                    var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
-                    var cnt = projs.length;
                     /* Callout for projects counted in the header badge but that didn't make
                        it into the grid below — the header counts EVERY project with this
                        status; the grid only shows ones that successfully plotted into
@@ -2957,7 +2808,15 @@
                        End dates, (3) valid dept+dates but the whole span falls outside the
                        visible 14-month window. Same root cause as Design/Enterprise
                        Review's "No department attribution yet" message — just computed
-                       differently since this branch actually tries to plot hours. */
+                       differently since this branch actually tries to plot hours.
+                       IMPORTANT: this is computed and the header/callout are rendered
+                       BEFORE the statusHasData check below — previously, if EVERY project
+                       in a status failed to plot (e.g. all of them missing a date), the
+                       entire status section vanished with no explanation at all, since the
+                       old code gated the callout behind the same "any data at all?" check
+                       that decides whether to render the grid. Now the header + callout
+                       always render as long as the status has ANY projects; only the grid
+                       itself is conditional on having something to plot. */
                     var plotted = {};
                     Object.keys(mxStatus).forEach(function (dept) {
                         Object.keys(mxStatus[dept]).forEach(function (mk) {
@@ -2965,6 +2824,17 @@
                         });
                     });
                     var missing = projs.filter(function (p) { return !plotted[p.projectId || p.name]; });
+                    var statusHasData = groups.some(function (g) {
+                        return g.depts.some(function (dept) {
+                            var dm = mxStatus[dept] || {};
+                            return Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
+                        });
+                    });
+                    if (!statusHasData && !missing.length) return; // genuinely nothing to show at all
+                    renderedAny = true;
+                    var collapsed = HM_STATUS_COLL.hasOwnProperty(status) ? HM_STATUS_COLL[status] : false;
+                    var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
+                    var cnt = projs.length;
                     h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (MONTHS.length + 1) + '">'
                         + '<span class="hm-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
                         + '<span class="hm-status-name">' + esc(status).toUpperCase() + '</span>'
@@ -2973,7 +2843,7 @@
                         + '</td></tr>';
                     if (collapsed) return;
                     if (missing.length) h += renderHMMissingCallout(missing);
-                    h += renderHMGroupsHTML(mxStatus, groups, status + '::', status);
+                    if (statusHasData) h += renderHMGroupsHTML(mxStatus, groups, status + '::', status);
                 });
                 if (!renderedAny) {
                     h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:40px 20px;text-align:center;color:var(--muted)">No projects match the current filters.</td></tr>';
@@ -2985,7 +2855,12 @@
             document.getElementById('htbl').innerHTML = h;
             var fp = curProjects(), nf = fp.filter(function (p) { return !p.ftes || !Object.keys(p.ftes).length; }).length;
             var ft = document.getElementById('hm-footer');
-            if (nf > 0) { ft.textContent = '⚠ ' + nf + ' of ' + fp.length + ' projects have no FTE values and are excluded.'; ft.style.display = 'block'; }
+            /* BS: the per-status missing-callouts (added 7/2/26) already explain, project
+               by project, exactly which ones are excluded and why — this blanket note
+               doesn't add anything beyond that and just duplicates/confuses on top of
+               them, so it's suppressed for BS. Comm has no per-status callout system,
+               so it keeps this as its only signal. */
+            if (TAB === 'comm' && nf > 0) { ft.textContent = '⚠ ' + nf + ' of ' + fp.length + ' projects have no FTE values and are excluded.'; ft.style.display = 'block'; }
             else ft.style.display = 'none';
         }
 
@@ -3127,106 +3002,6 @@
             if (clearBtn) clearBtn.onclick = function () { PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; renderAll(); };
         }
 
-        /* Builds the Status → Dept → (Sub-Dept →) Project tree from curPortfolioProjects()
-           (the full status range, unlike curProjects()), applying active PF_SLICER
-           filters, then renders it into #pf-body. */
-        function renderPortfolioView() {
-            var body = document.getElementById('pf-body');
-            var fp = applyPFSlicer(curPortfolioProjects());
-            var tree = {}; // status -> { it:{dept:{sub:{projs:[]}, projs:[]}}, business:{dept:{projs:[]}} }
-            var missingByStatus = {}; // status -> [projects with no Owning Department attribution at all — see renderPFMissingCallout]
-            var totalRows = 0;
-            fp.forEach(function (p) {
-                var status = pfNormalizeStatus(p.status);
-                if (!tree[status]) tree[status] = {}; // ensure the status bucket exists even if every project in it is missing-only
-                if (!p.itDept) {
-                    (missingByStatus[status] = missingByStatus[status] || []).push(p);
-                    totalRows++;
-                    return;
-                }
-                var pk = getPortfolioDeptKey(p.itDept);
-                /* applyPFSlicer already confirmed this matches PF_SLICER.dept if one is set */
-                if (!tree[status][pk.mainDept]) tree[status][pk.mainDept] = { branch: pk.branch, subs: {}, projs: [] };
-                var node = tree[status][pk.mainDept];
-                var row = {
-                    projectId: p.projectId, name: p.name, status: p.status,
-                    owner: (p.deptOwners && p.deptOwners[p.itDept]) || p.owner || null,
-                    percentComplete: p.percentComplete,
-                    rowPermalink: p.rowPermalink, epoLead: p.epoLead, hold: isOnHold(p.status),
-                    priorityTier: p.priorityTier || null, buildDate: p.buildDate || null,
-                    endDate: p.endDate || null, itResources: p.itResources || [],
-                    itEstHrs: p.itEstHrs || null, statusUpdate: p.statusUpdate || null,
-                    bsFolder: p.bsFolder || null
-                };
-                totalRows++;
-                if (pk.subDept) {
-                    if (!node.subs[pk.subDept]) node.subs[pk.subDept] = { label: pk.subDeptLabel, projs: [] };
-                    node.subs[pk.subDept].projs.push(row);
-                } else {
-                    node.projs.push(row);
-                }
-            });
-            if (!totalRows) {
-                body.innerHTML = '<div class="pf-empty">No projects match the current filters' + (TAB === 'bs' ? '.' : ' for this tab.') + '</div>';
-                return;
-            }
-            var statuses = Object.keys(tree).sort(pfStatusSort);
-            var h = '';
-            statuses.forEach(function (status) {
-                var depts = tree[status];
-                var deptKeys = Object.keys(depts);
-                var missing = missingByStatus[status] || [];
-                var statusCount = deptKeys.reduce(function (n, dk) {
-                    return n + depts[dk].projs.length + Object.keys(depts[dk].subs).reduce(function (m, sk) { return m + depts[dk].subs[sk].projs.length; }, 0);
-                }, 0) + missing.length;
-                var scKey = 'status:' + status;
-                var collapsed = PF_COLL.hasOwnProperty(scKey) ? PF_COLL[scKey] : !!PF_STATUS_COLLAPSED_DEFAULT[status];
-                var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
-                h += '<div class="pf-status">';
-                h += '<div class="pf-status-hdr" data-pfkey="' + esc(scKey) + '">'
-                    + '<span class="pf-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
-                    + '<span class="pf-status-name">' + esc(status) + '</span>'
-                    + '<span class="pf-status-badge" style="background:' + badge.bg + ';color:' + badge.tx + '">' + statusCount + '</span>'
-                    + '<span class="pf-status-count">' + deptKeys.length + ' dept' + (deptKeys.length === 1 ? '' : 's') + (missing.length ? ' · ⚠ ' + missing.length + ' unattributed' : '') + '</span>'
-                    + '</div>';
-                if (!collapsed) {
-                    if (missing.length) h += renderPFMissingCallout(missing);
-                    deptKeys.sort().forEach(function (dk) {
-                        var dnode = depts[dk];
-                        var subKeys = Object.keys(dnode.subs);
-                        var deptCount = dnode.projs.length + subKeys.reduce(function (m, sk) { return m + dnode.subs[sk].projs.length; }, 0);
-                        var dcKey = 'dept:' + status + ':' + dk;
-                        var dCollapsed = !!PF_COLL[dcKey];
-                        h += '<div class="pf-dept">';
-                        h += '<div class="pf-dept-hdr" data-pfkey="' + esc(dcKey) + '">'
-                            + '<span class="pf-dept-car">' + (dCollapsed ? '▶' : '▼') + '</span>'
-                            + '<span class="pf-dept-name">' + esc(dk) + '</span>'
-                            + '<span class="pf-dept-count">' + deptCount + '</span>'
-                            + '</div>';
-                        if (!dCollapsed) {
-                            if (dnode.projs.length) h += renderPFProjectRows(dnode.projs, '', 'status:' + status + '|dept:' + dk);
-                            subKeys.sort().forEach(function (sk) {
-                                var snode = dnode.subs[sk];
-                                var sub2Key = 'sub:' + status + ':' + dk + ':' + sk;
-                                var sCollapsed = !!PF_COLL[sub2Key];
-                                h += '<div class="pf-subdept">';
-                                h += '<div class="pf-subdept-hdr" data-pfkey="' + esc(sub2Key) + '">'
-                                    + '<span class="pf-dept-car">' + (sCollapsed ? '▶' : '▼') + '</span>'
-                                    + '<span class="pf-subdept-name">' + esc(snode.label || sk) + '</span>'
-                                    + '<span class="pf-subdept-count">' + snode.projs.length + '</span>'
-                                    + '</div>';
-                                if (!sCollapsed) h += renderPFProjectRows(snode.projs, 'pf-projs-sub', 'status:' + status + '|dept:' + dk + '|sub:' + sk);
-                                h += '</div>';
-                            });
-                        }
-                        h += '</div>';
-                    });
-                }
-                h += '</div>';
-            });
-            body.innerHTML = h;
-        }
-
         /* Priority rework sort (7/1 meeting #8): tier first (High → Medium → Low,
            unranked/unknown sorts last), then Build date ascending within a tier
            (earlier start ranks first), then name as a final stable tiebreaker. Since
@@ -3243,27 +3018,15 @@
             if (da) return -1; if (db) return 1;
             return (a.name || '').localeCompare(b.name || '');
         }
-        /* Shared expanded-row detail block — used by BOTH Portfolio View rows and
-           Gantt bars, per the meeting notes: Gantt's popup should be "the same detail
-           popup used today, same as Portfolio screen drill-down". Fields confirmed
-           (7/2/26): Status, Resources Assigned, Status Update blurb, IT Estimated
-           Hours, Anticipated End Date, RAID log items — plus what was already shown
-           (Project ID, Dept Owner, EPO Lead, Smartsheet link). RAID uses the same
+        /* Shared expanded-row detail block — used by Gantt bars (Portfolio View was
+           removed 7/2/26; this detail block predates that and was originally shared
+           with it too — see the meeting notes reference below for why RAID is
+           included). Fields confirmed (7/2/26): Status, Resources Assigned, Status
+           Update blurb, IT Estimated Hours, Anticipated End Date, RAID log items —
+           plus Project ID, Dept Owner, EPO Lead, Smartsheet link. RAID uses the same
            renderRaidSection() the Heatmap drill panel uses, keyed off PF_RAID_EXPANDED
-           (mirrors EXPANDED there, just string-keyed since Portfolio/Gantt rows
-           aren't numerically indexed). */
-        /* Callout for projects counted in a status's header badge but with no
-           Owning Department attribution (i.e. no p.itDept) — so they never made it
-           into any dept/sub-dept node in the tree. Purely about the "Owning
-           Department" field being populated/valid — NOT about hours or Departments
-           Involved (per Jerry, 7/2/26: attribution means Owning Department only).
-           Div-based equivalent of the Heatmap's renderHMMissingCallout. */
-        function renderPFMissingCallout(missing) {
-            var names = missing.map(function (p) { return '<span style="font-weight:600">' + esc(p.name) + '</span>'; }).join(' · ');
-            return '<div style="margin:4px 16px 8px;padding:6px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:5px;font-size:11px;color:#92400E;line-height:1.6">'
-                + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' counted above but not shown below — Owning Department is blank or not a recognized IT & Digital value: ' + names
-                + '</div>';
-        }
+           (mirrors EXPANDED there, just string-keyed since Gantt rows aren't
+           numerically indexed). */
         function renderPFRowDetailHTML(r, rowKey) {
             var h = '<div class="pf-proj-detail">';
             h += '<div class="pf-det-row"><span class="pf-det-lbl">PROJECT ID</span><span class="pf-det-val">' + esc(r.projectId || '—') + '</span></div>';
@@ -3278,22 +3041,6 @@
             h += renderRaidSection(r.projectId, 'Business Support', rowKey, PF_RAID_EXPANDED[rowKey], r.bsFolder);
             h += '</div>';
             return h;
-        }
-        function renderPFProjectRows(projs, extraClass, keyPrefix) {
-            projs.sort(pfPrioritySort);
-            return '<div class="pf-projs ' + extraClass + '">' + projs.map(function (r, i) {
-                var rowKey = keyPrefix + '|proj:' + (r.projectId || r.name || i);
-                PF_ROW_INDEX[rowKey] = { projectId: r.projectId, bsFolder: r.bsFolder };
-                var pct = (typeof r.percentComplete === 'number' && !isNaN(r.percentComplete)) ? Math.round(r.percentComplete <= 1 ? r.percentComplete * 100 : r.percentComplete) + '%' : '';
-                var expanded = !!PF_EXPANDED[rowKey];
-                var row = '<div class="pf-proj' + (r.hold ? ' hold-dim' : '') + '" data-pfrow="' + esc(rowKey) + '" style="cursor:pointer">'
-                    + '<span class="pf-proj-name" title="' + esc(r.name) + '">' + esc(r.name) + '</span>'
-                    + (pct ? '<span class="pf-proj-pct">' + pct + '</span>' : '')
-                    + '<span class="pf-proj-owner" title="' + esc(r.owner || '') + '">' + esc(r.owner || 'Unassigned') + '</span>'
-                    + '</div>';
-                if (expanded) row += renderPFRowDetailHTML(r, rowKey);
-                return row;
-            }).join('') + '</div>';
         }
         /* Toggles a Portfolio/Gantt row's expanded detail. On expand, also kicks off
            RAID loading (mirrors the Heatmap drill panel's toggleProject), then
@@ -3321,8 +3068,8 @@
             }
         }
         function refreshBSDetailView() {
-            if (BS_VIEW === 'portfolio') renderPortfolioView();
-            else if (BS_VIEW === 'gantt') renderGantt();
+            if (BS_VIEW === 'gantt') renderGantt();
+            else if (BS_VIEW === 'heatmap') renderHM();
         }
 
         /* Maps a date to its index in MONTHS (the same 14-month trailing/upcoming
@@ -3478,15 +3225,12 @@
         function setBSView(v) {
             BS_VIEW = v;
             document.getElementById('vt-heatmap').className = 'vt-btn' + (v === 'heatmap' ? ' active' : '');
-            document.getElementById('vt-portfolio').className = 'vt-btn' + (v === 'portfolio' ? ' active' : '');
             document.getElementById('vt-gantt').className = 'vt-btn' + (v === 'gantt' ? ' active' : '');
-            var showHM = !(TAB === 'bs' && (v === 'portfolio' || v === 'gantt'));
+            var showHM = !(TAB === 'bs' && v === 'gantt');
             document.querySelector('.hm-wrap').style.display = showHM ? 'block' : 'none';
-            document.getElementById('pf-wrap').style.display = (TAB === 'bs' && v === 'portfolio') ? 'block' : 'none';
             document.getElementById('gantt-wrap').style.display = (TAB === 'bs' && v === 'gantt') ? 'block' : 'none';
             renderSlicers();
-            if (TAB === 'bs' && v === 'portfolio') renderPortfolioView();
-            else if (TAB === 'bs' && v === 'gantt') renderGantt();
+            if (TAB === 'bs' && v === 'gantt') renderGantt();
             else renderHM();
         }
 
@@ -3727,11 +3471,10 @@
             var b = document.getElementById('btn-refresh'); b.disabled = on; b.textContent = on ? '↻  Loading…' : '↻  Refresh';
         }
         function switchTab(t) {
-            TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'heatmap'; PF_COLL = {}; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
+            TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'heatmap'; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
             document.getElementById('tab-comm').className = 'tab ' + (t === 'comm' ? 'active' : '');
             document.getElementById('tab-bs').className = 'tab ' + (t === 'bs' ? 'active' : '');
             document.getElementById('vt-heatmap').className = 'vt-btn active';
-            document.getElementById('vt-portfolio').className = 'vt-btn';
             document.getElementById('vt-gantt').className = 'vt-btn';
             closeDrill(); renderAll();
         }
@@ -3747,7 +3490,6 @@
             document.getElementById('tab-bs').onclick = function () { switchTab('bs'); };
             document.getElementById('btn-hold').onclick = function () { toggleHold(); };
             document.getElementById('vt-heatmap').onclick = function () { setBSView('heatmap'); };
-            document.getElementById('vt-portfolio').onclick = function () { setBSView('portfolio'); };
             document.getElementById('vt-gantt').onclick = function () { setBSView('gantt'); };
 
             /* Event delegation — heatmap cells, group headers, project card toggles */
@@ -3769,12 +3511,12 @@
                     if (t.tagName === 'A' || t.closest && t.closest('a')) return;
                     togglePFProject(pfRow.getAttribute('data-pfrow')); return;
                 }
-                /* Portfolio View tree — status / dept / sub-dept collapse toggles */
-                var pfHdr = t;
-                while (pfHdr && !(pfHdr.getAttribute && pfHdr.getAttribute('data-pfkey'))) pfHdr = pfHdr.parentNode;
-                if (pfHdr && pfHdr.getAttribute && pfHdr.getAttribute('data-pfkey')) {
-                    var pk = pfHdr.getAttribute('data-pfkey');
-                    PF_COLL[pk] = !PF_COLL[pk]; renderPortfolioView(); return;
+                /* Heatmap Design/Enterprise Review — individual row expand/collapse */
+                var hmExemptRow = t;
+                while (hmExemptRow && !(hmExemptRow.getAttribute && hmExemptRow.getAttribute('data-hmexemptrow'))) hmExemptRow = hmExemptRow.parentNode;
+                if (hmExemptRow && hmExemptRow.getAttribute && hmExemptRow.getAttribute('data-hmexemptrow')) {
+                    if (t.tagName === 'A' || t.closest && t.closest('a')) return;
+                    toggleHMExemptRow(hmExemptRow.getAttribute('data-hmexemptrow')); return;
                 }
                 /* KPI strip — High Priority tile toggles the Priority slicer to "High" */
                 var kpiPriority = t;
