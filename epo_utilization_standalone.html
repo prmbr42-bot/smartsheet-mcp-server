@@ -1465,35 +1465,41 @@
             'Quality/Regulatory FTE': 'Quality/Regulatory',
             'Finance FTE': 'Finance', 'Legal FTE': 'Legal', 'EHS&S FTE': 'EHS&S', 'HR FTE': 'HR'
         };
-        var BFMAP = {
-            'Sales FTE': 'Sales', 'Marketing FTE': 'Marketing',
-            'R&D FTE': 'R&D (Business Support)',
-            'Supply Chain FTE': 'Supply Chain', 'Procurement FTE': 'Procurement',
-            'Quality/Regulatory FTE': 'Quality/Regulatory', 'FP&A FTE': 'FP&A',
-            'EHS&S FTE': 'EHS&S', 'HR FTE': 'HR', 'AP FTE': 'Accounts Payable', 'AR FTE': 'Accounts Receivable',
-            'Costing FTE': 'Costing', 'Customer Service FTE': 'Customer Service',
-            'Sales Operations FTE': 'Sales Operations', 'Bulk Operations FTE': 'Bulk Operations',
-            'Bottling Operations FTE': 'Bottling Operations', 'Warehousing FTE': 'Warehousing',
-            'Continuous Improvement FTE': 'Continuous Improvement',
-            'Engineering FTE': 'Engineering', 'Accounting FTE': 'Accounting'
-            /* NOTE: Analytics/App Dev/Infrastructure/Master Data/Power Apps FTE columns
-               intentionally removed — IT & Digital depts now derive hours from
-               "IT Function Owner" + "IT Owner Estimated Hours" via OWNER_TO_DEPT (see below) */
-        };
+        /* Priority rework (7/1 meeting #8) — new High/Medium/Low dropdown column.
+           Confirmed by Jerry (7/2/26): "Cross-Functional Complexity Rating". The
+           sheet also has an adjacent "Function Complexity 5=High, 3=Med, 1=Low"
+           column, so the value here could plausibly come through as either literal
+           text ("High"/"Medium"/"Low") or that same 5/3/1 numeric encoding —
+           pfNormalizePriorityTier handles both defensively rather than assuming one. */
+        var PRIORITY_COLUMN_NAME = 'Cross-Functional Complexity Rating';
+        var PRIORITY_TIER_RANK = { 'High': 0, 'Medium': 1, 'Low': 2 };
+        function pfNormalizePriorityTier(raw) {
+            if (raw == null || raw === '') return null;
+            if (typeof raw === 'number') {
+                if (raw >= 5) return 'High'; if (raw >= 3) return 'Medium'; if (raw >= 1) return 'Low';
+                return null;
+            }
+            var s = String(raw).trim();
+            if (/^high$/i.test(s) || s === '5') return 'High';
+            if (/^med(ium)?$/i.test(s) || s === '3') return 'Medium';
+            if (/^low$/i.test(s) || s === '1') return 'Low';
+            return null; // unrecognized value — falls through to Build-date sort, not silently misranked
+        }
 
-        /* IT Function Owner (person) → IT & Digital dept.
-           Source: BS Portfolio Master Sheet "IT Function Owner" column.
-           Confirmed by Jerry: James Ko is replacing Bob Crane on Analytics;
-           Matt Gretencord's projects map to Application Development (not Power Apps).
-           Jerry Coppage no longer appears as an IT Owner — tracked separately under
-           "EPO Lead" going forward, outside the IT & Digital dept breakdown. */
-        var OWNER_TO_DEPT = {
-            'Kevin Biggers': 'Master Data',
-            'Kraig Schenewerk': 'Infrastructure',
-            'Bob Crane': 'Analytics',
-            'James Ko': 'Analytics',
-            'Matt Gretencord': 'Application Development'
-        };
+        /* Per the 7/1 meeting: "Exclude all non-IT functions entirely — non-IT data
+           is misleading since IT vs. non-IT hours are calculated differently." BFMAP
+           is now empty — BS no longer derives ANY hours from per-dept FTE columns.
+           All BS hours come from the single Owning-Department + IT Owner Estimated
+           Hours calculation in parseSheet (see below). Left as an empty object rather
+           than removed so the parseSheet(...,fmap,...) call signature doesn't need to
+           change, and so a future re-inclusion of business depts is a one-line revert. */
+        var BFMAP = {};
+
+        /* OWNER_TO_DEPT retired per 7/1 meeting — dept attribution now reads
+           "Owning Department" directly from the master sheet row (see parseSheet),
+           confirmed to carry granular values directly. The old name-based inference
+           (e.g. any Kevin Biggers project → Master Data) was flagged as wrong since
+           one person can span multiple functions. */
 
         /* "IT Function Owner" is a Smartsheet Contact column — its API value can come
            through as a display name ("Kevin Biggers") OR an email address
@@ -1534,68 +1540,99 @@
             { label: 'Procurement', color: '#1B4D35', depts: ['Procurement Co-man', 'Procurement PKG/Repack', 'Procurement ING'] },
             { label: 'IT', color: '#1B4D35', depts: ['IT'] }
         ];
+        /* Per the 7/1 meeting: non-IT functions are excluded from BS entirely (Sales,
+           Marketing, Quality/Regulatory, Supply Chain, EHS&S, HR, R&D, Procurement,
+           Customer Service, Sales Operations, Finance & Accounting, Operations — all
+           removed). Only 2 top-level BS rows remain: "Application Development" (a
+           rolled-up aggregate of Master Data/EDI/Power Apps/core App Dev — Jerry chose
+           "Option A" — org-wise these are one team/director now anyway, except
+           Analytics) and standalone "Analytics". The rollup itself happens at render
+           time via rollupAppDevMX()/rollupAppDevCapacity() — ftes/BS_CAP stay granular
+           underneath so Portfolio View's existing sub-dept fan-out and the Dept slicer
+           can still isolate MDM/EDI/Power Apps/App Dev individually ("sliceable"). */
         var BS_GROUPS = [
-            /* ── Single-dept collapsible (main cross-functional functions) ── */
-            { label: 'Sales', color: '#0D2818', depts: ['Sales'] },
-            { label: 'Marketing', color: '#0D2818', depts: ['Marketing'] },
-            { label: 'Quality/Regulatory', color: '#0D2818', depts: ['Quality/Regulatory'] },
-            { label: 'Supply Chain', color: '#0D2818', depts: ['Supply Chain'] },
-            { label: 'EHS&S', color: '#0D2818', depts: ['EHS&S'] },
-            { label: 'HR', color: '#0D2818', depts: ['HR'] },
-            { label: 'R&D', color: '#0D2818', depts: ['R&D (Business Support)'] },
-            { label: 'Procurement', color: '#0D2818', depts: ['Procurement'] },
-            { label: 'Customer Service', color: '#0D2818', depts: ['Customer Service'] },
-            { label: 'Sales Operations', color: '#0D2818', depts: ['Sales Operations'] },
-            /* ── Multi-dept groups ── */
-            { label: 'Finance & Accounting', color: '#1E3A8A', depts: ['FP&A', 'Accounts Payable', 'Accounts Receivable', 'Costing', 'Accounting'] },
-            { label: 'Operations', color: '#1E3A8A', depts: ['Bulk Operations', 'Bottling Operations', 'Warehousing', 'Continuous Improvement', 'Engineering'] },
-            { label: 'IT & Digital', color: '#1E3A8A', depts: ['Analytics', 'Application Development', 'Infrastructure', 'Master Data', 'Power Apps'] }
+            { label: 'IT & Digital', color: '#1E3A8A', depts: ['Application Development', 'Analytics'] }
         ];
-        /* All depts inside the "IT & Digital" BS_GROUPS bucket — used by Portfolio View
-           to route a project's departments down the IT taxonomy branch vs. the plain
-           Status → Dept → Owner branch used for every other business dept. */
-        var IT_DIGITAL_DEPTS = ['Analytics', 'Application Development', 'Infrastructure', 'Master Data', 'Power Apps'];
+        /* All granular depts that route through the IT taxonomy branch in Portfolio
+           View / the slicer / dept attribution. Infrastructure dropped (7/1 meeting);
+           EDI added (rolls up under Application Development, per the meeting notes:
+           "Application Development (includes MDM, EDI, core app dev)"). */
+        var IT_DIGITAL_DEPTS = ['Analytics', 'Application Development', 'Master Data', 'Power Apps', 'EDI'];
 
         /* ── PORTFOLIO VIEW: IT & Digital taxonomy ──
            Locked design: Status → IT Main Dept → IT Sub-Dept → Project.
            Application Development is the only IT main dept that fans out into sub-depts
-           (MDM / App Dev / Power Platform); Analytics and Infrastructure stay standalone
-           (no sub-dept level — their projects sit directly under the main-dept node). */
-        var IT_MAIN_DEPTS = ['Analytics', 'Application Development', 'Infrastructure'];
+           (MDM / EDI / App Dev / Power Platform); Analytics stays standalone (no
+           sub-dept level — its projects sit directly under the main-dept node).
+           Infrastructure dropped entirely per 7/1 meeting. */
+        var IT_MAIN_DEPTS = ['Analytics', 'Application Development'];
         var IT_PORTFOLIO_MAIN = 'Application Development'; // the one main dept with a sub-dept fan-out
         var IT_SUBDEPT_LABELS = {
             'Master Data': 'MDM',
             'Application Development': 'App Dev',
-            'Power Apps': 'Power Platform'
+            'Power Apps': 'Power Platform',
+            'EDI': 'EDI'
         };
 
-        /* Portfolio View status ordering — Complete/Cancelled/Rejected are collapsed by
-           default since they're the least actionable day-to-day (now visible here at all
-           because rebuildMatrices()/curProjects() filter them out of the CAPACITY math,
-           but curPortfolioProjects() — used only by this view — does not). Bucket names
-           are chosen to match the sheet's own "{Stage} Date" columns (Design (Kickoff)
-           Date, Build Date, Test Date, Deployment Date, Post Support Date, Complete Date,
-           Cancelled Date — confirmed on the live BS Portfolio Master Sheet, 7/1/26),
-           which is the best signal available for what the Status picklist values likely
-           are. The raw Status column itself is confirmed to follow an "N - Label" pattern
-           (e.g. "8 - Cancelled") — pfNormalizeStatus strips that numeric prefix before
-           matching. Still unconfirmed: the exact label text for Paused/Enterprise
-           Review/Rejected, since we've only seen one live sample row (status "8 -
-           Cancelled"). */
-        var PF_STATUS_ORDER = ['Design', 'Build', 'Test', 'Deployment', 'Post Support', 'Paused', 'Enterprise Review', 'Complete', 'Cancelled', 'Rejected'];
-        var PF_STATUS_COLLAPSED_DEFAULT = { 'Complete': true, 'Cancelled': true, 'Rejected': true };
+        /* Status taxonomy — CONFIRMED against the actual Status formula on the Portfolio
+           Master Sheet (Aidan, 7/2/26):
+             Cancelled Date filled           → "8 - Cancelled"
+             On Hold Start filled, End blank → "7 - Paused"     (supersedes every stage below —
+                                                                   a project paused mid-Build still
+                                                                   shows "7 - Paused", not "2 - Build")
+             Complete Date filled            → "6 - Complete"
+             Post Support Date filled        → "5 - Post Support"
+             Deployment Date filled          → "4 - Deploy"
+             Test Date filled                → "3 - Test"
+             Build Date filled               → "2 - Build"
+             Design (Kickoff) Date filled    → "1 - Design"
+             Enterprise Approval Date filled → "0 - Enterprise Review"
+             Intake Status = "Enterprise Review" → "0 - Enterprise Review"
+             else                            → "0 - Discovery"
+           There is NO "Rejected" state in this formula — Cancelled is the only negative
+           terminal state, so 'Rejected' has been dropped from the taxonomy entirely.
+           ASSUMPTION FLAGGED: "0 - Discovery" and "0 - Enterprise Review" are merged into
+           one "Enterprise Review" bucket here, since the meeting notes list only a single
+           "0 = Enterprise Review" stage — confirm with Jerry if Discovery should actually
+           be its own distinct bucket instead. */
+        var PF_STATUS_RAW_MAP = {
+            '8 - Cancelled': 'Cancelled',
+            '7 - Paused': 'Paused',
+            '6 - Complete': 'Complete',
+            '5 - Post Support': 'Post Support',
+            '4 - Deploy': 'Deployment',
+            '3 - Test': 'Test',
+            '2 - Build': 'Build',
+            '1 - Design': 'Design',
+            '0 - Enterprise Review': 'Enterprise Review',
+            '0 - Discovery': 'Enterprise Review' // merged — see flagged assumption above
+        };
+        /* Display order per the meeting notes: 0=Enterprise Review, 1=Design, 2=Build,
+           3=Test, 4=Deploy(Deployment), then Post Support, then Complete. Paused and
+           Cancelled aren't part of that explicit numbered sequence — placed at the end
+           since they're edge/terminal states, not ordinary workflow stages. */
+        var PF_STATUS_ORDER = ['Enterprise Review', 'Design', 'Build', 'Test', 'Deployment', 'Post Support', 'Complete', 'Paused', 'Cancelled'];
+        /* Complete is now a default-EXPANDED bucket in Portfolio View per "Complete
+           should be added as a visible bucket too" — Cancelled stays collapsed by
+           default since it's the least actionable of all. */
+        var PF_STATUS_COLLAPSED_DEFAULT = { 'Cancelled': true };
         var PF_STATUS_BADGE = {
+            'Enterprise Review': { bg: '#FEE2E2', tx: '#991B1B' },
             'Design': { bg: '#DBEAFE', tx: '#1E40AF' },
             'Build': { bg: '#FEF3C7', tx: '#92400E' },
             'Test': { bg: '#FCE7F3', tx: '#9D174D' },
             'Deployment': { bg: '#D1FAE5', tx: '#065F46' },
             'Post Support': { bg: '#E0E7FF', tx: '#3730A3' },
-            'Paused': { bg: '#F3F4F6', tx: '#6B7280' },
-            'Enterprise Review': { bg: '#FEE2E2', tx: '#991B1B' },
             'Complete': { bg: '#F3F4F6', tx: '#9CA3AF' },
-            'Cancelled': { bg: '#F3F4F6', tx: '#9CA3AF' },
-            'Rejected': { bg: '#FEE2E2', tx: '#B91C1C' }
+            'Paused': { bg: '#F3F4F6', tx: '#6B7280' },
+            'Cancelled': { bg: '#F3F4F6', tx: '#9CA3AF' }
         };
+        /* Utilization is only meaningful Build → Post Support per the field-set rules —
+           Enterprise Review and Design don't even carry an hours field on the sheet at
+           that stage. Used to gate the Heatmap's hours math (see parseSheet/buildMX)
+           and to render those two statuses as a flat project list instead of an
+           hours grid, since there's nothing numeric to show yet. */
+        var PF_UTILIZATION_EXEMPT_STATUSES = ['Enterprise Review', 'Design'];
 
         /* Non-IT business depts (Portfolio View): Status → Dept → Owner, no sub-dept level.
            Confirmed against the live BS Portfolio Master Sheet column list (7/1/26) — naming
@@ -1689,18 +1726,26 @@
             [sc, fs].forEach(function (col) {
                 if (col && t2id[col] == null) console.warn('[EPO] ' + src + ' — date column "' + col + '" not found on sheet. Available columns containing "date":', Object.keys(t2id).filter(function (k) { return /date/i.test(k); }).join(', '));
             });
-            /* Complete/Cancelled/Rejected statuses (raw text like "8 - Cancelled" — confirmed
-               live) are excluded from CAPACITY math (heatmap/KPIs) since they don't consume
-               forward-looking hours, but Portfolio View still needs to show them as a status
-               bucket. So rows are no longer dropped here — they're tagged capacityExcluded
-               and filtered out downstream in rebuildMatrices()/curProjects() instead. */
-            var EX = /cancelled|rejected|8\s*-|complete/i;
+            /* BS: capacityExcluded/utilizationExempt now derive from the exact canonical
+               status (formula-confirmed — see PF_STATUS_RAW_MAP), not a guessed regex.
+               Comm keeps the original EX regex untouched — its Status column format was
+               never part of this confirmation, so it stays out of scope here (matches the
+               Status-first Heatmap being BS-only). */
+            var EX = /cancelled|rejected|8\s*-|complete/i; // Comm only — see note above
             return (data.rows || []).reduce(function (acc, row) {
                 var by = {};
                 (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
                 function g(t) { var id = t2id[t]; return (id != null && by[id] != null) ? by[id] : null; }
                 var st = String(g('Status') || '');
-                var capacityExcluded = EX.test(st);
+                var canonicalStatus = (src === 'Business Support') ? pfNormalizeStatus(st) : null;
+                var capacityExcluded = (src === 'Business Support')
+                    ? (canonicalStatus === 'Cancelled' || canonicalStatus === 'Complete')
+                    : EX.test(st);
+                /* Utilization only starts at Build per the field-set rules — Enterprise
+                   Review and Design don't carry hours at all at that stage. Gates the
+                   Status-first Heatmap's hours math (see buildMX) without hiding these
+                   projects from view — they still show, just as a flat list with no hours. */
+                var utilizationExempt = (src === 'Business Support') && (PF_UTILIZATION_EXEMPT_STATUSES.indexOf(canonicalStatus) > -1);
                 var nm = g('Project Name'); if (!nm) return acc;
                 var sd = g(sc) || g(fs) || null;
                 var ed = null;
@@ -1712,24 +1757,31 @@
                 }
                 var ftes = {};
                 Object.keys(fmap).forEach(function (col) { var v = parseFloat(g(col)); if (!isNaN(v) && v > 0) ftes[fmap[col]] = v; });
-                /* BS IT & Digital: derive dept hours from "IT Function Owner" + "IT Owner Estimated Hours"
-                   instead of per-dept FTE columns. Total project hours are converted into an
-                   effective FTE (hours ÷ 8 ÷ working-days-in-project-span) so the existing
-                   month-overlap distribution in buildMX spreads them automatically. */
+                /* BS IT & Digital: derive dept hours from "IT Owner Estimated Hours", attributed
+                   to whichever dept "Owning Department" says. Total project hours are converted
+                   into an effective FTE (hours ÷ 8 ÷ working-days-in-project-span) so the
+                   existing month-overlap distribution in buildMX spreads them automatically. */
+                var itActiveEntry = null, itOwnerRaw = null, epoLead = null, itOwnerName = null, itResources = [];
                 if (src === 'Business Support') {
-                    var itOwnerRaw = g('IT Function Owner');
+                    itOwnerRaw = g('IT Function Owner');
                     var itHrsRaw = g('IT Owner Estimated Hours');
                     /* Strict numeric check — Smartsheet returns numeric cells as JS numbers;
                        text entries (e.g. "320-500", free-text notes) are intentionally skipped
                        rather than guessed at, per Jerry — cleanup happens on the sheet. */
                     var itHrs = (typeof itHrsRaw === 'number' && isFinite(itHrsRaw) && itHrsRaw > 0) ? itHrsRaw : null;
-                    /* Dept attribution priority:
-                       1. IT Active Projects report (explicit "Owning Department" per project — authoritative)
-                       2. IT Function Owner name inference (OWNER_TO_DEPT) — fallback for projects not yet
-                          tracked on the report (e.g. Master Data, Infrastructure aren't on it currently)
-                       Matched by normalized project name — the report has no Project ID column. */
-                    var itActiveEntry = IT_ACTIVE_INDEX[pfNormName(nm)] || null;
-                    var itDept = itActiveEntry ? itActiveEntry.dept : (itOwnerRaw ? OWNER_TO_DEPT[normalizeOwnerKey(itOwnerRaw)] : null);
+                    /* Dept attribution — CHANGED per 7/1 meeting: "Owning Department" is read
+                       DIRECTLY from this row on the Portfolio Master Sheet (Jerry confirmed it
+                       carries the granular values — Master Data/EDI/Power Apps/Application
+                       Development/Analytics — directly, no picklist consolidation, no guessing
+                       needed). The old approach (IT Active Projects report's dept field, with a
+                       static IT-Function-Owner-name→dept fallback map) is retired entirely — it
+                       was inferring department from resource names like Kevin's, which is wrong
+                       since one person can span multiple functions. Infrastructure is explicitly
+                       dropped from the dashboard (7/1 meeting) even if it still appears as a raw
+                       value here. */
+                    var rawOwningDept = g('Owning Department');
+                    var itDept = rawOwningDept ? (IT_DEPT_ABBREV[String(rawOwningDept).trim()] || String(rawOwningDept).trim()) : null;
+                    if (itDept === 'Infrastructure' || IT_DIGITAL_DEPTS.indexOf(itDept) === -1) itDept = null;
                     if (itDept && itHrs) {
                         var _is = pd(sd), _ie = pd(ed);
                         if (_is && _ie && _is <= _ie) {
@@ -1740,7 +1792,41 @@
                             }
                         }
                     }
+                    /* EPO Lead / Resources Assigned — both ARE real columns directly on this
+                       sheet (per the live column list), so read them directly first. The IT
+                       Active Projects report is kept only as a fallback for the (rare) case
+                       where a formula-computed cell doesn't read cleanly via direct API access
+                       — per Jerry: "the only reason IT Active was used was because some Master
+                       Sheet fields are formulas rather than direct values." */
+                    itActiveEntry = IT_ACTIVE_INDEX[pfNormName(nm)] || null;
+                    epoLead = g('EPO Lead') || (itActiveEntry ? itActiveEntry.epoLead : null);
+                    itOwnerName = itOwnerRaw ? normalizeOwnerKey(itOwnerRaw) : null;
+                    var resourcesRaw = g('Resources Assigned');
+                    itResources = resourcesRaw ? String(resourcesRaw).split(',').map(function (s) { return s.trim(); }).filter(Boolean)
+                        : ((itActiveEntry && itActiveEntry.resources) ? itActiveEntry.resources : []);
                 }
+                /* Field-sets-by-status (7/1 meeting #3) — CONFIRMED verbatim by Jerry
+                   (7/2/26), correcting an earlier mis-transcription that invented a
+                   nonexistent "Enterprise Tier" field:
+                   Enterprise Review: Project name, Business Owner, Ent SteerCo Agenda Date
+                   Design: Project name, Business Owner, IT Functional Owner, Resources
+                     Assigned, Status Update, IT Estimated Hours, Anticipated End Date
+                   Build→Post Support: Project name, Business Owner, IT Functional Owner,
+                     Resources Assigned, Status Update, IT Estimated Hours, Anticipated
+                     End Date — utilization is calculated ONLY in this window
+                   (all fields already captured elsewhere — see buildMX's project push) */
+                var businessOwner = (src === 'Business Support') ? (g('Business Owner') || null) : null;
+                var statusUpdate = (src === 'Business Support') ? (g('Current Status Update') || null) : null;
+                var entSteerCoDate = (src === 'Business Support') ? (g('Ent SteerCo Agenda Date') || null) : null;
+                /* Priority rework (7/1 meeting #8): new High/Medium/Low dropdown, separate
+                   from the existing integer "Project Priority" column — Jerry confirmed
+                   it's a NEW column but hasn't given the exact title yet, so this reads
+                   PRIORITY_COLUMN_NAME (currently null) and gracefully resolves to null
+                   for everyone until that's confirmed — see pfPrioritySort, which still
+                   improves on plain alphabetical sort by falling through to Build-date
+                   ordering in the meantime. */
+                var priorityTier = (src === 'Business Support' && PRIORITY_COLUMN_NAME) ? pfNormalizePriorityTier(g(PRIORITY_COLUMN_NAME)) : null;
+                var buildDateRaw = (src === 'Business Support') ? (g('Build Date') || null) : null;
                 /* NEW: additional fields for drill panel */
                 var pct = parseFloat(g('% Complete') || g('Percent Complete') || g('% Completion') || 0);
                 var owner = g('Project Owner') || g('Owner') || g('Project Lead') || g('Assigned To') || g('Business Owner') || null;
@@ -1749,24 +1835,21 @@
                 var projectId = rawPid ? String(rawPid).trim().toUpperCase() : null;
                 /* BS only: folder name from "Project Folder" column — used for RAID + project sheet lookup */
                 var bsFolder = src === 'Business Support' ? (g('Project Folder') || null) : null;
-                /* BS only: EPO Lead from IT Active Projects report match, if any */
-                var epoLead = (src === 'Business Support' && itActiveEntry) ? itActiveEntry.epoLead : null;
-                /* BS only: normalized IT Function Owner name — used for the pending-by-owner breakdown */
-                var itOwnerName = (src === 'Business Support' && itOwnerRaw) ? normalizeOwnerKey(itOwnerRaw) : null;
-                /* BS only: raw IT Resources list from the IT Active Projects report — feeds the
-                   Portfolio View "IT Resources" slicer directly (separate from deptOwners, which
-                   collapses resources into a display string) */
-                var itResources = (src === 'Business Support' && itActiveEntry && itActiveEntry.resources) ? itActiveEntry.resources : [];
                 /* BS only: per-department owner map — feeds Portfolio View's Status → Dept → Owner
                    grouping for non-IT depts, and Status → IT Main Dept → IT Sub-Dept → Project for
-                   IT & Digital depts. IT depts prefer the IT Active Projects report's resources/
-                   epoLead/itOwnerName (in that order); business depts probe for a "{Dept} Owner"
-                   column on the sheet and fall back to the project's general owner field. */
+                   IT & Digital depts.
+                   BUG FIX (7/1 meeting item #7): this was previously defaulting to the joined
+                   Resources Assigned string before the actual owner for IT depts, so the popup's
+                   "Department Owner" field was really just showing Resources Assigned — the same
+                   data as the separate Resources slicer/field. Now strictly owner-only: IT
+                   Function Owner name, then EPO Lead, then the project's general owner field.
+                   Resources Assigned stays its own distinct field (itResources, above) and is
+                   never folded into this. */
                 var deptOwners = {};
                 if (src === 'Business Support') {
                     Object.keys(ftes).forEach(function (dept) {
                         if (IT_DIGITAL_DEPTS.indexOf(dept) > -1) {
-                            deptOwners[dept] = (itActiveEntry && itActiveEntry.resources && itActiveEntry.resources.length) ? itActiveEntry.resources.join(', ') : (epoLead || itOwnerName || owner || null);
+                            deptOwners[dept] = itOwnerName || epoLead || owner || null;
                         } else {
                             deptOwners[dept] = g(DEPT_OWNER_COLUMN_MAP[dept] || (dept + ' Owner')) || owner || null;
                         }
@@ -1782,8 +1865,15 @@
                     epoLead: epoLead,
                     itOwnerName: itOwnerName,
                     itResources: itResources,
+                    itEstHrs: (typeof itHrs !== 'undefined' && itHrs) ? itHrs : null,
+                    businessOwner: businessOwner,
+                    statusUpdate: statusUpdate,
+                    entSteerCoDate: entSteerCoDate,
+                    priorityTier: priorityTier,
+                    buildDate: buildDateRaw,
                     deptOwners: deptOwners,
-                    capacityExcluded: capacityExcluded
+                    capacityExcluded: capacityExcluded,
+                    utilizationExempt: utilizationExempt
                 });
                 return acc;
             }, []);
@@ -1816,7 +1906,12 @@
                             startDate: p.startDate, endDate: p.endDate,
                             bsFolder: p.bsFolder || null,
                             epoLead: p.epoLead || null,
-                            deptOwner: (p.deptOwners && p.deptOwners[dept]) || null
+                            deptOwner: (p.deptOwners && p.deptOwners[dept]) || null,
+                            businessOwner: p.businessOwner || null,
+                            itOwnerName: p.itOwnerName || null,
+                            itResources: p.itResources || [],
+                            itEstHrs: p.itEstHrs || null,
+                            statusUpdate: p.statusUpdate || null
                         });
                     });
                 });
@@ -1825,6 +1920,47 @@
                 Object.keys(mx[d]).forEach(function (k) { mx[d][k].projects.sort(function (a, b) { return b.hours - a.hours; }); });
             });
             return mx;
+        }
+
+        /* Per the 7/1 meeting (dept hierarchy #1, "Option A"): Master Data, EDI, Power
+           Apps, and core Application Development are org-wise one team/director now
+           and should show as ONE combined "Application Development" row in the
+           Heatmap, broken out into slicer-able subgroups rather than separate rows.
+           This runs AFTER buildMX() — ftes/BS_CAP stay granular everywhere else
+           (Portfolio View's sub-dept fan-out and the Dept slicer both still need the
+           granular keys), this rollup is purely a Heatmap display-layer merge. */
+        var APPDEV_FAMILY = ['Master Data', 'EDI', 'Power Apps', 'Application Development'];
+        function rollupAppDevMX(mx) {
+            var rolled = {};
+            Object.keys(mx).forEach(function (dept) {
+                var target = APPDEV_FAMILY.indexOf(dept) > -1 ? 'Application Development' : dept;
+                if (!rolled[target]) rolled[target] = {};
+                Object.keys(mx[dept]).forEach(function (mk) {
+                    if (!rolled[target][mk]) rolled[target][mk] = { totalHours: 0, projects: [] };
+                    rolled[target][mk].totalHours += mx[dept][mk].totalHours;
+                    rolled[target][mk].projects = rolled[target][mk].projects.concat(mx[dept][mk].projects);
+                });
+            });
+            Object.keys(rolled).forEach(function (d) {
+                Object.keys(rolled[d]).forEach(function (mk) { rolled[d][mk].projects.sort(function (a, b) { return b.hours - a.hours; }); });
+            });
+            return rolled;
+        }
+        /* Same rollup for capacity — sums whatever App-Dev-family rows exist on the
+           Department Capacity sheet under "Application Development". Deliberately
+           self-adapting: works whether that sheet already has one combined capacity
+           row, or four granular ones (Master Data/EDI/Power Apps/Application
+           Development tracked separately) — summing either way lands on the same
+           correct combined total. UNVERIFIED against live capacity-sheet data — flag
+           to Jerry if the resulting number looks off once this is live. */
+        function rollupAppDevCapacity(cap) {
+            var rolled = {}, sum = 0, any = false;
+            Object.keys(cap).forEach(function (dept) {
+                if (APPDEV_FAMILY.indexOf(dept) > -1) { sum += cap[dept]; any = true; }
+                else rolled[dept] = cap[dept];
+            });
+            if (any) rolled['Application Development'] = sum;
+            return rolled;
         }
 
         /* ── COLOUR ── */
@@ -1908,30 +2044,35 @@
                 })
                 .then(function (sheet) {
                     if (!sheet) return;
-                    BS_CAP = parseCapacitySheet(sheet);
+                    BS_CAP = rollupAppDevCapacity(parseCapacitySheet(sheet));
                 })
                 .catch(function (e) {
                     console.warn('[EPO] BS capacity load failed — BS depts will show FTE demand (uncapacitated):', e.message);
                 });
         }
 
-        /* "Owning Department" abbreviations on the IT Active Projects report → full dept names
-           used everywhere else in the dashboard (BS_GROUPS, capacity sheet, etc). */
+        /* "Owning Department" raw values (master sheet, read directly per 7/1 meeting)
+           → full canonical dept names used everywhere else in the dashboard (BS_GROUPS,
+           capacity sheet, etc). Mostly identity mappings — kept as a lookup table in
+           case the picklist uses a shorthand form somewhere. */
         var IT_DEPT_ABBREV = {
             'App Dev': 'Application Development',
             'Power App': 'Power Apps',
             'Power Apps': 'Power Apps',
             'Analytics': 'Analytics',
             'Master Data': 'Master Data',
-            'Infrastructure': 'Infrastructure'
+            'EDI': 'EDI',
+            'Infrastructure': 'Infrastructure' // still mapped for completeness, but filtered out downstream (see parseSheet) — Infrastructure is dropped from the dashboard entirely per 7/1 meeting
         };
 
         /* IT Active Projects is a Smartsheet REPORT (not a sheet) — different endpoint,
            but same generic /api proxy handles it transparently.
            Discovery path: BS workspace → Intake & Management → Enterprise Portfolio Reports
-           → report named "IT Active Projects". This is the authoritative dept signal —
-           explicit Owning Department per project — used to override the
-           IT Function Owner name-inference (OWNER_TO_DEPT) wherever a Project ID match exists. */
+           → report named "IT Active Projects". Per the 7/1 meeting, this report is NO
+           LONGER the dept-attribution source (Owning Department is now read directly
+           off the master sheet row in parseSheet) — it's kept only as a fallback for
+           EPO Lead / Resources Assigned in case those specific formula-computed cells
+           don't read cleanly via direct API access. */
         function loadITActiveProjects() {
             var BS_WS = '8144071119136644';
             return ssGet('/workspaces/' + BS_WS)
@@ -2102,13 +2243,13 @@
         function rebuildMatrices() {
             var commAll = PROJECTS.filter(function (p) { return p.source === 'Commercialization'; });
             var bsAll = PROJECTS.filter(function (p) { return p.source === 'Business Support'; });
-            /* Capacity math (heatmap) still excludes Complete/Cancelled/Rejected — only
+            /* Capacity math (heatmap) still excludes Complete/Cancelled — only
                Portfolio View (curPortfolioProjects) sees the full set. */
             function capOk(p) { return !p.capacityExcluded; }
             var commUse = commAll.filter(function (p) { return capOk(p) && (SHOW_ON_HOLD || !isOnHold(p.status)); });
             var bsUse = bsAll.filter(function (p) { return capOk(p) && (SHOW_ON_HOLD || !isOnHold(p.status)); });
             MX_COMM = buildMX(commUse);
-            MX_BS = buildMX(bsUse);
+            MX_BS = rollupAppDevMX(buildMX(bsUse)); // Application Development rollup — see rollupAppDevMX
         }
 
         function loadData() {
@@ -2197,8 +2338,23 @@
         }
 
         function renderKPIs(fp, mx) {
-            function ia(s) { return /active|in.progress|test|build|deployment|post.support|design/i.test(s || ''); }
-            function ip(s) { return /pending|discovery|enterprise.review/i.test(s || ''); }
+            /* BS: Active/Pending now derive from the same canonical pfNormalizeStatus()
+               bucketing used by the Status-first Heatmap and Portfolio View — this is
+               the fix for the "12 active but only 1 reconciles to Design" bug: the KPI
+               count and the per-status breakdown were previously two independently
+               drifting regexes that could (and did) disagree. Now there's one source of
+               truth, so they're structurally guaranteed to match. "Active" = the field-set
+               "Active" bucket from the meeting notes (Design through Post Support);
+               "Pending" = Enterprise Review. Comm keeps its original regex untouched —
+               its Status format wasn't part of this confirmation. */
+            function ia(s) {
+                if (TAB === 'bs') { var c = pfNormalizeStatus(s); return ['Design', 'Build', 'Test', 'Deployment', 'Post Support'].indexOf(c) > -1; }
+                return /active|in.progress|test|build|deployment|post.support|design/i.test(s || '');
+            }
+            function ip(s) {
+                if (TAB === 'bs') return pfNormalizeStatus(s) === 'Enterprise Review';
+                return /pending|discovery|enterprise.review/i.test(s || '');
+            }
             var dem = 0, nr = 0, ov = 0;
             var moNow = MONTHS.filter(function (m) { return m.key === CK; })[0];
             var wdNow = moNow ? wdays(moNow.start, moNow.end) : 0;
@@ -2311,6 +2467,61 @@
             return h;
         }
 
+        /* Flat dept-grouped project list for utilization-exempt status groups
+           (Enterprise Review, Design) in the Status-first Heatmap — no month grid,
+           since these stages don't carry hours in the utilization sense (utilization
+           only applies Build→Post Support).
+           Deliberately reuses getPortfolioDeptKey for dept attribution consistency
+           with Portfolio View, but keeps rendering flat (no sub-dept fan-out) since
+           there's no hours/capacity dimension here to justify the extra nesting.
+           Field sets CONFIRMED verbatim by Jerry (7/2/26, correcting an earlier
+           mis-transcription that invented a nonexistent "Enterprise Tier" field):
+             Enterprise Review: Project name, Business Owner, Ent SteerCo Agenda Date
+             Design: Project name, Business Owner, IT Functional Owner, Resources
+               Assigned, Status Update, IT Estimated Hours, Anticipated End Date */
+        function renderHMExemptGroupHTML(status, projs) {
+            var h = '';
+            var byDept = {};
+            projs.forEach(function (p) {
+                Object.keys(p.ftes || {}).forEach(function (dept) {
+                    var mainDept = getPortfolioDeptKey(dept).mainDept;
+                    (byDept[mainDept] = byDept[mainDept] || []).push(p);
+                });
+            });
+            var deptKeys = Object.keys(byDept).sort();
+            if (!deptKeys.length) {
+                return '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:8px 28px;color:var(--muted);font-size:11px">No department attribution yet for these projects.</td></tr>';
+            }
+            deptKeys.forEach(function (dept) {
+                var list = byDept[dept];
+                list.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+                h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:6px 14px 3px 20px;font-weight:700;font-size:11px;color:var(--dark);background:#FAFEF9;border-top:1px solid var(--border)">' + esc(dept) + ' <span style="font-weight:400;color:var(--muted)">(' + list.length + ')</span></td></tr>';
+                list.forEach(function (p) {
+                    var meta;
+                    if (status === 'Design') {
+                        meta = [
+                            p.businessOwner ? ('Owner: ' + esc(p.businessOwner)) : null,
+                            p.itOwnerName ? ('IT Owner: ' + esc(p.itOwnerName)) : null,
+                            (p.itResources && p.itResources.length) ? ('Resources: ' + esc(p.itResources.join(', '))) : null,
+                            p.itEstHrs ? ('Est. Hours: ' + fmtHrs(p.itEstHrs)) : null,
+                            p.endDate ? ('End: ' + esc(fmtDate(p.endDate) || p.endDate)) : null
+                        ].filter(Boolean).join(' · ');
+                    } else { // Enterprise Review — Project name, Business Owner, Ent SteerCo Agenda Date only
+                        meta = [
+                            p.businessOwner ? ('Owner: ' + esc(p.businessOwner)) : null,
+                            p.entSteerCoDate ? ('SteerCo: ' + esc(fmtDate(p.entSteerCoDate) || p.entSteerCoDate)) : null
+                        ].filter(Boolean).join(' · ');
+                    }
+                    h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:5px 14px 5px 34px;font-size:12px;background:#fff;border-bottom:1px solid #F6F6F4">'
+                        + '<div style="font-weight:600;color:var(--text)">' + esc(p.name) + '</div>'
+                        + (meta ? '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + meta + '</div>' : '')
+                        + (status === 'Design' && p.statusUpdate ? '<div style="font-size:10px;color:var(--text);margin-top:3px;font-style:italic">"' + esc(p.statusUpdate.length > 140 ? p.statusUpdate.slice(0, 140) + '…' : p.statusUpdate) + '"</div>' : '')
+                        + '</td></tr>';
+                });
+            });
+            return h;
+        }
+
         function renderHM() {
             var groups = curGroups();
             var h = '<thead><tr><th class="th-d">' + (TAB === 'bs' ? 'STATUS / DEPARTMENT' : 'DEPARTMENT') + '</th>';
@@ -2334,7 +2545,28 @@
                 var statuses = Object.keys(byStatus).sort(pfStatusSort);
                 var renderedAny = false;
                 statuses.forEach(function (status) {
-                    var mxStatus = buildMX(byStatus[status]);
+                    var projs = byStatus[status];
+                    var isExempt = PF_UTILIZATION_EXEMPT_STATUSES.indexOf(status) > -1;
+                    /* Enterprise Review / Design: no hours field exists at this stage (field-set
+                       rules), so skip the grid entirely and render a flat project list instead —
+                       this is what "should still display... but not count toward utilization"
+                       means structurally, not just a zeroed-out grid. */
+                    if (isExempt) {
+                        if (!projs.length) return;
+                        renderedAny = true;
+                        var collapsedX = HM_STATUS_COLL.hasOwnProperty(status) ? HM_STATUS_COLL[status] : false;
+                        var badgeX = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
+                        var cntX = projs.length;
+                        h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (MONTHS.length + 1) + '">'
+                            + '<span class="hm-status-car">' + (collapsedX ? '▶' : '▼') + '</span>'
+                            + '<span class="hm-status-name">' + esc(status).toUpperCase() + '</span>'
+                            + '<span class="hm-status-badge" style="background:' + badgeX.bg + ';color:' + badgeX.tx + '">' + cntX + ' project' + (cntX === 1 ? '' : 's') + '</span>'
+                            + '<span style="margin-left:10px;font-size:10px;opacity:.65;font-weight:400">pre-Build — hours not tracked yet</span>'
+                            + '</td></tr>';
+                        if (!collapsedX) h += renderHMExemptGroupHTML(status, projs);
+                        return;
+                    }
+                    var mxStatus = rollupAppDevMX(buildMX(projs));
                     HM_MX_BY_STATUS[status] = mxStatus;
                     var statusHasData = groups.some(function (g) {
                         return g.depts.some(function (dept) {
@@ -2346,7 +2578,7 @@
                     renderedAny = true;
                     var collapsed = HM_STATUS_COLL.hasOwnProperty(status) ? HM_STATUS_COLL[status] : false;
                     var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
-                    var cnt = byStatus[status].length;
+                    var cnt = projs.length;
                     h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (MONTHS.length + 1) + '">'
                         + '<span class="hm-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
                         + '<span class="hm-status-name">' + esc(status).toUpperCase() + '</span>'
@@ -2380,7 +2612,7 @@
            three sub-depts (MDM / App Dev / Power Platform); Analytics and
            Infrastructure stand alone; every other dept is a plain business dept. */
         function getPortfolioDeptKey(dept) {
-            if (dept === 'Master Data' || dept === 'Power Apps' || dept === 'Application Development') {
+            if (dept === 'Master Data' || dept === 'Power Apps' || dept === 'Application Development' || dept === 'EDI') {
                 return { branch: 'it', mainDept: IT_PORTFOLIO_MAIN, subDept: dept, subDeptLabel: IT_SUBDEPT_LABELS[dept] || dept };
             }
             if (IT_MAIN_DEPTS.indexOf(dept) > -1) {
@@ -2406,26 +2638,29 @@
             });
         }
 
-        /* Loose status-text matcher — confirmed live sample (Status="8 - Cancelled") shows
-           raw values follow an "N - Label" or "N-Label" numeric prefix pattern, so that's
-           stripped before matching. Beyond that, real BS status strings vary in
-           punctuation/casing — anything that doesn't match a known bucket falls back to
-           its trimmed raw value so it still renders (just outside the locked
-           PF_STATUS_ORDER sort). */
+        /* Exact-match status normalizer — the Status column is a FORMULA field (see
+           PF_STATUS_RAW_MAP comment above for the literal formula), so its output is
+           one of exactly 10 known strings. No more fuzzy regex guessing: look the raw
+           value up directly. Falls back to a loose regex ONLY for genuinely unexpected
+           text (e.g. stale data, manual override) and logs a warning so it's visible
+           that something doesn't match the formula's known output — this fallback
+           path should essentially never fire on live data. */
         function pfNormalizeStatus(raw) {
-            var s = String(raw || '').trim().replace(/^\d+\s*-\s*/, '');
+            var s = String(raw || '').trim();
             if (!s) return 'Unspecified';
-            if (/cancel/i.test(s)) return 'Cancelled';
-            if (/reject/i.test(s)) return 'Rejected';
-            if (/enterprise.?review/i.test(s)) return 'Enterprise Review';
-            if (/post.?support/i.test(s)) return 'Post Support';
-            if (/paused|on.?hold/i.test(s)) return 'Paused';
-            if (/complete|closed|done/i.test(s)) return 'Complete';
-            if (/deploy/i.test(s)) return 'Deployment';
-            if (/test|uat|\bqa\b/i.test(s)) return 'Test';
-            if (/build|develop/i.test(s)) return 'Build';
-            if (/design|discovery|scoping|kickoff/i.test(s)) return 'Design';
-            return s;
+            if (PF_STATUS_RAW_MAP.hasOwnProperty(s)) return PF_STATUS_RAW_MAP[s];
+            var stripped = s.replace(/^\d+\s*-\s*/, '');
+            console.warn('[EPO] Status value "' + s + '" did not match the known formula output — falling back to fuzzy match. Check for stale/manual data.');
+            if (/cancel/i.test(stripped)) return 'Cancelled';
+            if (/paused|on.?hold/i.test(stripped)) return 'Paused';
+            if (/complete|closed|done/i.test(stripped)) return 'Complete';
+            if (/post.?support/i.test(stripped)) return 'Post Support';
+            if (/deploy/i.test(stripped)) return 'Deployment';
+            if (/test|uat|\bqa\b/i.test(stripped)) return 'Test';
+            if (/build/i.test(stripped)) return 'Build';
+            if (/^design|kickoff/i.test(stripped)) return 'Design';
+            if (/enterprise|discovery|scoping/i.test(stripped)) return 'Enterprise Review';
+            return stripped;
         }
         function pfStatusSort(a, b) {
             var ia = PF_STATUS_ORDER.indexOf(a), ib = PF_STATUS_ORDER.indexOf(b);
@@ -2494,7 +2729,8 @@
                         projectId: p.projectId, name: p.name, status: p.status,
                         owner: (p.deptOwners && p.deptOwners[dept]) || p.owner || null,
                         percentComplete: p.percentComplete,
-                        rowPermalink: p.rowPermalink, epoLead: p.epoLead, hold: isOnHold(p.status)
+                        rowPermalink: p.rowPermalink, epoLead: p.epoLead, hold: isOnHold(p.status),
+                        priorityTier: p.priorityTier || null, buildDate: p.buildDate || null
                     };
                     totalRows++;
                     if (pk.subDept) {
@@ -2564,8 +2800,24 @@
             body.innerHTML = h;
         }
 
+        /* Priority rework sort (7/1 meeting #8): tier first (High → Medium → Low,
+           unranked/unknown sorts last), then Build date ascending within a tier
+           (earlier start ranks first), then name as a final stable tiebreaker. Since
+           PRIORITY_COLUMN_NAME is still unconfirmed, every project's tier is
+           currently null → this degrades gracefully to Build-date-then-name, which is
+           still an improvement over plain alphabetical and requires no further
+           changes once the tier column is wired in. */
+        function pfPrioritySort(a, b) {
+            var ta = PRIORITY_TIER_RANK.hasOwnProperty(a.priorityTier) ? PRIORITY_TIER_RANK[a.priorityTier] : 99;
+            var tb = PRIORITY_TIER_RANK.hasOwnProperty(b.priorityTier) ? PRIORITY_TIER_RANK[b.priorityTier] : 99;
+            if (ta !== tb) return ta - tb;
+            var da = pd(a.buildDate), db = pd(b.buildDate);
+            if (da && db) return da - db;
+            if (da) return -1; if (db) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+        }
         function renderPFProjectRows(projs, extraClass, keyPrefix) {
-            projs.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+            projs.sort(pfPrioritySort);
             return '<div class="pf-projs ' + extraClass + '">' + projs.map(function (r, i) {
                 var rowKey = keyPrefix + '|proj:' + (r.projectId || r.name || i);
                 var pct = (typeof r.percentComplete === 'number' && !isNaN(r.percentComplete)) ? Math.round(r.percentComplete <= 1 ? r.percentComplete * 100 : r.percentComplete) + '%' : '';
@@ -2673,11 +2925,27 @@
                 /* ── Expanded detail ── */
                 if (ex) {
                     h += '<div class="pc-detail">';
-                    if (p.owner) h += '<div class="det-row"><span class="det-lbl">OWNER</span><span class="det-val">' + esc(p.owner) + '</span></div>';
+                    /* Build → Post Support field-set — CONFIRMED verbatim by Jerry (7/2/26):
+                       Project name, Business Owner, IT Functional Owner, Resources Assigned,
+                       Status Update, IT Estimated Hours, Anticipated End Date.
+                       BS-conditional since these are BS-only concepts (Comm keeps its
+                       original generic OWNER row below). */
+                    if (p.source === 'Business Support') {
+                        if (p.businessOwner) h += '<div class="det-row"><span class="det-lbl">BUSINESS OWNER</span><span class="det-val">' + esc(p.businessOwner) + '</span></div>';
+                        if (p.itOwnerName) h += '<div class="det-row"><span class="det-lbl">IT FUNCTIONAL OWNER</span><span class="det-val">' + esc(p.itOwnerName) + '</span></div>';
+                        if (p.itResources && p.itResources.length) h += '<div class="det-row"><span class="det-lbl">RESOURCES</span><span class="det-val">' + esc(p.itResources.join(', ')) + '</span></div>';
+                        if (p.itEstHrs) h += '<div class="det-row"><span class="det-lbl">IT EST. HOURS</span><span class="det-val">' + fmtHrs(p.itEstHrs) + '</span></div>';
+                    } else if (p.owner) h += '<div class="det-row"><span class="det-lbl">OWNER</span><span class="det-val">' + esc(p.owner) + '</span></div>';
                     if (p.epoLead) h += '<div class="det-row"><span class="det-lbl">EPO LEAD</span><span class="det-val">' + esc(p.epoLead) + '</span></div>';
                     var sd = fmtDate(p.startDate), ed = fmtDate(p.endDate);
-                    if (sd || ed) h += '<div class="det-row"><span class="det-lbl">SPAN</span><span class="det-val">' + (sd || '?') + ' → ' + (ed || '?') + '</span></div>';
+                    if (p.source === 'Business Support') {
+                        if (ed) h += '<div class="det-row"><span class="det-lbl">ANTICIPATED END</span><span class="det-val">' + ed + '</span></div>';
+                    } else if (sd || ed) h += '<div class="det-row"><span class="det-lbl">SPAN</span><span class="det-val">' + (sd || '?') + ' → ' + (ed || '?') + '</span></div>';
                     h += '<div class="det-row"><span class="det-lbl">FTE ALLOC</span><span class="det-val">' + p.fte + ' FTE → ' + fmtHrs(p.hours) + ' this month</span></div>';
+                    if (p.source === 'Business Support' && p.statusUpdate) {
+                        h += '<div class="det-row" style="display:block"><span class="det-lbl">STATUS UPDATE</span></div>'
+                            + '<div style="font-size:11px;color:var(--text);font-style:italic;margin:-3px 0 7px">"' + esc(p.statusUpdate.length > 220 ? p.statusUpdate.slice(0, 220) + '…' : p.statusUpdate) + '"</div>';
+                    }
                     if (p.percentComplete != null) {
                         var pct = Math.round(p.percentComplete);
                         h += '<div class="prog-wrap"><div class="prog-lbl"><span>% COMPLETE</span><span>' + pct + '%</span></div>';
