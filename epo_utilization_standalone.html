@@ -2618,18 +2618,33 @@
             if (pct <= 1) return '#F97316';
             return '#EF4444';
         }
-        /* Current-month utilization % for a single dept — used by the AppDev/Analytics/
-           PowerApps tiles. mx/cap are passed in so the same helper works against
-           either the rolled-up (MX_BS/BS_CAP) or granular (MX_BS_GRANULAR/
+        /* Rolling 2-month utilization % (current + next month) for a single dept —
+           used by the AppDev/Analytics/PowerApps tiles. Changed from a single-month
+           snapshot per Jerry (7/2/26) to smooth out single-month spikes/dips. Sums
+           hours and capacity across both months rather than averaging two separate
+           percentages — that avoids skew if a month happens to have fewer working
+           days (different capacity), which a naive average-of-percentages would get
+           wrong. Falls back to current-month-only if there's no next month in the
+           visible MONTHS window (shouldn't happen given the 14-month range, but
+           defensive regardless). mx/cap are passed in so the same helper works
+           against either the rolled-up (MX_BS/BS_CAP) or granular (MX_BS_GRANULAR/
            BS_CAP_GRANULAR) pair — Power Apps specifically needs the granular one
            since rollupAppDevMX folds it into "Application Development" everywhere
            else this dashboard displays it. Returns null if no capacity is defined. */
-        function deptUtilPctCurrentMonth(mx, cap, dept) {
+        function deptUtilPctRolling(mx, cap, dept) {
             var capH = cap[dept];
             if (!capH) return null;
-            var cell = mx[dept] && mx[dept][CK];
-            var hrs = cell ? cell.totalHours : 0;
-            return hrs / capH;
+            var idx = -1;
+            for (var i = 0; i < MONTHS.length; i++) { if (MONTHS[i].key === CK) { idx = i; break; } }
+            if (idx === -1) return null;
+            var monthKeys = [MONTHS[idx].key];
+            if (MONTHS[idx + 1]) monthKeys.push(MONTHS[idx + 1].key);
+            var totalHrs = 0;
+            monthKeys.forEach(function (mk) {
+                var cell = mx[dept] && mx[dept][mk];
+                totalHrs += cell ? cell.totalHours : 0;
+            });
+            return totalHrs / (capH * monthKeys.length);
         }
         /* Finds the soonest upcoming Ent SteerCo Agenda Date among Enterprise Review
            projects, and counts how many share that exact date — i.e. "next SteerCo"
@@ -2665,12 +2680,12 @@
         function renderKPIsBS() {
             var highProjs = curPortfolioProjects().filter(function (p) { return p.priorityTier === 'High'; });
             var steerCo = nextSteerCoInfo();
-            var appDevPct = deptUtilPctCurrentMonth(MX_BS, BS_CAP, 'Application Development');
-            var analyticsPct = deptUtilPctCurrentMonth(MX_BS, BS_CAP, 'Analytics');
-            var powerAppsPct = deptUtilPctCurrentMonth(MX_BS_GRANULAR, BS_CAP_GRANULAR, 'Power Apps');
+            var appDevPct = deptUtilPctRolling(MX_BS, BS_CAP, 'Application Development');
+            var analyticsPct = deptUtilPctRolling(MX_BS, BS_CAP, 'Analytics');
+            var powerAppsPct = deptUtilPctRolling(MX_BS_GRANULAR, BS_CAP_GRANULAR, 'Power Apps');
             var priorityActive = PF_SLICER.priority === 'High';
             function pctDisplay(pct) { return pct == null ? '—' : Math.round(pct * 100) + '%'; }
-            function pctSub(pct) { return pct == null ? 'No capacity defined' : 'of monthly capacity'; }
+            function pctSub(pct) { return pct == null ? 'No capacity defined' : 'this + next month avg'; }
             var ks = [
                 {
                     v: highProjs.length, l: 'High Priority Projects', s: priorityActive ? 'Filter active — click to clear' : 'Click to filter dashboard',
@@ -2699,6 +2714,23 @@
            collapsed under one Status doesn't also collapse it under another); status is
            passed through purely for SEL comparison + the cell's data-hmstatus attribute
            (both null for Comm, which has no Status-first wrapping). */
+        /* When PF_SLICER.dept is a granular sub-dept (Power Apps/Master Data/EDI),
+           the Heatmap's "Application Development" row (post-rollup) should compare
+           against THAT sub-dept's own capacity, not the whole family's combined
+           capacity — otherwise slicing to just Power Apps would understate its true
+           utilization by dividing against everyone else's capacity too. Falls back
+           to the normal rolled-up BS_CAP for the mainDept-level selections and when
+           no dept filter is active. */
+        function effectiveBSCap() {
+            if (PF_SLICER.dept && PF_SLICER.dept !== 'Application Development' && PF_SLICER.dept !== 'Analytics' && BS_CAP_GRANULAR[PF_SLICER.dept]) {
+                var override = {};
+                Object.keys(BS_CAP).forEach(function (k) { override[k] = BS_CAP[k]; });
+                override['Application Development'] = BS_CAP_GRANULAR[PF_SLICER.dept];
+                return override;
+            }
+            return BS_CAP;
+        }
+
         function renderHMGroupsHTML(mx, groups, collPrefix, status) {
             var h = '';
             groups.forEach(function (g) {
@@ -2728,7 +2760,7 @@
                     /* Tab-aware capacity label in the sticky dept column */
                     var capDisp, hasCapacity;
                     if (TAB === 'comm') { var cFte = CAP[dept]; hasCapacity = !!cFte; capDisp = cFte ? cFte + ' FTE' : '—'; }
-                    else { var cHrs = BS_CAP[dept]; hasCapacity = !!cHrs; capDisp = cHrs ? cHrs + ' h/mo' : '—'; }
+                    else { var cHrs = effectiveBSCap()[dept]; hasCapacity = !!cHrs; capDisp = cHrs ? cHrs + ' h/mo' : '—'; }
                     h += '<td class="dtd" style="background:' + rb + '"><div class="dinn"><span class="dnm" title="' + esc(dept) + '">' + esc(dept) + '</span><span style="font-size:10px;color:' + (hasCapacity ? 'var(--muted)' : '#E5E7EB') + '">' + esc(capDisp) + '</span></div></td>';
                     MONTHS.forEach(function (mo) {
                         var cell = dm[mo.key], hrs = cell ? cell.totalHours : 0;
@@ -2736,7 +2768,7 @@
                            Capacity is always the dept's FULL monthly capacity — when status-split, each
                            status row shows its slice of that same total, so the % values across every
                            status group for one dept/month sum back to today's (unsplit) total. */
-                        var capH = TAB === 'comm' ? (CAP[dept] ? CAP[dept] * HRS * wdays(mo.start, mo.end) : null) : (BS_CAP[dept] || null);
+                        var capH = TAB === 'comm' ? (CAP[dept] ? CAP[dept] * HRS * wdays(mo.start, mo.end) : null) : (effectiveBSCap()[dept] || null);
                         var pct = capH ? hrs / capH : null, cl = clr(pct, hasCapacity, hrs);
                         var is = SEL && SEL.dept === dept && SEL.mk === mo.key && (SEL.status || null) === (status || null), ic2 = mo.key === CK;
                         var cs = 'ctd' + (hrs > 0 ? ' cl' : '') + (is ? ' sel' : '') + (ic2 && !is ? ' cur' : '');
@@ -2955,18 +2987,27 @@
             return { branch: 'business', mainDept: dept, subDept: null, subDeptLabel: null };
         }
 
-        /* Shared PF_SLICER project-level filter — used by both Portfolio View and the
-           Heatmap's Status-first BS mode so "Dept / IT Owner / IT Resources / Priority"
-           behave identically in every view. Dept filtering is at the mainDept level
-           (matches getPortfolioDeptKey), so filtering to "Application Development"
-           also keeps its Master Data / Power Apps sub-dept projects. */
+        /* Shared PF_SLICER project-level filter — used by Portfolio View, the
+           Heatmap's Status-first BS mode, and Gantt so "Dept / IT Owner / IT
+           Resources / Priority" behave identically everywhere. Dept filtering
+           supports two levels (7/2/26 — per Jerry, App Dev needs to be "sliceable by
+           sub-dept everywhere"): selecting "Application Development" matches the
+           whole rolled-up family (Master Data/EDI/Power Apps/core App Dev combined,
+           same as before); selecting a specific sub-dept ("Power Apps", "Master
+           Data", "EDI") narrows to exactly that itDept value. "Analytics" has no
+           sub-depts, so it only ever matches at the mainDept level. */
         function applyPFSlicer(projs) {
             return projs.filter(function (p) {
                 if (PF_SLICER.itOwner && p.itOwnerName !== PF_SLICER.itOwner) return false;
                 if (PF_SLICER.itResource && (p.itResources || []).indexOf(PF_SLICER.itResource) === -1) return false;
                 if (PF_SLICER.priority && p.priorityTier !== PF_SLICER.priority) return false;
                 if (PF_SLICER.dept) {
-                    if (!p.itDept || getPortfolioDeptKey(p.itDept).mainDept !== PF_SLICER.dept) return false;
+                    if (!p.itDept) return false;
+                    if (PF_SLICER.dept === 'Application Development' || PF_SLICER.dept === 'Analytics') {
+                        if (getPortfolioDeptKey(p.itDept).mainDept !== PF_SLICER.dept) return false;
+                    } else if (p.itDept !== PF_SLICER.dept) {
+                        return false; // granular sub-dept selection — exact itDept match only
+                    }
                 }
                 return true;
             });
@@ -3004,18 +3045,28 @@
         }
 
         /* Builds the slicer option lists from whatever's currently in the BS project
-           set, then renders the Dept / IT Owner / IT Resources dropdowns. */
+           set, then renders the Dept / IT Owner / IT Resources / Priority dropdowns.
+           Dept is two-level (7/2/26): mainDept entries (Application Development,
+           Analytics) plus, indented underneath Application Development, whichever
+           granular sub-depts (Master Data/EDI/Power Apps) actually have projects —
+           "sliceable by sub-dept everywhere", per Jerry. */
         function renderSlicers() {
             var bar = document.getElementById('slicer-bar');
             if (TAB !== 'bs') { bar.className = 'slicer-bar'; bar.innerHTML = ''; return; }
             var fp = curPortfolioProjects();
-            var deptSet = {}, ownerSet = {}, resSet = {};
+            var deptSet = {}, subDeptSet = {}, ownerSet = {}, resSet = {};
             fp.forEach(function (p) {
-                if (p.itDept) deptSet[getPortfolioDeptKey(p.itDept).mainDept] = true;
+                if (p.itDept) {
+                    var pk = getPortfolioDeptKey(p.itDept);
+                    deptSet[pk.mainDept] = true;
+                    /* Only true sub-brands (Master Data/EDI/Power Apps) get their own
+                       option — core "Application Development" itself isn't a distinct
+                       sub-dept, it's already covered by the mainDept-level option. */
+                    if (pk.subDept && pk.subDept !== 'Application Development') subDeptSet[pk.subDept] = true;
+                }
                 if (p.itOwnerName) ownerSet[p.itOwnerName] = true;
                 (p.itResources || []).forEach(function (r) { if (r) resSet[r] = true; });
             });
-            var depts = Object.keys(deptSet).sort();
             var owners = Object.keys(ownerSet).sort();
             var resources = Object.keys(resSet).sort();
             var priorities = ['High', 'Medium', 'Low']; // fixed tier set — see PRIORITY_TIER_RANK
@@ -3024,10 +3075,21 @@
                     return '<option value="' + esc(v) + '"' + (cur === v ? ' selected' : '') + '>' + esc(v) + '</option>';
                 }).join('');
             }
+            /* Dept dropdown built by hand (not the generic opts() helper above) so
+               sub-depts can render indented directly under Application Development. */
+            var deptOptsHtml = '<option value="">All</option>';
+            Object.keys(deptSet).sort().forEach(function (d) {
+                deptOptsHtml += '<option value="' + esc(d) + '"' + (PF_SLICER.dept === d ? ' selected' : '') + '>' + esc(d) + '</option>';
+                if (d === 'Application Development') {
+                    Object.keys(subDeptSet).sort().forEach(function (sd) {
+                        deptOptsHtml += '<option value="' + esc(sd) + '"' + (PF_SLICER.dept === sd ? ' selected' : '') + '>&nbsp;&nbsp;— ' + esc(sd) + '</option>';
+                    });
+                }
+            });
             var anyActive = PF_SLICER.dept || PF_SLICER.itOwner || PF_SLICER.itResource || PF_SLICER.priority;
             bar.innerHTML =
                 '<span class="slicer-lbl">Filter</span>'
-                + '<select class="slicer-select" id="sl-dept"><optgroup label="Dept">' + opts(depts, PF_SLICER.dept) + '</optgroup></select>'
+                + '<select class="slicer-select" id="sl-dept"><optgroup label="Dept">' + deptOptsHtml + '</optgroup></select>'
                 + '<select class="slicer-select" id="sl-owner"><optgroup label="IT Owner">' + opts(owners, PF_SLICER.itOwner) + '</optgroup></select>'
                 + '<select class="slicer-select" id="sl-res"><optgroup label="IT Resource">' + opts(resources, PF_SLICER.itResource) + '</optgroup></select>'
                 + '<select class="slicer-select" id="sl-priority"><optgroup label="Priority">' + opts(priorities, PF_SLICER.priority) + '</optgroup></select>'
@@ -3285,7 +3347,12 @@
                     return;
                 }
                 var pk = getPortfolioDeptKey(p.itDept);
-                if (PF_SLICER.dept && pk.mainDept !== PF_SLICER.dept) return; // legitimately filtered out by the Dept slicer, not a data issue
+                /* No PF_SLICER.dept re-check needed here — applyPFSlicer already filtered
+                   fp upstream, correctly handling both mainDept-level and granular
+                   sub-dept selections (see applyPFSlicer). Re-checking mainDept here
+                   would incorrectly exclude every project when a granular sub-dept like
+                   "Power Apps" is selected, since mainDept is always "Application
+                   Development" post-rollup. */
                 if (!p.buildDate || !p.endDate) {
                     missing.push({ name: p.name, reason: 'missing Build Date or Anticipated End Date' });
                     return;
@@ -3383,7 +3450,7 @@
                regardless of tab, which silently broke the capacity/utilization stats for
                every BS drill. */
             var cap = TAB === 'comm' ? CAP[dept] : null; // FTE basis only exists for Comm
-            var capH = TAB === 'comm' ? (cap ? cap * HRS * wdays(mo.start, mo.end) : null) : (BS_CAP[dept] || null);
+            var capH = TAB === 'comm' ? (cap ? cap * HRS * wdays(mo.start, mo.end) : null) : (effectiveBSCap()[dept] || null);
             var pct = capH && cell ? cell.totalHours / capH : null;
             document.getElementById('d-dept').textContent = dept;
             document.getElementById('d-mon').textContent = (mo ? mo.label : mk) + (status ? ' · ' + status : '');
