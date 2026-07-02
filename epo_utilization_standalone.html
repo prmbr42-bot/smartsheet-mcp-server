@@ -2685,6 +2685,28 @@
              Enterprise Review: Project name, Business Owner, Ent SteerCo Agenda Date
              Design: Project name, Business Owner, IT Functional Owner, Resources
                Assigned, Status Update, IT Estimated Hours, Anticipated End Date */
+        /* Callout row for non-exempt status groups (Build/Test/Deployment/Post
+           Support/Paused) — lists projects the header badge counted that didn't
+           actually plot into the grid, with a best-effort reason per project, so a
+           discrepancy between "X projects" in the header and what's visible/clickable
+           below is never silent. */
+        function renderHMMissingCallout(missing) {
+            var lines = missing.map(function (p) {
+                var reason;
+                if (!p.ftes || !Object.keys(p.ftes).length) {
+                    reason = 'no department attribution or IT Owner Estimated Hours';
+                } else {
+                    var s = pd(p.startDate), e = pd(p.endDate);
+                    if (!s || !e || s > e) reason = 'missing or invalid start/end date';
+                    else reason = 'date range falls outside the visible 14-month window';
+                }
+                return '<span style="font-weight:600">' + esc(p.name) + '</span> — ' + reason;
+            });
+            return '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:6px 14px;background:#FFFBEB;border-top:1px solid #FDE68A;border-bottom:1px solid #FDE68A;font-size:11px;color:#92400E;line-height:1.6">'
+                + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' counted above but not shown in the grid below: ' + lines.join(' · ')
+                + '</td></tr>';
+        }
+
         function renderHMExemptGroupHTML(status, projs) {
             var h = '';
             var byDept = {};
@@ -2785,12 +2807,31 @@
                     var collapsed = HM_STATUS_COLL.hasOwnProperty(status) ? HM_STATUS_COLL[status] : false;
                     var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
                     var cnt = projs.length;
+                    /* Callout for projects counted in the header badge but that didn't make
+                       it into the grid below — the header counts EVERY project with this
+                       status; the grid only shows ones that successfully plotted into
+                       buildMX. A project drops out silently for one of three reasons: (1)
+                       no dept/hours attribution at all (no Owning Department match, or no
+                       IT Owner Estimated Hours), (2) missing/invalid Build or Anticipated
+                       End dates, (3) valid dept+dates but the whole span falls outside the
+                       visible 14-month window. Same root cause as Design/Enterprise
+                       Review's "No department attribution yet" message — just computed
+                       differently since this branch actually tries to plot hours. */
+                    var plotted = {};
+                    Object.keys(mxStatus).forEach(function (dept) {
+                        Object.keys(mxStatus[dept]).forEach(function (mk) {
+                            mxStatus[dept][mk].projects.forEach(function (pr) { plotted[pr.projectId || pr.name] = true; });
+                        });
+                    });
+                    var missing = projs.filter(function (p) { return !plotted[p.projectId || p.name]; });
                     h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (MONTHS.length + 1) + '">'
                         + '<span class="hm-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
                         + '<span class="hm-status-name">' + esc(status).toUpperCase() + '</span>'
                         + '<span class="hm-status-badge" style="background:' + badge.bg + ';color:' + badge.tx + '">' + cnt + ' project' + (cnt === 1 ? '' : 's') + '</span>'
+                        + (missing.length ? '<span style="margin-left:10px;font-size:10px;opacity:.7;font-weight:400">⚠ ' + missing.length + ' not shown below</span>' : '')
                         + '</td></tr>';
                     if (collapsed) return;
+                    if (missing.length) h += renderHMMissingCallout(missing);
                     h += renderHMGroupsHTML(mxStatus, groups, status + '::', status);
                 });
                 if (!renderedAny) {
