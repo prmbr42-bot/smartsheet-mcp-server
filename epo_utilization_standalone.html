@@ -1444,10 +1444,32 @@
             text-transform: none
         }
 
+        .gantt-subdept-hdr {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px 6px 28px;
+            background: #fff;
+            border-top: 1px solid #F6F6F4;
+            font-weight: 600;
+            font-size: 11px;
+            color: var(--muted);
+            cursor: pointer;
+            user-select: none
+        }
+
+        .gantt-subdept-hdr:hover {
+            background: #FAFAFA
+        }
+
         .gantt-row {
             display: grid;
             grid-template-columns: 220px 1fr;
             border-top: 1px solid #F6F6F4
+        }
+
+        .gantt-row-sub .gantt-row-label {
+            padding-left: 28px
         }
 
         .gantt-row-label {
@@ -3330,7 +3352,7 @@
         function renderGantt() {
             var inner = document.getElementById('gantt-inner');
             var fp = applyPFSlicer(curPortfolioProjects());
-            var byDept = {};
+            var byDept = {}; // mainDept -> {subs:{subDept:{label,projs:[]}}, projs:[]} — same shape as Portfolio View's tree
             var totalBars = 0;
             /* Projects that SHOULD be expected to show a bar (i.e. past the pre-Build
                stage) but don't — Enterprise Review/Design are intentionally excluded
@@ -3363,7 +3385,7 @@
                     return;
                 }
                 if (ei < bi) ei = bi; // end before build (bad data) — draw a 1-month sliver rather than a negative-width bar
-                (byDept[pk.mainDept] = byDept[pk.mainDept] || []).push({
+                var row = {
                     projectId: p.projectId, name: p.name, status: p.status,
                     owner: (p.deptOwners && p.deptOwners[p.itDept]) || p.owner || null,
                     percentComplete: p.percentComplete, rowPermalink: p.rowPermalink,
@@ -3372,7 +3394,14 @@
                     endDate: p.endDate, itResources: p.itResources || [],
                     itEstHrs: p.itEstHrs || null, statusUpdate: p.statusUpdate || null,
                     bsFolder: p.bsFolder || null, barStart: bi, barEnd: ei
-                });
+                };
+                if (!byDept[pk.mainDept]) byDept[pk.mainDept] = { subs: {}, projs: [] };
+                if (pk.subDept) {
+                    if (!byDept[pk.mainDept].subs[pk.subDept]) byDept[pk.mainDept].subs[pk.subDept] = { label: pk.subDeptLabel, projs: [] };
+                    byDept[pk.mainDept].subs[pk.subDept].projs.push(row);
+                } else {
+                    byDept[pk.mainDept].projs.push(row);
+                }
                 totalBars++;
             });
             if (!totalBars && !missing.length) {
@@ -3384,30 +3413,56 @@
                 + '</div></div>';
             if (missing.length) h += renderGanttMissingCallout(missing);
             Object.keys(byDept).sort().forEach(function (dept) {
-                var list = byDept[dept];
-                list.sort(pfPrioritySort);
+                var dnode = byDept[dept];
+                var subKeys = Object.keys(dnode.subs);
+                var deptCount = dnode.projs.length + subKeys.reduce(function (m, sk) { return m + dnode.subs[sk].projs.length; }, 0);
                 var dKey = 'gantt-dept:' + dept;
                 var collapsed = !!GANTT_DEPT_COLL[dKey];
                 h += '<div class="gantt-dept-hdr" data-ganttdept="' + esc(dKey) + '">'
-                    + (collapsed ? '▶' : '▼') + ' ' + esc(dept) + ' <span class="gantt-dept-count">(' + list.length + ')</span>'
+                    + (collapsed ? '▶' : '▼') + ' ' + esc(dept) + ' <span class="gantt-dept-count">(' + deptCount + ')</span>'
                     + '</div>';
                 if (collapsed) return;
-                list.forEach(function (r, i) {
-                    var rowKey = 'gantt|dept:' + dept + '|proj:' + (r.projectId || r.name || i);
-                    PF_ROW_INDEX[rowKey] = { projectId: r.projectId, bsFolder: r.bsFolder };
-                    var expanded = !!PF_EXPANDED[rowKey];
-                    var color = GANTT_BAR_COLOR[pfNormalizeStatus(r.status)] || '#6B7280';
-                    h += '<div class="gantt-row">';
-                    h += '<div class="gantt-row-label" data-pfrow="' + esc(rowKey) + '" title="' + esc(r.name) + '">' + esc(r.name) + '</div>';
-                    h += '<div class="gantt-row-track">'
-                        + '<div class="gantt-bar' + (r.hold ? ' hold-dim' : '') + '" data-pfrow="' + esc(rowKey) + '" '
-                        + 'style="grid-column:' + (r.barStart + 1) + '/' + (r.barEnd + 2) + ';background:' + color + '" title="' + esc(r.name) + ' · ' + esc(r.status) + '">'
-                        + esc(r.name) + '</div></div>';
-                    h += '</div>';
-                    if (expanded) h += '<div class="gantt-row"><div class="gantt-detail-row">' + renderPFRowDetailHTML(r, rowKey) + '</div></div>';
+                /* Direct projects (no sub-dept — e.g. Analytics, or a project attributed
+                   to core "Application Development" with no further sub-brand) render
+                   flat, same as before. */
+                if (dnode.projs.length) h += renderGanttProjectRows(dept, null, dnode.projs);
+                /* Sub-dept groups (Master Data / Power Apps / EDI) — mirrors Portfolio
+                   View's Status→MainDept→SubDept tree, so the same breakdown is visible
+                   consistently across Heatmap (via the slicer), Portfolio, and Gantt. */
+                subKeys.sort().forEach(function (sk) {
+                    var snode = dnode.subs[sk];
+                    var sKey = 'gantt-subdept:' + dept + ':' + sk;
+                    var sCollapsed = !!GANTT_DEPT_COLL[sKey];
+                    h += '<div class="gantt-subdept-hdr" data-ganttdept="' + esc(sKey) + '">'
+                        + (sCollapsed ? '▶' : '▼') + ' ' + esc(snode.label || sk) + ' <span class="gantt-dept-count">(' + snode.projs.length + ')</span>'
+                        + '</div>';
+                    if (!sCollapsed) h += renderGanttProjectRows(dept, sk, snode.projs);
                 });
             });
             inner.innerHTML = h;
+        }
+        /* Renders a list of Gantt project rows (label + bar, expandable detail) for
+           one dept or dept+sub-dept group. Factored out so both the flat (no
+           sub-dept) and sub-dept-grouped branches in renderGantt share identical
+           row-rendering logic. */
+        function renderGanttProjectRows(dept, subKey, list) {
+            var h = '';
+            list.sort(pfPrioritySort);
+            list.forEach(function (r, i) {
+                var rowKey = 'gantt|dept:' + dept + (subKey ? '|sub:' + subKey : '') + '|proj:' + (r.projectId || r.name || i);
+                PF_ROW_INDEX[rowKey] = { projectId: r.projectId, bsFolder: r.bsFolder };
+                var expanded = !!PF_EXPANDED[rowKey];
+                var color = GANTT_BAR_COLOR[pfNormalizeStatus(r.status)] || '#6B7280';
+                h += '<div class="gantt-row' + (subKey ? ' gantt-row-sub' : '') + '">';
+                h += '<div class="gantt-row-label" data-pfrow="' + esc(rowKey) + '" title="' + esc(r.name) + '">' + esc(r.name) + '</div>';
+                h += '<div class="gantt-row-track">'
+                    + '<div class="gantt-bar' + (r.hold ? ' hold-dim' : '') + '" data-pfrow="' + esc(rowKey) + '" '
+                    + 'style="grid-column:' + (r.barStart + 1) + '/' + (r.barEnd + 2) + ';background:' + color + '" title="' + esc(r.name) + ' · ' + esc(r.status) + '">'
+                    + esc(r.name) + '</div></div>';
+                h += '</div>';
+                if (expanded) h += '<div class="gantt-row"><div class="gantt-detail-row">' + renderPFRowDetailHTML(r, rowKey) + '</div></div>';
+            });
+            return h;
         }
         /* Callout for non-pre-Build projects that don't get a Gantt bar — same
            "always account for every counted project" treatment as the Heatmap and
