@@ -2710,16 +2710,18 @@
         function renderHMExemptGroupHTML(status, projs) {
             var h = '';
             var byDept = {};
+            var missing = [];
             projs.forEach(function (p) {
-                Object.keys(p.ftes || {}).forEach(function (dept) {
+                var deptKeys = Object.keys(p.ftes || {});
+                if (!deptKeys.length) { missing.push(p); return; }
+                deptKeys.forEach(function (dept) {
                     var mainDept = getPortfolioDeptKey(dept).mainDept;
                     (byDept[mainDept] = byDept[mainDept] || []).push(p);
                 });
             });
+            if (missing.length) h += renderHMMissingCallout(missing);
             var deptKeys = Object.keys(byDept).sort();
-            if (!deptKeys.length) {
-                return '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:8px 28px;color:var(--muted);font-size:11px">No department attribution yet for these projects.</td></tr>';
-            }
+            if (!deptKeys.length) return h;
             deptKeys.forEach(function (dept) {
                 var list = byDept[dept];
                 list.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
@@ -2960,16 +2962,23 @@
             var body = document.getElementById('pf-body');
             var fp = applyPFSlicer(curPortfolioProjects());
             var tree = {}; // status -> { it:{dept:{sub:{projs:[]}, projs:[]}}, business:{dept:{projs:[]}} }
+            var missingByStatus = {}; // status -> [projects with no dept attribution at all — see renderPFMissingCallout]
             var totalRows = 0;
             fp.forEach(function (p) {
                 var status = pfNormalizeStatus(p.status);
-                Object.keys(p.ftes || {}).forEach(function (dept) {
+                var deptKeysForP = Object.keys(p.ftes || {});
+                if (!tree[status]) tree[status] = {}; // ensure the status bucket exists even if every project in it is missing-only
+                if (!deptKeysForP.length) {
+                    (missingByStatus[status] = missingByStatus[status] || []).push(p);
+                    totalRows++;
+                    return;
+                }
+                deptKeysForP.forEach(function (dept) {
                     var pk = getPortfolioDeptKey(dept);
                     /* applyPFSlicer already confirmed this project touches SOME matching dept —
                        still need this per-iteration check for multi-dept projects so only the
                        matching dept's row gets built, not every dept the project happens to touch */
                     if (PF_SLICER.dept && pk.mainDept !== PF_SLICER.dept) return;
-                    if (!tree[status]) tree[status] = {};
                     if (!tree[status][pk.mainDept]) tree[status][pk.mainDept] = { branch: pk.branch, subs: {}, projs: [] };
                     var node = tree[status][pk.mainDept];
                     var row = {
@@ -3000,9 +3009,10 @@
             statuses.forEach(function (status) {
                 var depts = tree[status];
                 var deptKeys = Object.keys(depts);
+                var missing = missingByStatus[status] || [];
                 var statusCount = deptKeys.reduce(function (n, dk) {
                     return n + depts[dk].projs.length + Object.keys(depts[dk].subs).reduce(function (m, sk) { return m + depts[dk].subs[sk].projs.length; }, 0);
-                }, 0);
+                }, 0) + missing.length;
                 var scKey = 'status:' + status;
                 var collapsed = PF_COLL.hasOwnProperty(scKey) ? PF_COLL[scKey] : !!PF_STATUS_COLLAPSED_DEFAULT[status];
                 var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
@@ -3011,9 +3021,10 @@
                     + '<span class="pf-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
                     + '<span class="pf-status-name">' + esc(status) + '</span>'
                     + '<span class="pf-status-badge" style="background:' + badge.bg + ';color:' + badge.tx + '">' + statusCount + '</span>'
-                    + '<span class="pf-status-count">' + deptKeys.length + ' dept' + (deptKeys.length === 1 ? '' : 's') + '</span>'
+                    + '<span class="pf-status-count">' + deptKeys.length + ' dept' + (deptKeys.length === 1 ? '' : 's') + (missing.length ? ' · ⚠ ' + missing.length + ' unattributed' : '') + '</span>'
                     + '</div>';
                 if (!collapsed) {
+                    if (missing.length) h += renderPFMissingCallout(missing);
                     deptKeys.sort().forEach(function (dk) {
                         var dnode = depts[dk];
                         var subKeys = Object.keys(dnode.subs);
@@ -3075,6 +3086,17 @@
            renderRaidSection() the Heatmap drill panel uses, keyed off PF_RAID_EXPANDED
            (mirrors EXPANDED there, just string-keyed since Portfolio/Gantt rows
            aren't numerically indexed). */
+        /* Callout for projects counted in a status's header badge but with no dept
+           attribution at all (empty ftes — no Owning Department match, or no IT
+           Owner Estimated Hours) — so they never made it into any dept/sub-dept node
+           in the tree. Div-based equivalent of the Heatmap's renderHMMissingCallout;
+           same reasoning, same visual language, adapted to Portfolio's div structure. */
+        function renderPFMissingCallout(missing) {
+            var names = missing.map(function (p) { return '<span style="font-weight:600">' + esc(p.name) + '</span>'; }).join(' · ');
+            return '<div style="margin:4px 16px 8px;padding:6px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:5px;font-size:11px;color:#92400E;line-height:1.6">'
+                + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' counted above but not shown below — no department attribution or IT Owner Estimated Hours: ' + names
+                + '</div>';
+        }
         function renderPFRowDetailHTML(r, rowKey) {
             var h = '<div class="pf-proj-detail">';
             h += '<div class="pf-det-row"><span class="pf-det-lbl">PROJECT ID</span><span class="pf-det-val">' + esc(r.projectId || '—') + '</span></div>';
@@ -3165,17 +3187,39 @@
             var fp = applyPFSlicer(curPortfolioProjects());
             var byDept = {};
             var totalBars = 0;
+            /* Projects that SHOULD be expected to show a bar (i.e. past the pre-Build
+               stage) but don't — Enterprise Review/Design are intentionally excluded
+               per the meeting notes (no Build Date yet is expected, not a data issue,
+               and those projects are already shown elsewhere as flat lists), so they're
+               never added here. Everything else that fails to get a bar is a genuine
+               accounting gap and gets a reason, same treatment as the Heatmap/Portfolio. */
+            var missing = [];
             fp.forEach(function (p) {
-                if (!p.buildDate || !p.endDate) return; // no Build Date yet = pre-Build, explicitly excluded from the Gantt
-                Object.keys(p.ftes || {}).forEach(function (dept) {
-                    var pk = getPortfolioDeptKey(dept);
-                    if (PF_SLICER.dept && pk.mainDept !== PF_SLICER.dept) return;
-                    var bi = monthIdxClamped(p.buildDate), ei = monthIdxClamped(p.endDate);
-                    if (bi == null || ei == null) return; // both dates fall entirely outside the visible window
-                    if (ei < bi) ei = bi; // end before build (bad data) — draw a 1-month sliver rather than a negative-width bar
-                    (byDept[pk.mainDept] = byDept[pk.mainDept] || []).push({
+                var status = pfNormalizeStatus(p.status);
+                if (PF_UTILIZATION_EXEMPT_STATUSES.indexOf(status) > -1) return; // pre-Build — expected, not a gap
+                var deptKeysForP = Object.keys(p.ftes || {});
+                if (!deptKeysForP.length) {
+                    missing.push({ name: p.name, reason: 'no department attribution or IT Owner Estimated Hours' });
+                    return;
+                }
+                var matchingPairs = deptKeysForP.map(function (d) { return { dept: d, pk: getPortfolioDeptKey(d) }; }).filter(function (pair) {
+                    return !PF_SLICER.dept || pair.pk.mainDept === PF_SLICER.dept;
+                });
+                if (!matchingPairs.length) return; // legitimately filtered out by the Dept slicer, not a data issue
+                if (!p.buildDate || !p.endDate) {
+                    missing.push({ name: p.name, reason: 'missing Build Date or Anticipated End Date' });
+                    return;
+                }
+                var bi = monthIdxClamped(p.buildDate), ei = monthIdxClamped(p.endDate);
+                if (bi == null || ei == null) {
+                    missing.push({ name: p.name, reason: 'date range falls outside the visible 14-month window' });
+                    return;
+                }
+                if (ei < bi) ei = bi; // end before build (bad data) — draw a 1-month sliver rather than a negative-width bar
+                matchingPairs.forEach(function (pair) {
+                    (byDept[pair.pk.mainDept] = byDept[pair.pk.mainDept] || []).push({
                         projectId: p.projectId, name: p.name, status: p.status,
-                        owner: (p.deptOwners && p.deptOwners[dept]) || p.owner || null,
+                        owner: (p.deptOwners && p.deptOwners[pair.dept]) || p.owner || null,
                         percentComplete: p.percentComplete, rowPermalink: p.rowPermalink,
                         epoLead: p.epoLead, hold: isOnHold(p.status),
                         priorityTier: p.priorityTier || null, buildDate: p.buildDate,
@@ -3186,13 +3230,14 @@
                     totalBars++;
                 });
             });
-            if (!totalBars) {
+            if (!totalBars && !missing.length) {
                 inner.innerHTML = '<div class="gantt-empty">No projects with both a Build Date and Anticipated End Date match the current filters.</div>';
                 return;
             }
             var h = '<div class="gantt-timeline-hdr"><div class="gantt-corner">DEPARTMENT / PROJECT</div><div class="gantt-month-track">'
                 + MONTHS.map(function (mo) { return '<div class="gantt-mo' + (mo.key === CK ? ' now' : '') + '">' + mo.label + '</div>'; }).join('')
                 + '</div></div>';
+            if (missing.length) h += renderGanttMissingCallout(missing);
             Object.keys(byDept).sort().forEach(function (dept) {
                 var list = byDept[dept];
                 list.sort(pfPrioritySort);
@@ -3218,6 +3263,16 @@
                 });
             });
             inner.innerHTML = h;
+        }
+        /* Callout for non-pre-Build projects that don't get a Gantt bar — same
+           "always account for every counted project" treatment as the Heatmap and
+           Portfolio View. Gantt has no natural per-status subdivision (it's
+           dept-grouped), so this is one combined block up top rather than per-status. */
+        function renderGanttMissingCallout(missing) {
+            var lines = missing.map(function (m) { return '<span style="font-weight:600">' + esc(m.name) + '</span> — ' + m.reason; });
+            return '<div style="margin:10px 16px;padding:8px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:5px;font-size:11px;color:#92400E;line-height:1.6">'
+                + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' not shown as a bar (Enterprise Review/Design excluded by design, not counted here): ' + lines.join(' · ')
+                + '</div>';
         }
 
         function setBSView(v) {
