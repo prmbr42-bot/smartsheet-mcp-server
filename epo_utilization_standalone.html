@@ -1920,7 +1920,8 @@
                     deptOwners: deptOwners,
                     capacityExcluded: capacityExcluded,
                     utilizationExempt: utilizationExempt,
-                    itDept: (typeof itDept !== 'undefined') ? itDept : null
+                    itDept: (typeof itDept !== 'undefined') ? itDept : null,
+                    rawOwningDept: (typeof rawOwningDeptTrimmed !== 'undefined' && rawOwningDeptTrimmed) ? rawOwningDeptTrimmed : null
                 });
                 return acc;
             }, []);
@@ -2132,6 +2133,20 @@
         IT_DIGITAL_DEPTS.concat(['Infrastructure']).forEach(function (d) {
             if (!IT_DEPT_ABBREV_CI[d.toLowerCase()]) IT_DEPT_ABBREV_CI[d.toLowerCase()] = d;
         });
+        /* Explains WHY a project has no p.itDept, for the Gantt/Heatmap "missing"
+           callouts. Added 7/2/26 per Jerry — a genuinely blank "Owning Department"
+           cell and one populated with a valid non-IT & Digital dept (Sales, Quality,
+           Supply Chain, etc.) are very different data situations, and the old single
+           "no Owning Department attribution" label conflated them, making it look
+           like a data-entry gap when most of the time it's a project that's simply
+           outside this dashboard's IT & Digital scope by design. */
+        function pfOwningDeptGapReason(p) {
+            var raw = p.rawOwningDept;
+            if (!raw) return 'no Owning Department set on the sheet';
+            var mapped = IT_DEPT_ABBREV_CI[raw.toLowerCase()];
+            if (mapped === 'Infrastructure') return 'owning dept is "Infrastructure" — excluded from this dashboard by design';
+            return 'non-IT owning dept ("' + raw + '")';
+        }
 
         /* IT Active Projects is a Smartsheet REPORT (not a sheet) — different endpoint,
            but same generic /api proxy handles it transparently.
@@ -2660,7 +2675,7 @@
             var lines = missing.map(function (p) {
                 var reason;
                 if (!p.itDept) {
-                    reason = 'no Owning Department attribution';
+                    reason = pfOwningDeptGapReason(p);
                 } else if (!p.ftes || !p.ftes[p.itDept]) {
                     reason = 'no IT Owner Estimated Hours';
                 } else {
@@ -3112,7 +3127,7 @@
                 var status = pfNormalizeStatus(p.status);
                 if (PF_UTILIZATION_EXEMPT_STATUSES.indexOf(status) > -1) return; // pre-Build — expected, not a gap
                 if (!p.itDept) {
-                    missing.push({ name: p.name, reason: 'no Owning Department attribution' });
+                    missing.push({ name: p.name, reason: pfOwningDeptGapReason(p) });
                     return;
                 }
                 var pk = getPortfolioDeptKey(p.itDept);
