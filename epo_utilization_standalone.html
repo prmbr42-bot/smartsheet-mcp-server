@@ -266,6 +266,24 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, .07)
         }
 
+        .kpi-clickable {
+            cursor: pointer;
+            transition: box-shadow .15s, transform .1s
+        }
+
+        .kpi-clickable:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .14)
+        }
+
+        .kpi-clickable:active {
+            transform: scale(.98)
+        }
+
+        .kpi-active {
+            outline: 2px solid #EF4444;
+            outline-offset: -2px
+        }
+
         .kv {
             font-size: 26px;
             font-weight: 800;
@@ -1839,11 +1857,17 @@
 
         /* ── STATE ── */
         var PROJECTS = [], TAB = 'comm', MONTHS = [], CK = '', MX_COMM = {}, MX_BS = {}, COLL = {}, SEL = null;
+        /* Granular (pre-rollup) BS hours matrix — Application Development/Analytics
+           KPI tiles use the rolled-up MX_BS (same as the Heatmap), but the Power Apps
+           utilization tile needs the sub-dept broken back out, since rollupAppDevMX
+           folds Power Apps into "Application Development" for display everywhere
+           else. Populated alongside MX_BS in rebuildMatrices(). */
+        var MX_BS_GRANULAR = {};
         var DRILL_PROJS = [], EXPANDED = {}, RAID_CACHE = {};
         var SHOW_ON_HOLD = true;
-        var KPI_PENDING_OPEN = false; // toggles the pending-by-owner breakdown inside the Total Projects KPI tile
         var SHEET_PERMALINKS = {}; // source → API-provided sheet permalink (SSO-aware)
         var BS_CAP = {};           // dept → monthly capacity hours (loaded at runtime from Dept Capacity sheet)
+        var BS_CAP_GRANULAR = {};  // pre-rollup capacity, keyed by the sheet's own granular dept rows (MDM/EDI/Power Apps/etc) — see MX_BS_GRANULAR
         var BS_FOLDER_INDEX = {};  // normalized folder name → {raidSheetId, projectSheetPermalink, ...}
         var IT_ACTIVE_INDEX = {};  // pfNormName(project name) → {dept, epoLead, resources} from the "IT Active Projects" report (authoritative dept signal — the report has no Project ID column, so this is keyed by normalized project name)
 
@@ -1851,7 +1875,7 @@
         var BS_VIEW = 'heatmap';         // 'heatmap' | 'portfolio' — toggle within the BS tab
         var PF_COLL = {};                // Portfolio View: collapsed state per group key (status / dept / sub-dept)
         var PF_EXPANDED = {};            // Portfolio View: expanded project-drill state, keyed by projectId
-        var PF_SLICER = { dept: null, itOwner: null, itResource: null }; // active Portfolio View + Heatmap slicer filters (shared — BS only)
+        var PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; // active Portfolio View + Heatmap slicer filters (shared — BS only)
         var HM_STATUS_COLL = {};  // Heatmap Status-first grouping (BS only): collapse state per status
         var HM_MX_BY_STATUS = {}; // Heatmap Status-first grouping (BS only): status → dept → monthKey → {totalHours,projects}, rebuilt each renderHM() call — openDrill reads from here
 
@@ -1949,6 +1973,14 @@
                    projects from view — they still show, just as a flat list with no hours. */
                 var utilizationExempt = (src === 'Business Support') && (PF_UTILIZATION_EXEMPT_STATUSES.indexOf(canonicalStatus) > -1);
                 var nm = g('Project Name'); if (!nm) return acc;
+                /* Hard filter (7/2/26): BS projects must have "EPO Initial Review Status" =
+                   Approved to display anywhere in the dashboard — dropped entirely here so
+                   every downstream view (Heatmap, Portfolio, Gantt, KPIs) is automatically
+                   consistent, rather than filtering separately in each view. */
+                if (src === 'Business Support') {
+                    var epoReviewStatus = String(g('EPO Initial Review Status') || '').trim().toLowerCase();
+                    if (epoReviewStatus !== 'approved') return acc;
+                }
                 var sd = g(sc) || g(fs) || null;
                 var ed = null;
                 var cols = Array.isArray(endCols) ? endCols : [endCols];
@@ -2048,14 +2080,8 @@
                    Resources Assigned stays its own distinct field (itResources, above) and is
                    never folded into this. */
                 var deptOwners = {};
-                if (src === 'Business Support') {
-                    Object.keys(ftes).forEach(function (dept) {
-                        if (IT_DIGITAL_DEPTS.indexOf(dept) > -1) {
-                            deptOwners[dept] = itOwnerName || epoLead || owner || null;
-                        } else {
-                            deptOwners[dept] = g(DEPT_OWNER_COLUMN_MAP[dept] || (dept + ' Owner')) || owner || null;
-                        }
-                    });
+                if (src === 'Business Support' && itDept) {
+                    deptOwners[itDept] = itOwnerName || epoLead || owner || null;
                 }
                 acc.push({
                     name: nm, status: st, startDate: sd, endDate: ed, source: src, ftes: ftes,
@@ -2075,7 +2101,8 @@
                     buildDate: buildDateRaw,
                     deptOwners: deptOwners,
                     capacityExcluded: capacityExcluded,
-                    utilizationExempt: utilizationExempt
+                    utilizationExempt: utilizationExempt,
+                    itDept: (typeof itDept !== 'undefined') ? itDept : null
                 });
                 return acc;
             }, []);
@@ -2246,7 +2273,8 @@
                 })
                 .then(function (sheet) {
                     if (!sheet) return;
-                    BS_CAP = rollupAppDevCapacity(parseCapacitySheet(sheet));
+                    BS_CAP_GRANULAR = parseCapacitySheet(sheet);
+                    BS_CAP = rollupAppDevCapacity(BS_CAP_GRANULAR);
                 })
                 .catch(function (e) {
                     console.warn('[EPO] BS capacity load failed — BS depts will show FTE demand (uncapacitated):', e.message);
@@ -2451,7 +2479,8 @@
             var commUse = commAll.filter(function (p) { return capOk(p) && (SHOW_ON_HOLD || !isOnHold(p.status)); });
             var bsUse = bsAll.filter(function (p) { return capOk(p) && (SHOW_ON_HOLD || !isOnHold(p.status)); });
             MX_COMM = buildMX(commUse);
-            MX_BS = rollupAppDevMX(buildMX(bsUse)); // Application Development rollup — see rollupAppDevMX
+            MX_BS_GRANULAR = buildMX(bsUse);
+            MX_BS = rollupAppDevMX(MX_BS_GRANULAR); // Application Development rollup — see rollupAppDevMX
         }
 
         function loadData() {
@@ -2544,69 +2573,126 @@
         }
 
         function renderKPIs(fp, mx) {
-            /* BS: Active/Pending now derive from the same canonical pfNormalizeStatus()
-               bucketing used by the Status-first Heatmap and Portfolio View — this is
-               the fix for the "12 active but only 1 reconciles to Design" bug: the KPI
-               count and the per-status breakdown were previously two independently
-               drifting regexes that could (and did) disagree. Now there's one source of
-               truth, so they're structurally guaranteed to match. "Active" = the field-set
-               "Active" bucket from the meeting notes (Design through Post Support);
-               "Pending" = Enterprise Review. Comm keeps its original regex untouched —
-               its Status format wasn't part of this confirmation. */
-            function ia(s) {
-                if (TAB === 'bs') { var c = pfNormalizeStatus(s); return ['Design', 'Build', 'Test', 'Deployment', 'Post Support'].indexOf(c) > -1; }
-                return /active|in.progress|test|build|deployment|post.support|design/i.test(s || '');
-            }
-            function ip(s) {
-                if (TAB === 'bs') return pfNormalizeStatus(s) === 'Enterprise Review';
-                return /pending|discovery|enterprise.review/i.test(s || '');
-            }
+            if (TAB === 'bs') { renderKPIsBS(); return; }
+            renderKPIsComm(fp, mx);
+        }
+
+        /* Comm KPI strip — UNCHANGED, this is the original 5-tile set. Jerry's 7/2/26
+           request to redesign the tiles was specifically for "the top of all 3
+           screens" (Heatmap/Portfolio/Gantt — all BS-only views), so Comm keeps its
+           original tiles. */
+        function renderKPIsComm(fp, mx) {
+            function ia(s) { return /active|in.progress|test|build|deployment|post.support|design/i.test(s || ''); }
+            function ip(s) { return /pending|discovery|enterprise.review/i.test(s || ''); }
             var dem = 0, nr = 0, ov = 0;
             var moNow = MONTHS.filter(function (m) { return m.key === CK; })[0];
             var wdNow = moNow ? wdays(moNow.start, moNow.end) : 0;
             Object.keys(mx).forEach(function (d) {
                 var cell = mx[d][CK]; if (!cell) return;
                 dem += cell.totalHours;
-                /* Tab-aware capacity: Comm uses FTE×8×wdays; BS uses monthly hours from capacity sheet */
-                var capH = TAB === 'comm' ? (CAP[d] ? CAP[d] * HRS * wdNow : null) : (BS_CAP[d] || null);
+                var capH = CAP[d] ? CAP[d] * HRS * wdNow : null;
                 if (capH) { if (cell.totalHours >= capH * 0.9) nr++; if (cell.totalHours > capH) ov++; }
             });
-            fp.forEach(function (p) { });
-            var holdKpi = PROJECTS.filter(function (p) { return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && !p.capacityExcluded && isOnHold(p.status); }).length;
+            var holdKpi = PROJECTS.filter(function (p) { return p.source === 'Commercialization' && !p.capacityExcluded && isOnHold(p.status); }).length;
             var acc = ['#52B788', '#52B788', '#2563EB', '#F97316', ov > 0 ? '#EF4444' : '#22C55E'];
-            /* Pending-by-owner breakdown — BS only (Comm has no IT Function Owner field) */
-            var pendingProjects = TAB === 'bs' ? fp.filter(function (p) { return ip(p.status); }) : [];
-            var pendingByOwner = {};
-            pendingProjects.forEach(function (p) {
-                var k = p.itOwnerName || 'Unassigned';
-                (pendingByOwner[k] = pendingByOwner[k] || []).push(p.name);
-            });
-            var pendingOwnerKeys = Object.keys(pendingByOwner).sort();
             var ks = [
                 { v: fp.length, l: 'Total Projects', s: fp.filter(function (p) { return ia(p.status); }).length + ' active · ' + fp.filter(function (p) { return ip(p.status); }).length + ' pending' },
-                { v: Object.keys(mx).length, l: 'Active Departments', s: (TAB === 'comm' ? Object.keys(CAP).length : Object.keys(BS_CAP).length) + ' with defined capacity' },
+                { v: Object.keys(mx).length, l: 'Active Departments', s: Object.keys(CAP).length + ' with defined capacity' },
                 { v: fmtHrs(dem), l: 'Current Month Hour Demand', s: 'FTE × 8 hrs/day × working days' },
                 { v: nr, l: 'Depts Near Capacity', s: '≥ 90% hours utilized this month' },
                 { v: holdKpi, l: 'Projects On Hold', s: SHOW_ON_HOLD ? 'Included in hrs (dimmed)' : 'Currently excluded from hrs' }
             ];
             document.getElementById('kpi-strip').innerHTML = ks.map(function (k, i) {
-                var extra = '';
-                if (i === 0 && pendingProjects.length > 0) {
-                    extra = '<div onclick="event.stopPropagation();KPI_PENDING_OPEN=!KPI_PENDING_OPEN;renderAll();" style="cursor:pointer;color:#2563EB;font-size:10px;margin-top:4px;font-weight:600;user-select:none">'
-                        + (KPI_PENDING_OPEN ? '▾' : '▸') + ' pending by owner</div>';
-                    if (KPI_PENDING_OPEN) {
-                        extra += '<div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.6">'
-                            + pendingOwnerKeys.map(function (k2) {
-                                return '<div title="' + esc(pendingByOwner[k2].join(', ')) + '">' + esc(k2) + ': ' + pendingByOwner[k2].length + '</div>';
-                            }).join('')
-                            + '</div>';
-                    }
-                }
                 return '<div class="kpi-card" style="border-top:3px solid ' + acc[i] + '">'
                     + '<div class="kv" style="color:' + (i >= 3 && k.v > 0 ? acc[i] : 'var(--dark)') + '">' + k.v + '</div>'
-                    + '<div class="kl">' + k.l + '</div><div class="ks">' + k.s + '</div>' + extra + '</div>';
+                    + '<div class="kl">' + k.l + '</div><div class="ks">' + k.s + '</div></div>';
             }).join('');
         }
+
+        /* Utilization color bands — matches clr()'s thresholds (Heatmap cell coloring)
+           so a KPI tile and the grid always agree on what counts as "in the green". */
+        function utilAccentColor(pct) {
+            if (pct == null) return '#9CA3AF';
+            if (pct <= 0.75) return '#22C55E';
+            if (pct <= 0.9) return '#EAB308';
+            if (pct <= 1) return '#F97316';
+            return '#EF4444';
+        }
+        /* Current-month utilization % for a single dept — used by the AppDev/Analytics/
+           PowerApps tiles. mx/cap are passed in so the same helper works against
+           either the rolled-up (MX_BS/BS_CAP) or granular (MX_BS_GRANULAR/
+           BS_CAP_GRANULAR) pair — Power Apps specifically needs the granular one
+           since rollupAppDevMX folds it into "Application Development" everywhere
+           else this dashboard displays it. Returns null if no capacity is defined. */
+        function deptUtilPctCurrentMonth(mx, cap, dept) {
+            var capH = cap[dept];
+            if (!capH) return null;
+            var cell = mx[dept] && mx[dept][CK];
+            var hrs = cell ? cell.totalHours : 0;
+            return hrs / capH;
+        }
+        /* Finds the soonest upcoming Ent SteerCo Agenda Date among Enterprise Review
+           projects, and counts how many share that exact date — i.e. "next SteerCo"
+           session and how many projects are slated for it. Uses curPortfolioProjects()
+           (full status range, unfiltered by the slicer bar) since this KPI should
+           reflect the true portfolio state, not whatever's currently sliced below —
+           same reasoning as the rest of the KPI strip being slicer-independent. */
+        function nextSteerCoInfo() {
+            var today = new Date(); today.setHours(0, 0, 0, 0);
+            var candidates = curPortfolioProjects()
+                .filter(function (p) { return pfNormalizeStatus(p.status) === 'Enterprise Review' && p.entSteerCoDate; })
+                .map(function (p) { return { p: p, d: pd(p.entSteerCoDate) }; })
+                .filter(function (x) { return x.d && x.d >= today; });
+            if (!candidates.length) return { count: 0, date: null };
+            var minTime = Math.min.apply(null, candidates.map(function (x) { return x.d.getTime(); }));
+            return { count: candidates.filter(function (x) { return x.d.getTime() === minTime; }).length, date: new Date(minTime) };
+        }
+
+        /* BS KPI strip — redesigned 7/2/26 per Jerry, replacing the old 5 tiles
+           (which duplicated info already visible in the Heatmap/Portfolio/Gantt
+           below) with metrics that aren't otherwise visible at a glance:
+             1. High Priority project count — clickable, toggles the Priority slicer
+                to "High" so the rest of the dashboard (whichever view is active)
+                filters down to just those projects across every dept.
+             2. Enterprise Review projects slated for the next SteerCo session.
+             3-5. Current-month utilization % for Application Development (rolled-up),
+                Analytics, and Power Apps (broken back out from the rollup) — the
+                three dept-level numbers Jerry specifically wanted visible up top.
+           Deliberately NOT filtered by PF_SLICER (dept/owner/resource/priority) —
+           same reasoning as the old KPI strip: these are meant to reflect the true
+           portfolio state regardless of whatever lens the view below is currently
+           sliced to, not shrink to match it. */
+        function renderKPIsBS() {
+            var highProjs = curPortfolioProjects().filter(function (p) { return p.priorityTier === 'High'; });
+            var steerCo = nextSteerCoInfo();
+            var appDevPct = deptUtilPctCurrentMonth(MX_BS, BS_CAP, 'Application Development');
+            var analyticsPct = deptUtilPctCurrentMonth(MX_BS, BS_CAP, 'Analytics');
+            var powerAppsPct = deptUtilPctCurrentMonth(MX_BS_GRANULAR, BS_CAP_GRANULAR, 'Power Apps');
+            var priorityActive = PF_SLICER.priority === 'High';
+            function pctDisplay(pct) { return pct == null ? '—' : Math.round(pct * 100) + '%'; }
+            function pctSub(pct) { return pct == null ? 'No capacity defined' : 'of monthly capacity'; }
+            var ks = [
+                {
+                    v: highProjs.length, l: 'High Priority Projects', s: priorityActive ? 'Filter active — click to clear' : 'Click to filter dashboard',
+                    acc: priorityActive ? '#EF4444' : '#F97316', clickable: true
+                },
+                {
+                    v: steerCo.count, l: 'Enterprise Review — Next SteerCo',
+                    s: steerCo.date ? ('Slated for ' + steerCo.date.toLocaleString('default', { month: 'short', day: 'numeric', year: 'numeric' })) : 'No upcoming SteerCo date found',
+                    acc: '#2563EB', clickable: false
+                },
+                { v: pctDisplay(appDevPct), l: 'Application Development Utilization', s: pctSub(appDevPct), acc: utilAccentColor(appDevPct), clickable: false },
+                { v: pctDisplay(analyticsPct), l: 'Analytics Utilization', s: pctSub(analyticsPct), acc: utilAccentColor(analyticsPct), clickable: false },
+                { v: pctDisplay(powerAppsPct), l: 'Power Apps Utilization', s: pctSub(powerAppsPct), acc: utilAccentColor(powerAppsPct), clickable: false }
+            ];
+            document.getElementById('kpi-strip').innerHTML = ks.map(function (k) {
+                return '<div class="kpi-card' + (k.clickable ? ' kpi-clickable' : '') + (k === ks[0] && priorityActive ? ' kpi-active' : '') + '" style="border-top:3px solid ' + k.acc + '"'
+                    + (k.clickable ? ' data-kpi-priority="1"' : '') + '>'
+                    + '<div class="kv" style="color:' + k.acc + '">' + k.v + '</div>'
+                    + '<div class="kl">' + k.l + '</div><div class="ks">' + k.s + '</div></div>';
+            }).join('');
+        }
+
 
         /* Renders the existing dept-group → dept-row → month-cell table body for a given
            matrix. collPrefix scopes COLL collapse keys (so the same dept-group label
@@ -2693,8 +2779,10 @@
         function renderHMMissingCallout(missing) {
             var lines = missing.map(function (p) {
                 var reason;
-                if (!p.ftes || !Object.keys(p.ftes).length) {
-                    reason = 'no department attribution or IT Owner Estimated Hours';
+                if (!p.itDept) {
+                    reason = 'no Owning Department attribution';
+                } else if (!p.ftes || !p.ftes[p.itDept]) {
+                    reason = 'no IT Owner Estimated Hours';
                 } else {
                     var s = pd(p.startDate), e = pd(p.endDate);
                     if (!s || !e || s > e) reason = 'missing or invalid start/end date';
@@ -2712,12 +2800,9 @@
             var byDept = {};
             var missing = [];
             projs.forEach(function (p) {
-                var deptKeys = Object.keys(p.ftes || {});
-                if (!deptKeys.length) { missing.push(p); return; }
-                deptKeys.forEach(function (dept) {
-                    var mainDept = getPortfolioDeptKey(dept).mainDept;
-                    (byDept[mainDept] = byDept[mainDept] || []).push(p);
-                });
+                if (!p.itDept) { missing.push(p); return; }
+                var mainDept = getPortfolioDeptKey(p.itDept).mainDept;
+                (byDept[mainDept] = byDept[mainDept] || []).push(p);
             });
             if (missing.length) h += renderHMMissingCallout(missing);
             var deptKeys = Object.keys(byDept).sort();
@@ -2871,17 +2956,17 @@
         }
 
         /* Shared PF_SLICER project-level filter — used by both Portfolio View and the
-           Heatmap's Status-first BS mode so "Dept / IT Owner / IT Resources" behave
-           identically in either view. Dept filtering is at the mainDept level (matches
-           getPortfolioDeptKey), so filtering to "Application Development" also keeps
-           its Master Data / Power Apps sub-dept projects. */
+           Heatmap's Status-first BS mode so "Dept / IT Owner / IT Resources / Priority"
+           behave identically in every view. Dept filtering is at the mainDept level
+           (matches getPortfolioDeptKey), so filtering to "Application Development"
+           also keeps its Master Data / Power Apps sub-dept projects. */
         function applyPFSlicer(projs) {
             return projs.filter(function (p) {
                 if (PF_SLICER.itOwner && p.itOwnerName !== PF_SLICER.itOwner) return false;
                 if (PF_SLICER.itResource && (p.itResources || []).indexOf(PF_SLICER.itResource) === -1) return false;
+                if (PF_SLICER.priority && p.priorityTier !== PF_SLICER.priority) return false;
                 if (PF_SLICER.dept) {
-                    var hasDept = Object.keys(p.ftes || {}).some(function (d) { return getPortfolioDeptKey(d).mainDept === PF_SLICER.dept; });
-                    if (!hasDept) return false;
+                    if (!p.itDept || getPortfolioDeptKey(p.itDept).mainDept !== PF_SLICER.dept) return false;
                 }
                 return true;
             });
@@ -2926,33 +3011,36 @@
             var fp = curPortfolioProjects();
             var deptSet = {}, ownerSet = {}, resSet = {};
             fp.forEach(function (p) {
-                Object.keys(p.ftes || {}).forEach(function (dept) { deptSet[getPortfolioDeptKey(dept).mainDept] = true; });
+                if (p.itDept) deptSet[getPortfolioDeptKey(p.itDept).mainDept] = true;
                 if (p.itOwnerName) ownerSet[p.itOwnerName] = true;
                 (p.itResources || []).forEach(function (r) { if (r) resSet[r] = true; });
             });
             var depts = Object.keys(deptSet).sort();
             var owners = Object.keys(ownerSet).sort();
             var resources = Object.keys(resSet).sort();
+            var priorities = ['High', 'Medium', 'Low']; // fixed tier set — see PRIORITY_TIER_RANK
             function opts(list, cur) {
                 return '<option value="">All</option>' + list.map(function (v) {
                     return '<option value="' + esc(v) + '"' + (cur === v ? ' selected' : '') + '>' + esc(v) + '</option>';
                 }).join('');
             }
-            var anyActive = PF_SLICER.dept || PF_SLICER.itOwner || PF_SLICER.itResource;
+            var anyActive = PF_SLICER.dept || PF_SLICER.itOwner || PF_SLICER.itResource || PF_SLICER.priority;
             bar.innerHTML =
                 '<span class="slicer-lbl">Filter</span>'
                 + '<select class="slicer-select" id="sl-dept"><optgroup label="Dept">' + opts(depts, PF_SLICER.dept) + '</optgroup></select>'
                 + '<select class="slicer-select" id="sl-owner"><optgroup label="IT Owner">' + opts(owners, PF_SLICER.itOwner) + '</optgroup></select>'
                 + '<select class="slicer-select" id="sl-res"><optgroup label="IT Resource">' + opts(resources, PF_SLICER.itResource) + '</optgroup></select>'
+                + '<select class="slicer-select" id="sl-priority"><optgroup label="Priority">' + opts(priorities, PF_SLICER.priority) + '</optgroup></select>'
                 + (anyActive ? '<button class="slicer-clear" id="sl-clear" type="button">Clear filters</button>' : '');
             bar.className = 'slicer-bar show';
-            /* renderAll() re-dispatches to whichever BS_VIEW is active (Heatmap or Portfolio),
-               keeps both in sync with the same filter state either way. */
+            /* renderAll() re-dispatches to whichever BS_VIEW is active (Heatmap, Portfolio,
+               or Gantt), keeps all three in sync with the same filter state either way. */
             document.getElementById('sl-dept').onchange = function () { PF_SLICER.dept = this.value || null; renderAll(); };
             document.getElementById('sl-owner').onchange = function () { PF_SLICER.itOwner = this.value || null; renderAll(); };
             document.getElementById('sl-res').onchange = function () { PF_SLICER.itResource = this.value || null; renderAll(); };
+            document.getElementById('sl-priority').onchange = function () { PF_SLICER.priority = this.value || null; renderAll(); };
             var clearBtn = document.getElementById('sl-clear');
-            if (clearBtn) clearBtn.onclick = function () { PF_SLICER = { dept: null, itOwner: null, itResource: null }; renderAll(); };
+            if (clearBtn) clearBtn.onclick = function () { PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; renderAll(); };
         }
 
         /* Builds the Status → Dept → (Sub-Dept →) Project tree from curPortfolioProjects()
@@ -2962,43 +3050,37 @@
             var body = document.getElementById('pf-body');
             var fp = applyPFSlicer(curPortfolioProjects());
             var tree = {}; // status -> { it:{dept:{sub:{projs:[]}, projs:[]}}, business:{dept:{projs:[]}} }
-            var missingByStatus = {}; // status -> [projects with no dept attribution at all — see renderPFMissingCallout]
+            var missingByStatus = {}; // status -> [projects with no Owning Department attribution at all — see renderPFMissingCallout]
             var totalRows = 0;
             fp.forEach(function (p) {
                 var status = pfNormalizeStatus(p.status);
-                var deptKeysForP = Object.keys(p.ftes || {});
                 if (!tree[status]) tree[status] = {}; // ensure the status bucket exists even if every project in it is missing-only
-                if (!deptKeysForP.length) {
+                if (!p.itDept) {
                     (missingByStatus[status] = missingByStatus[status] || []).push(p);
                     totalRows++;
                     return;
                 }
-                deptKeysForP.forEach(function (dept) {
-                    var pk = getPortfolioDeptKey(dept);
-                    /* applyPFSlicer already confirmed this project touches SOME matching dept —
-                       still need this per-iteration check for multi-dept projects so only the
-                       matching dept's row gets built, not every dept the project happens to touch */
-                    if (PF_SLICER.dept && pk.mainDept !== PF_SLICER.dept) return;
-                    if (!tree[status][pk.mainDept]) tree[status][pk.mainDept] = { branch: pk.branch, subs: {}, projs: [] };
-                    var node = tree[status][pk.mainDept];
-                    var row = {
-                        projectId: p.projectId, name: p.name, status: p.status,
-                        owner: (p.deptOwners && p.deptOwners[dept]) || p.owner || null,
-                        percentComplete: p.percentComplete,
-                        rowPermalink: p.rowPermalink, epoLead: p.epoLead, hold: isOnHold(p.status),
-                        priorityTier: p.priorityTier || null, buildDate: p.buildDate || null,
-                        endDate: p.endDate || null, itResources: p.itResources || [],
-                        itEstHrs: p.itEstHrs || null, statusUpdate: p.statusUpdate || null,
-                        bsFolder: p.bsFolder || null
-                    };
-                    totalRows++;
-                    if (pk.subDept) {
-                        if (!node.subs[pk.subDept]) node.subs[pk.subDept] = { label: pk.subDeptLabel, projs: [] };
-                        node.subs[pk.subDept].projs.push(row);
-                    } else {
-                        node.projs.push(row);
-                    }
-                });
+                var pk = getPortfolioDeptKey(p.itDept);
+                /* applyPFSlicer already confirmed this matches PF_SLICER.dept if one is set */
+                if (!tree[status][pk.mainDept]) tree[status][pk.mainDept] = { branch: pk.branch, subs: {}, projs: [] };
+                var node = tree[status][pk.mainDept];
+                var row = {
+                    projectId: p.projectId, name: p.name, status: p.status,
+                    owner: (p.deptOwners && p.deptOwners[p.itDept]) || p.owner || null,
+                    percentComplete: p.percentComplete,
+                    rowPermalink: p.rowPermalink, epoLead: p.epoLead, hold: isOnHold(p.status),
+                    priorityTier: p.priorityTier || null, buildDate: p.buildDate || null,
+                    endDate: p.endDate || null, itResources: p.itResources || [],
+                    itEstHrs: p.itEstHrs || null, statusUpdate: p.statusUpdate || null,
+                    bsFolder: p.bsFolder || null
+                };
+                totalRows++;
+                if (pk.subDept) {
+                    if (!node.subs[pk.subDept]) node.subs[pk.subDept] = { label: pk.subDeptLabel, projs: [] };
+                    node.subs[pk.subDept].projs.push(row);
+                } else {
+                    node.projs.push(row);
+                }
             });
             if (!totalRows) {
                 body.innerHTML = '<div class="pf-empty">No projects match the current filters' + (TAB === 'bs' ? '.' : ' for this tab.') + '</div>';
@@ -3086,15 +3168,16 @@
            renderRaidSection() the Heatmap drill panel uses, keyed off PF_RAID_EXPANDED
            (mirrors EXPANDED there, just string-keyed since Portfolio/Gantt rows
            aren't numerically indexed). */
-        /* Callout for projects counted in a status's header badge but with no dept
-           attribution at all (empty ftes — no Owning Department match, or no IT
-           Owner Estimated Hours) — so they never made it into any dept/sub-dept node
-           in the tree. Div-based equivalent of the Heatmap's renderHMMissingCallout;
-           same reasoning, same visual language, adapted to Portfolio's div structure. */
+        /* Callout for projects counted in a status's header badge but with no
+           Owning Department attribution (i.e. no p.itDept) — so they never made it
+           into any dept/sub-dept node in the tree. Purely about the "Owning
+           Department" field being populated/valid — NOT about hours or Departments
+           Involved (per Jerry, 7/2/26: attribution means Owning Department only).
+           Div-based equivalent of the Heatmap's renderHMMissingCallout. */
         function renderPFMissingCallout(missing) {
             var names = missing.map(function (p) { return '<span style="font-weight:600">' + esc(p.name) + '</span>'; }).join(' · ');
             return '<div style="margin:4px 16px 8px;padding:6px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:5px;font-size:11px;color:#92400E;line-height:1.6">'
-                + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' counted above but not shown below — no department attribution or IT Owner Estimated Hours: ' + names
+                + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' counted above but not shown below — Owning Department is blank or not a recognized IT & Digital value: ' + names
                 + '</div>';
         }
         function renderPFRowDetailHTML(r, rowKey) {
@@ -3197,15 +3280,12 @@
             fp.forEach(function (p) {
                 var status = pfNormalizeStatus(p.status);
                 if (PF_UTILIZATION_EXEMPT_STATUSES.indexOf(status) > -1) return; // pre-Build — expected, not a gap
-                var deptKeysForP = Object.keys(p.ftes || {});
-                if (!deptKeysForP.length) {
-                    missing.push({ name: p.name, reason: 'no department attribution or IT Owner Estimated Hours' });
+                if (!p.itDept) {
+                    missing.push({ name: p.name, reason: 'no Owning Department attribution' });
                     return;
                 }
-                var matchingPairs = deptKeysForP.map(function (d) { return { dept: d, pk: getPortfolioDeptKey(d) }; }).filter(function (pair) {
-                    return !PF_SLICER.dept || pair.pk.mainDept === PF_SLICER.dept;
-                });
-                if (!matchingPairs.length) return; // legitimately filtered out by the Dept slicer, not a data issue
+                var pk = getPortfolioDeptKey(p.itDept);
+                if (PF_SLICER.dept && pk.mainDept !== PF_SLICER.dept) return; // legitimately filtered out by the Dept slicer, not a data issue
                 if (!p.buildDate || !p.endDate) {
                     missing.push({ name: p.name, reason: 'missing Build Date or Anticipated End Date' });
                     return;
@@ -3216,19 +3296,17 @@
                     return;
                 }
                 if (ei < bi) ei = bi; // end before build (bad data) — draw a 1-month sliver rather than a negative-width bar
-                matchingPairs.forEach(function (pair) {
-                    (byDept[pair.pk.mainDept] = byDept[pair.pk.mainDept] || []).push({
-                        projectId: p.projectId, name: p.name, status: p.status,
-                        owner: (p.deptOwners && p.deptOwners[pair.dept]) || p.owner || null,
-                        percentComplete: p.percentComplete, rowPermalink: p.rowPermalink,
-                        epoLead: p.epoLead, hold: isOnHold(p.status),
-                        priorityTier: p.priorityTier || null, buildDate: p.buildDate,
-                        endDate: p.endDate, itResources: p.itResources || [],
-                        itEstHrs: p.itEstHrs || null, statusUpdate: p.statusUpdate || null,
-                        bsFolder: p.bsFolder || null, barStart: bi, barEnd: ei
-                    });
-                    totalBars++;
+                (byDept[pk.mainDept] = byDept[pk.mainDept] || []).push({
+                    projectId: p.projectId, name: p.name, status: p.status,
+                    owner: (p.deptOwners && p.deptOwners[p.itDept]) || p.owner || null,
+                    percentComplete: p.percentComplete, rowPermalink: p.rowPermalink,
+                    epoLead: p.epoLead, hold: isOnHold(p.status),
+                    priorityTier: p.priorityTier || null, buildDate: p.buildDate,
+                    endDate: p.endDate, itResources: p.itResources || [],
+                    itEstHrs: p.itEstHrs || null, statusUpdate: p.statusUpdate || null,
+                    bsFolder: p.bsFolder || null, barStart: bi, barEnd: ei
                 });
+                totalBars++;
             });
             if (!totalBars && !missing.length) {
                 inner.innerHTML = '<div class="gantt-empty">No projects with both a Build Date and Anticipated End Date match the current filters.</div>';
@@ -3527,7 +3605,7 @@
             var b = document.getElementById('btn-refresh'); b.disabled = on; b.textContent = on ? '↻  Loading…' : '↻  Refresh';
         }
         function switchTab(t) {
-            TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'heatmap'; PF_COLL = {}; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
+            TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'heatmap'; PF_COLL = {}; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
             document.getElementById('tab-comm').className = 'tab ' + (t === 'comm' ? 'active' : '');
             document.getElementById('tab-bs').className = 'tab ' + (t === 'bs' ? 'active' : '');
             document.getElementById('vt-heatmap').className = 'vt-btn active';
@@ -3575,6 +3653,13 @@
                 if (pfHdr && pfHdr.getAttribute && pfHdr.getAttribute('data-pfkey')) {
                     var pk = pfHdr.getAttribute('data-pfkey');
                     PF_COLL[pk] = !PF_COLL[pk]; renderPortfolioView(); return;
+                }
+                /* KPI strip — High Priority tile toggles the Priority slicer to "High" */
+                var kpiPriority = t;
+                while (kpiPriority && !(kpiPriority.getAttribute && kpiPriority.getAttribute('data-kpi-priority'))) kpiPriority = kpiPriority.parentNode;
+                if (kpiPriority && kpiPriority.getAttribute && kpiPriority.getAttribute('data-kpi-priority')) {
+                    PF_SLICER.priority = (PF_SLICER.priority === 'High') ? null : 'High';
+                    renderAll(); return;
                 }
                 /* Gantt — dept-group collapse toggle */
                 var ganttHdr = t;
