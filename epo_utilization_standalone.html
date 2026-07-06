@@ -1461,6 +1461,16 @@
        "more than two people full-time on one BS initiative is already a red
        flag" — adjust if that's too aggressive/lenient once more data is live. */
     var MAX_PLAUSIBLE_FTE = 2.0;
+    /* Design-phase hours (7/6/26 feature): Design previously carried zero hours
+       at all — confusing to business stakeholders who don't track the Design
+       vs. Build distinction and just see a project with "no hours" and assume
+       nothing's happening. Cross-Functional Complexity Rating now drives a flat
+       monthly hours ADD-ON while a project sits in Design — flat (not prorated
+       by working days) because it's a rough capacity-planning estimate, not a
+       measured rate. Only High/Medium/Low map to a rate; "No complexity ratings
+       yet" / "No departments identified" / blank intentionally do NOT default to
+       a rate — better to show as a gap needing a rating than to guess. */
+    var DESIGN_COMPLEXITY_HOURS_PER_MONTH = { 'High': 28, 'Medium': 12, 'Low': 8 };
 
     /* ── CAPACITY (FTE) ── */
     var CAP = {
@@ -1650,7 +1660,15 @@
        that stage. Used to gate the Heatmap's hours math (see parseSheet/buildMX)
        and to render those two statuses as a flat project list instead of an
        hours grid, since there's nothing numeric to show yet. */
-    var PF_UTILIZATION_EXEMPT_STATUSES = ['Enterprise Review', 'Design'];
+    /* CHANGED 7/6/26: Design used to be exempt (zero hours) alongside Enterprise
+       Review — confusing to the business, who'd see a project with real IT
+       engagement showing "no hours" and assume nothing was tracked. Design now
+       gets a complexity-based flat monthly hours estimate (see
+       DESIGN_COMPLEXITY_HOURS_PER_MONTH / buildMX's Design branch), so it's
+       removed from this list. Enterprise Review stays exempt — that early a
+       stage genuinely has no Owning Department or complexity data most of the
+       time, so there's nothing reliable to estimate from yet. */
+    var PF_UTILIZATION_EXEMPT_STATUSES = ['Enterprise Review'];
 
     /* Non-IT business depts (Portfolio View): Status → Dept → Owner, no sub-dept level.
        Confirmed against the live BS Portfolio Master Sheet column list (7/1/26) — naming
@@ -1822,6 +1840,18 @@
           var dur = parseFloat(g(durationCol)); var startD = pd(sd);
           if (!isNaN(dur) && dur > 0 && startD) { var endD = new Date(startD); endD.setDate(endD.getDate() + Math.round(dur * 30.44)); ed = endD.toISOString().split('T')[0]; }
         }
+        /* Design-hours feature (7/6/26): raw Created Date (Enterprise Review's
+           Gantt bar start) and raw Design Kickoff Date (Design-hours spread
+           start — deliberately NOT the same as "sd" above, which falls back to
+           Ent SteerCo Agenda Date for Enterprise Review rows; Design-phase hours
+           should only ever spread from the real Design Kickoff Date). Complexity
+           rating maps to a flat monthly rate via DESIGN_COMPLEXITY_HOURS_PER_MONTH
+           — unmapped values (unrated projects) intentionally yield no rate. */
+        var createdDateRaw = (src === 'Business Support') ? (g('Created date') || null) : null;
+        var designKickoffRaw = (src === 'Business Support') ? (g('Design (Kickoff) Date') || null) : null;
+        var crossFunctionalComplexity = (src === 'Business Support') ? (g('Cross-Functional Complexity Rating') || null) : null;
+        var designHourlyRate = (crossFunctionalComplexity && DESIGN_COMPLEXITY_HOURS_PER_MONTH.hasOwnProperty(crossFunctionalComplexity))
+          ? DESIGN_COMPLEXITY_HOURS_PER_MONTH[crossFunctionalComplexity] : null;
         var ftes = {};
         Object.keys(fmap).forEach(function (col) { var v = parseFloat(g(col)); if (!isNaN(v) && v > 0) ftes[fmap[col]] = v; });
         /* BS IT & Digital: derive dept hours from "IT Owner Estimated Hours", attributed
@@ -1903,7 +1933,7 @@
           if (rawOwningDeptTrimmed && !itDept) {
             console.warn('[EPO] Unrecognized "Owning Department" value: "' + rawOwningDeptTrimmed + '" on project "' + nm + '" — not mapped to any IT & Digital dept, so this project will show as unattributed. Add it to IT_DEPT_ABBREV if it should map to one.');
           }
-          if (itDept && itHrs) {
+          if (itDept && itHrs && canonicalStatus !== 'Design') {
             /* FIX (7/6/26): this used to spread itHrs from "sd" — Design (Kickoff)
                Date / Ent SteerCo Agenda Date fallback — regardless of what stage
                the project is actually in. For a project already in Build/Test/
@@ -1912,7 +1942,13 @@
                window and dilutes/misplaces the monthly hours (root cause of the
                Build-status-row hours bug, 7/6/26 feedback). Build Date is the
                correct start for this math once it exists; only fall back to sd
-               for projects that haven't hit Build yet (Build Date still blank). */
+               for projects that haven't hit Build yet (Build Date still blank).
+               EXTENDED 7/6/26: also gated off entirely while canonicalStatus is
+               'Design' — per Jerry, IT Owner Estimated Hours never included
+               Design-phase effort, only Build→Post Support. Spreading it while
+               still in Design would double-count against the new complexity-based
+               Design estimate below. Once the project reaches Build, this
+               re-engages normally using the real Build Date. */
             var _is = pd(buildDateRaw) || pd(sd), _ie = pd(ed);
             if (_is && _ie && _is <= _ie) {
               var totalWd = wdays(_is, _ie);
@@ -2011,7 +2047,12 @@
           capacityExcluded: capacityExcluded,
           utilizationExempt: utilizationExempt,
           itDept: (typeof itDept !== 'undefined') ? itDept : null,
-          rawOwningDept: (typeof rawOwningDeptTrimmed !== 'undefined' && rawOwningDeptTrimmed) ? rawOwningDeptTrimmed : null
+          rawOwningDept: (typeof rawOwningDeptTrimmed !== 'undefined' && rawOwningDeptTrimmed) ? rawOwningDeptTrimmed : null,
+          createdDate: createdDateRaw,
+          designKickoffDate: designKickoffRaw,
+          crossFunctionalComplexity: crossFunctionalComplexity,
+          designHourlyRate: designHourlyRate,
+          canonicalStatus: (typeof canonicalStatus !== 'undefined') ? canonicalStatus : null
         });
         return acc;
       }, []);
@@ -2020,10 +2061,45 @@
     /* ════════════════════════════════════════════════════════
        HOURS MATRIX
        Monthly Hours = FTE × 8 hrs/day × working-days overlap
+       EXCEPT Design-stage BS projects (7/6/26): a flat complexity-based hours/
+       month add-on (DESIGN_COMPLEXITY_HOURS_PER_MONTH), NOT prorated by working
+       days — it's a rough capacity-planning estimate, not a measured rate, and
+       applied open-ended from Design Kickoff Date through the end of the visible
+       window (no fixed end while status is still Design — see 7/6/26 decision).
     ════════════════════════════════════════════════════════ */
     function buildMX(projs) {
       var mx = {};
       projs.forEach(function (p) {
+        if (p.canonicalStatus === 'Design') {
+          if (!p.itDept || !p.designHourlyRate || !p.designKickoffDate) return; // unattributed/unrated — handled as a "missing" gap upstream, not here
+          var dks = pd(p.designKickoffDate);
+          if (!dks) return;
+          var dept = p.itDept;
+          if (!mx[dept]) mx[dept] = {};
+          MONTHS.forEach(function (mo) {
+            if (mo.end < dks) return; // month entirely before Design Kickoff — not yet in Design
+            if (!mx[dept][mo.key]) mx[dept][mo.key] = { totalHours: 0, projects: [] };
+            mx[dept][mo.key].totalHours += p.designHourlyRate;
+            mx[dept][mo.key].projects.push({
+              name: p.name, hours: p.designHourlyRate, fte: null, source: p.source, status: p.status,
+              rowId: p.rowId, rowPermalink: p.rowPermalink, projectId: p.projectId,
+              percentComplete: p.percentComplete, owner: p.owner,
+              startDate: p.startDate, endDate: p.endDate,
+              endDateEstimated: !!p.endDateEstimated,
+              bsFolder: p.bsFolder || null,
+              epoLead: p.epoLead || null,
+              deptOwner: (p.deptOwners && p.deptOwners[dept]) || null,
+              businessOwner: p.businessOwner || null,
+              itOwnerName: p.itOwnerName || null,
+              itResources: p.itResources || [],
+              itEstHrs: p.itEstHrs || null,
+              statusUpdate: p.statusUpdate || null,
+              isDesignEstimate: true,
+              complexityRating: p.crossFunctionalComplexity || null
+            });
+          });
+          return; // Design uses only this flat model — never falls through to the FTE branch below
+        }
         var s = pd(p.startDate), e = pd(p.endDate);
         if (!s || !e || s > e) return;
         Object.keys(p.ftes || {}).forEach(function (dept) {
@@ -2506,7 +2582,7 @@
       /* Swap methodology bar */
       document.getElementById('mbar').innerHTML = TAB === 'comm'
         ? '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap &nbsp;|&nbsp; Capacity = Dept FTE × 8 hrs/day × Working Days in Month &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet'
-        : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
+        : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days, except Design = flat complexity-based estimate (High=28/Medium=12/Low=8 hrs/mo, not prorated) &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
       /* View toggle only applies to BS */
       document.getElementById('view-toggle').className = 'view-toggle' + (TAB === 'bs' ? ' show' : '');
       var showHM = !(TAB === 'bs' && BS_VIEW === 'gantt');
@@ -2631,7 +2707,11 @@
       var powerAppsPct = deptUtilPctRolling(MX_BS_GRANULAR, BS_CAP_GRANULAR, 'Power Apps');
       var priorityActive = PF_SLICER.priority === 'High';
       function pctDisplay(pct) { return pct == null ? '—' : Math.round(pct * 100) + '%'; }
-      function pctSub(pct) { return pct == null ? 'No capacity defined' : 'this + next month avg'; }
+      /* 7/6/26: these utilization %s now include complexity-based Design hours
+         (buildMX's Design branch feeds MX_BS/MX_BS_GRANULAR same as everything
+         else) alongside real Build+ hours in the same monthly total — flagged
+         here per Jerry so the % isn't mistaken for 100% IT-provided figures. */
+      function pctSub(pct) { return pct == null ? 'No capacity defined' : 'this + next month avg · incl. Design est.'; }
       var ks = [
         {
           v: highProjs.length, l: 'High Priority Projects', s: priorityActive ? 'Filter active — click to clear' : 'Click to filter dashboard',
@@ -2765,9 +2845,26 @@
        below is never silent. */
     function renderHMMissingCallout(missing) {
       var lines = missing.map(function (p) {
+        /* FIX (7/6/26, found while adding Design-specific reasons): this function
+           is called with two different shapes — renderHM's non-exempt branch
+           passes {name,reason} with reason already computed, while
+           renderHMExemptGroupHTML passes the full raw project object and relies
+           on this function to derive the reason. Previously this always
+           recomputed from scratch, which meant the {name,reason} shape's real
+           reason was silently discarded and replaced with a wrong "no Owning
+           Department" guess (since bare {name,reason} objects have no itDept).
+           Now a pre-supplied reason wins if present. */
+        if (p.reason) return '<span style="font-weight:600">' + esc(p.name) + '</span> — ' + p.reason;
         var reason;
         if (!p.itDept) {
           reason = pfOwningDeptGapReason(p);
+        } else if (p.canonicalStatus === 'Design') {
+          /* Design-specific reasons (7/6/26) — separate from the Build+ branch
+             below since Design no longer uses IT Owner Estimated Hours/ftes at
+             all; it fails to plot for entirely different reasons. */
+          if (!p.designKickoffDate) reason = 'missing Design (Kickoff) Date';
+          else if (!p.designHourlyRate) reason = 'no Cross-Functional Complexity Rating set ("' + (p.crossFunctionalComplexity || 'blank') + '") — can\'t estimate Design hours without one';
+          else reason = 'date range falls outside the visible 14-month window';
         } else if (!p.ftes || !p.ftes[p.itDept]) {
           reason = 'no IT Owner Estimated Hours';
         } else {
@@ -2946,6 +3043,7 @@
             + '<span class="hm-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
             + '<span class="hm-status-name">' + esc(status).toUpperCase() + '</span>'
             + '<span class="hm-status-badge" style="background:' + badge.bg + ';color:' + badge.tx + '">' + cnt + ' project' + (cnt === 1 ? '' : 's') + '</span>'
+            + (status === 'Design' ? '<span style="margin-left:10px;font-size:10px;opacity:.75;font-weight:600;color:#0369A1">⚡ complexity-based estimate, not IT-provided</span>' : '')
             + (missing.length ? '<span style="margin-left:10px;font-size:10px;opacity:.7;font-weight:400">⚠ ' + missing.length + ' not shown below</span>' : '')
             + '</td></tr>';
           if (collapsed) return;
@@ -3138,11 +3236,31 @@
       var h = '<div class="pf-proj-detail">';
       h += '<div class="pf-det-row"><span class="pf-det-lbl">PROJECT ID</span><span class="pf-det-val">' + esc(r.projectId || '—') + '</span></div>';
       h += '<div class="pf-det-row"><span class="pf-det-lbl">STATUS</span><span class="pf-det-val">' + esc(r.status || '—') + '</span></div>';
-      h += '<div class="pf-det-row"><span class="pf-det-lbl">DEPT OWNER</span><span class="pf-det-val">' + esc(r.owner || '—') + '</span></div>';
+      h += '<div class="pf-det-row"><span class="pf-det-lbl">DEPT OWNER</span><span class="pf-det-val">' + esc(r.owner || '—') + (r.unattributed ? ' <span style="color:#F97316">— no Owning Department set</span>' : '') + '</span></div>';
       if (r.epoLead) h += '<div class="pf-det-row"><span class="pf-det-lbl">EPO LEAD</span><span class="pf-det-val">' + esc(r.epoLead) + '</span></div>';
       if (r.itResources && r.itResources.length) h += '<div class="pf-det-row"><span class="pf-det-lbl">RESOURCES</span><span class="pf-det-val">' + esc(r.itResources.join(', ')) + '</span></div>';
-      if (r.itEstHrs) h += '<div class="pf-det-row"><span class="pf-det-lbl">IT EST. HOURS</span><span class="pf-det-val">' + fmtHrs(r.itEstHrs) + '</span></div>';
-      if (r.endDate) h += '<div class="pf-det-row"><span class="pf-det-lbl">ANTICIPATED END</span><span class="pf-det-val">' + esc(fmtDate(r.endDate) || r.endDate) + (r.endDateEstimated ? ' <span style="opacity:.6;font-style:italic">(est. — no Anticipated End Date on sheet)</span>' : '') + '</span></div>';
+      if (r.isEnterpriseReview) {
+        h += '<div class="pf-det-row"><span class="pf-det-lbl">HOURS</span><span class="pf-det-val" style="opacity:.7;font-style:italic">Pre-Build — not tracked yet</span></div>';
+      } else if (r.isDesignEstimate) {
+        h += '<div class="pf-det-row"><span class="pf-det-lbl">COMPLEXITY RATING</span><span class="pf-det-val">' + esc(r.complexityRating || '—') + '</span></div>';
+        h += '<div class="pf-det-row"><span class="pf-det-lbl">DESIGN HOURS (est.)</span><span class="pf-det-val">' + fmtHrs(r.designHourlyRate || 0) + '/mo · complexity-based, not IT-provided</span></div>';
+        if (r.itEstHrs) {
+          var designShare = r.designHourlyRate || 0, buildShare = r.itEstHrs, totalShare = designShare + buildShare;
+          var designPct = totalShare > 0 ? Math.round((designShare / totalShare) * 100) : 0;
+          h += '<div class="pf-det-row" style="display:block"><span class="pf-det-lbl">FULL PROJECT PREVIEW</span></div>'
+            + '<div style="display:flex;height:14px;border-radius:3px;overflow:hidden;margin:4px 0 4px;font-size:9px">'
+            + '<div style="width:' + designPct + '%;background:#0EA5E9;min-width:2px"></div>'
+            + '<div style="width:' + (100 - designPct) + '%;background:#D1D5DB;min-width:2px"></div>'
+            + '</div>'
+            + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)">'
+            + '<span><span style="color:#0EA5E9">●</span> Design (ongoing): ' + fmtHrs(designShare) + '/mo</span>'
+            + '<span><span style="color:#9CA3AF">●</span> Build→Post Support (upcoming): ' + fmtHrs(buildShare) + ' total</span>'
+            + '</div>';
+        }
+      } else {
+        if (r.itEstHrs) h += '<div class="pf-det-row"><span class="pf-det-lbl">IT EST. HOURS</span><span class="pf-det-val">' + fmtHrs(r.itEstHrs) + '</span></div>';
+        if (r.endDate) h += '<div class="pf-det-row"><span class="pf-det-lbl">ANTICIPATED END</span><span class="pf-det-val">' + esc(fmtDate(r.endDate) || r.endDate) + (r.endDateEstimated ? ' <span style="opacity:.6;font-style:italic">(est. — no Anticipated End Date on sheet)</span>' : '') + '</span></div>';
+      }
       if (r.statusUpdate) h += '<div style="font-size:11px;color:var(--text);font-style:italic;margin:6px 0 8px">"' + esc(r.statusUpdate.length > 200 ? r.statusUpdate.slice(0, 200) + '…' : r.statusUpdate) + '"</div>';
       if (r.rowPermalink) h += '<a class="ss-link" href="' + esc(r.rowPermalink) + '" target="_blank" rel="noopener">Open in Smartsheet ↗</a>';
       h += renderRaidSection(r.projectId, 'Business Support', rowKey, PF_RAID_EXPANDED[rowKey], r.bsFolder);
@@ -3212,23 +3330,57 @@
       var fp = applyPFSlicer(curProjects());
       var byDept = {}; // mainDept -> {subs:{subDept:{label,projs:[]}}, projs:[]} — same shape as Portfolio View's tree
       var totalBars = 0;
-      /* FIX (7/6/26): Enterprise Review/Design projects used to just `return`
-         here with zero accounting — they never got a bar (correct, no Build
-         Date exists yet) but also never showed up in ANY count, so the Gantt's
-         visible total silently fell far short of the Heatmap's (which counts
-         them as flat-list rows). That's what caused the 23-vs-8 mismatch: same
-         underlying "fp" set size in both views, but Gantt only accounted for
-         the bars, not the deliberately-bar-less pre-Build projects. Now every
-         project in fp lands in exactly one bucket — a bar, preBuild, or missing
-         — so totalBars + preBuild.length + missing.length === fp.length always,
-         and that fp.length is the same number the Heatmap's status badges sum
-         to (both read from the identical applyPFSlicer(curProjects()) call). */
-      var preBuild = [];
+      /* FIX (7/6/26): every project in fp now lands in exactly one bucket — a
+         bar or a missing-data-gap reason — so totalBars + missing.length always
+         equals fp.length, the same total the Heatmap's status badges sum to.
+         EXTENDED (7/6/26, complexity-hours feature): Design used to be a
+         no-bar "expected" exclusion (preBuild); it now gets a real bar using the
+         new complexity-based hours (see buildMX). Enterprise Review still has no
+         hours concept, but per Jerry now gets a placeholder bar too (flagged if
+         unattributed) instead of being silently excluded, so business users see
+         the same set of statuses here as in the Heatmap without needing to know
+         the Design/Build distinction. */
       var missing = [];
       fp.forEach(function (p) {
         var status = pfNormalizeStatus(p.status);
-        if (PF_UTILIZATION_EXEMPT_STATUSES.indexOf(status) > -1) {
-          preBuild.push({ name: p.name, status: status });
+        if (status === 'Enterprise Review') {
+          /* Bar with no hours (7/6/26) — placeholder so ER shows up here at all.
+             Span: Created Date → whatever's next known (Design Kickoff Date if
+             it already exists, else Ent SteerCo Agenda Date, else just Created
+             Date as a 1-month marker). Flagged into "Unattributed" if Owning
+             Department isn't set — still shown, never silently dropped. */
+          var erEndRaw = p.designKickoffDate || p.entSteerCoDate || p.createdDate;
+          if (!p.createdDate || !erEndRaw) {
+            missing.push({ name: p.name, reason: 'no usable date (Created Date/Ent SteerCo Agenda Date) to place a bar' });
+            return;
+          }
+          var erBi = monthIdxClamped(p.createdDate), erEi = monthIdxClamped(erEndRaw);
+          if (erBi == null || erEi == null) {
+            missing.push({ name: p.name, reason: 'date range falls outside the visible 14-month window' });
+            return;
+          }
+          if (erEi < erBi) erEi = erBi;
+          var erPk = p.itDept ? getPortfolioDeptKey(p.itDept) : null;
+          var erMainDept = erPk ? erPk.mainDept : 'Unattributed';
+          var erRow = {
+            projectId: p.projectId, name: p.name, status: p.status,
+            owner: p.businessOwner || p.owner || null,
+            percentComplete: p.percentComplete, rowPermalink: p.rowPermalink,
+            epoLead: p.epoLead, hold: false,
+            priorityTier: p.priorityTier || null, buildDate: p.createdDate,
+            endDate: erEndRaw, endDateEstimated: false, itResources: [],
+            itEstHrs: null, statusUpdate: p.statusUpdate || null,
+            bsFolder: p.bsFolder || null, barStart: erBi, barEnd: erEi,
+            isEnterpriseReview: true, unattributed: !p.itDept
+          };
+          if (!byDept[erMainDept]) byDept[erMainDept] = { subs: {}, projs: [] };
+          if (erPk && erPk.subDept) {
+            if (!byDept[erMainDept].subs[erPk.subDept]) byDept[erMainDept].subs[erPk.subDept] = { label: erPk.subDeptLabel, projs: [] };
+            byDept[erMainDept].subs[erPk.subDept].projs.push(erRow);
+          } else {
+            byDept[erMainDept].projs.push(erRow);
+          }
+          totalBars++;
           return;
         }
         if (!p.itDept) {
@@ -3242,6 +3394,42 @@
            would incorrectly exclude every project when a granular sub-dept like
            "Power Apps" is selected, since mainDept is always "Application
            Development" post-rollup. */
+        if (status === 'Design') {
+          /* Open-ended bar (7/6/26 decision #2) — Design Kickoff Date through the
+             right edge of the visible window, since there's no fixed end while
+             still in Design; buildMX's Design branch already computes the hours
+             behind this the same way. */
+          if (!p.designKickoffDate || !p.designHourlyRate) {
+            missing.push({ name: p.name, reason: !p.designKickoffDate ? 'missing Design (Kickoff) Date' : 'no Cross-Functional Complexity Rating set ("' + (p.crossFunctionalComplexity || 'blank') + '") — can\'t estimate Design hours' });
+            return;
+          }
+          var dbi = monthIdxClamped(p.designKickoffDate);
+          if (dbi == null) {
+            missing.push({ name: p.name, reason: 'date range falls outside the visible 14-month window' });
+            return;
+          }
+          var designRow = {
+            projectId: p.projectId, name: p.name, status: p.status,
+            owner: (p.deptOwners && p.deptOwners[p.itDept]) || p.owner || null,
+            percentComplete: p.percentComplete, rowPermalink: p.rowPermalink,
+            epoLead: p.epoLead, hold: isOnHold(p.status),
+            priorityTier: p.priorityTier || null, buildDate: p.designKickoffDate,
+            endDate: null, endDateEstimated: false, itResources: p.itResources || [],
+            itEstHrs: p.itEstHrs || null, statusUpdate: p.statusUpdate || null,
+            bsFolder: p.bsFolder || null, barStart: dbi, barEnd: MONTHS.length - 1,
+            isDesignEstimate: true, complexityRating: p.crossFunctionalComplexity || null,
+            designHourlyRate: p.designHourlyRate, hours: p.designHourlyRate
+          };
+          if (!byDept[pk.mainDept]) byDept[pk.mainDept] = { subs: {}, projs: [] };
+          if (pk.subDept) {
+            if (!byDept[pk.mainDept].subs[pk.subDept]) byDept[pk.mainDept].subs[pk.subDept] = { label: pk.subDeptLabel, projs: [] };
+            byDept[pk.mainDept].subs[pk.subDept].projs.push(designRow);
+          } else {
+            byDept[pk.mainDept].projs.push(designRow);
+          }
+          totalBars++;
+          return;
+        }
         if (!p.buildDate || !p.endDate) {
           missing.push({ name: p.name, reason: 'missing Build Date or Anticipated End Date' });
           return;
@@ -3271,29 +3459,27 @@
         }
         totalBars++;
       });
-      if (!totalBars && !missing.length && !preBuild.length) {
+      if (!totalBars && !missing.length) {
         inner.innerHTML = '<div class="gantt-empty">No projects match the current filters.</div>';
         return;
       }
       var h = '<div style="margin:10px 16px 0;font-size:11px;color:var(--muted)">'
         + '<strong style="color:var(--text)">' + fp.length + ' project' + (fp.length === 1 ? '' : 's') + ' total</strong> — '
         + totalBars + ' shown as bar' + (totalBars === 1 ? '' : 's')
-        + (preBuild.length ? ' · ' + preBuild.length + ' pre-Build (no bar yet, see below)' : '')
         + (missing.length ? ' · ' + missing.length + ' data gap' + (missing.length === 1 ? '' : 's') + ' (see below)' : '')
         + '</div>';
       h += '<div class="gantt-timeline-hdr"><div class="gantt-corner">DEPARTMENT / PROJECT</div><div class="gantt-month-track">'
         + MONTHS.map(function (mo) { return '<div class="gantt-mo' + (mo.key === CK ? ' now' : '') + '">' + mo.label + '</div>'; }).join('')
         + '</div></div>';
       if (missing.length) h += renderGanttMissingCallout(missing);
-      if (preBuild.length) h += renderGanttPreBuildCallout(preBuild);
       Object.keys(byDept).sort().forEach(function (dept) {
         var dnode = byDept[dept];
         var subKeys = Object.keys(dnode.subs);
         var deptCount = dnode.projs.length + subKeys.reduce(function (m, sk) { return m + dnode.subs[sk].projs.length; }, 0);
         var dKey = 'gantt-dept:' + dept;
         var collapsed = !!GANTT_DEPT_COLL[dKey];
-        h += '<div class="gantt-dept-hdr" data-ganttdept="' + esc(dKey) + '">'
-          + (collapsed ? '▶' : '▼') + ' ' + esc(dept) + ' <span class="gantt-dept-count">(' + deptCount + ')</span>'
+        h += '<div class="gantt-dept-hdr" data-ganttdept="' + esc(dKey) + '"' + (dept === 'Unattributed' ? ' style="background:#FFF7ED;color:#9A3412"' : '') + '>'
+          + (collapsed ? '▶' : '▼') + ' ' + esc(dept) + (dept === 'Unattributed' ? ' ⚠ no Owning Department set' : '') + ' <span class="gantt-dept-count">(' + deptCount + ')</span>'
           + '</div>';
         if (collapsed) return;
         /* Direct projects (no sub-dept — e.g. Analytics, or a project attributed
@@ -3327,11 +3513,27 @@
         PF_ROW_INDEX[rowKey] = { projectId: r.projectId, bsFolder: r.bsFolder };
         var expanded = !!PF_EXPANDED[rowKey];
         var color = GANTT_BAR_COLOR[pfNormalizeStatus(r.status)] || '#6B7280';
+        /* Enterprise Review (7/6/26): diagonal hatch pattern instead of a solid
+           fill — visually distinct "no hours tracked here" cue, since a solid
+           bar would look identical to a real, hours-bearing Build+ bar. */
+        var erHatch = 'repeating-linear-gradient(135deg,' + color + ',' + color + ' 4px,rgba(255,255,255,.35) 4px,rgba(255,255,255,.35) 8px)';
+        var barBg = r.isEnterpriseReview ? erHatch : color;
+        /* Design (7/6/26): open-ended — right edge fades out rather than
+           stopping cleanly, signaling "runs on until Build actually starts",
+           distinct from endDateEstimated's dashed-edge treatment (which marks a
+           specific inferred date, not an open-ended one). */
+        var extraStyle = '';
+        if (r.isDesignEstimate) extraStyle = ';background:linear-gradient(to right,' + color + ' 0%,' + color + ' 85%,rgba(0,0,0,0) 100%)';
+        else if (r.endDateEstimated) extraStyle = ';border-right:3px dashed rgba(255,255,255,.85)';
+        var titleSuffix = '';
+        if (r.isEnterpriseReview) titleSuffix = ' · pre-Build, no hours tracked' + (r.unattributed ? ' · no Owning Department set' : '');
+        else if (r.isDesignEstimate) titleSuffix = ' · complexity-based Design estimate (' + (r.complexityRating || 'unrated') + ', ' + fmtHrs(r.designHourlyRate || 0) + '/mo), open-ended until Build starts';
+        else if (r.endDateEstimated) titleSuffix = ' · end date estimated (no Anticipated End Date on sheet)';
         h += '<div class="gantt-row' + (subKey ? ' gantt-row-sub' : '') + '">';
-        h += '<div class="gantt-row-label" data-pfrow="' + esc(rowKey) + '" title="' + esc(r.name) + '">' + esc(r.name) + '</div>';
+        h += '<div class="gantt-row-label" data-pfrow="' + esc(rowKey) + '" title="' + esc(r.name) + '">' + esc(r.name) + (r.unattributed ? ' <span style="color:#F97316;font-weight:700" title="No Owning Department set">⚠</span>' : '') + '</div>';
         h += '<div class="gantt-row-track">'
           + '<div class="gantt-bar' + (r.hold ? ' hold-dim' : '') + '" data-pfrow="' + esc(rowKey) + '" '
-          + 'style="grid-column:' + (r.barStart + 1) + '/' + (r.barEnd + 2) + ';background:' + color + (r.endDateEstimated ? ';border-right:3px dashed rgba(255,255,255,.85)' : '') + '" title="' + esc(r.name) + ' · ' + esc(r.status) + (r.endDateEstimated ? ' · end date estimated (no Anticipated End Date on sheet)' : '') + '">'
+          + 'style="grid-column:' + (r.barStart + 1) + '/' + (r.barEnd + 2) + ';background:' + barBg + extraStyle + '" title="' + esc(r.name) + ' · ' + esc(r.status) + titleSuffix + '">'
           + esc(r.name) + '</div></div>';
         h += '</div>';
         if (expanded) h += '<div class="gantt-row"><div class="gantt-detail-row">' + renderPFRowDetailHTML(r, rowKey) + '</div></div>';
@@ -3339,8 +3541,8 @@
       return h;
     }
     /* Callout for genuine accounting gaps (dept unattributed, missing dates, or
-       out-of-window) — these are real data problems, distinct from pre-Build
-       projects below which are expected to have no bar. */
+       out-of-window) — these are real data problems, distinct from Enterprise
+       Review/Design which now always get a bar (see renderGantt). */
     function renderGanttMissingCallout(missing) {
       var lines = missing.map(function (m) { return '<span style="font-weight:600">' + esc(m.name) + '</span> — ' + m.reason; });
       return '<div style="margin:10px 16px;padding:8px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:5px;font-size:11px;color:#92400E;line-height:1.6">'
@@ -3351,12 +3553,6 @@
        have no bar (no Build Date exists yet at these stages), NOT a data gap.
        Listed here (7/6/26 fix) rather than silently dropped, so the Gantt's
        total always ties to the Heatmap's — see renderGantt's totalBars comment. */
-    function renderGanttPreBuildCallout(preBuild) {
-      var lines = preBuild.map(function (m) { return '<span style="font-weight:600">' + esc(m.name) + '</span> (' + esc(m.status) + ')'; });
-      return '<div style="margin:10px 16px;padding:8px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:5px;font-size:11px;color:#0369A1;line-height:1.6">'
-        + 'ℹ ' + preBuild.length + ' project' + (preBuild.length === 1 ? '' : 's') + ' pre-Build — no bar yet by design, shown as a flat list in the Heatmap instead: ' + lines.join(' · ')
-        + '</div>';
-    }
     function setBSView(v) {
       BS_VIEW = v;
       document.getElementById('vt-heatmap').className = 'vt-btn' + (v === 'heatmap' ? ' active' : '');
@@ -3452,14 +3648,41 @@
             if (p.businessOwner) h += '<div class="det-row"><span class="det-lbl">BUSINESS OWNER</span><span class="det-val">' + esc(p.businessOwner) + '</span></div>';
             if (p.itOwnerName) h += '<div class="det-row"><span class="det-lbl">IT FUNCTIONAL OWNER</span><span class="det-val">' + esc(p.itOwnerName) + '</span></div>';
             if (p.itResources && p.itResources.length) h += '<div class="det-row"><span class="det-lbl">RESOURCES</span><span class="det-val">' + esc(p.itResources.join(', ')) + '</span></div>';
-            if (p.itEstHrs) h += '<div class="det-row"><span class="det-lbl">IT EST. HOURS</span><span class="det-val">' + fmtHrs(p.itEstHrs) + '</span></div>';
+            if (p.itEstHrs) h += '<div class="det-row"><span class="det-lbl">IT EST. HOURS' + (p.isDesignEstimate ? ' (Build→Post Support, not yet started)' : '') + '</span><span class="det-val">' + fmtHrs(p.itEstHrs) + '</span></div>';
           } else if (p.owner) h += '<div class="det-row"><span class="det-lbl">OWNER</span><span class="det-val">' + esc(p.owner) + '</span></div>';
           if (p.epoLead) h += '<div class="det-row"><span class="det-lbl">EPO LEAD</span><span class="det-val">' + esc(p.epoLead) + '</span></div>';
           var sd = fmtDate(p.startDate), ed = fmtDate(p.endDate);
-          if (p.source === 'Business Support') {
+          if (p.isDesignEstimate) {
+            /* Design has no real end date — it's open-ended until Build starts
+               (7/6/26 decision), so showing "Anticipated End" here would be
+               misleading; show the complexity rating driving the estimate instead. */
+            if (p.complexityRating) h += '<div class="det-row"><span class="det-lbl">COMPLEXITY RATING</span><span class="det-val">' + esc(p.complexityRating) + '</span></div>';
+          } else if (p.source === 'Business Support') {
             if (ed) h += '<div class="det-row"><span class="det-lbl">ANTICIPATED END</span><span class="det-val">' + ed + (p.endDateEstimated ? ' <span style="opacity:.6;font-style:italic">(est. — no Anticipated End Date on sheet)</span>' : '') + '</span></div>';
           } else if (sd || ed) h += '<div class="det-row"><span class="det-lbl">SPAN</span><span class="det-val">' + (sd || '?') + ' → ' + (ed || '?') + '</span></div>';
-          h += '<div class="det-row"><span class="det-lbl">FTE ALLOC</span><span class="det-val">' + p.fte + ' FTE → ' + fmtHrs(p.hours) + ' this month</span></div>';
+          if (p.isDesignEstimate) {
+            h += '<div class="det-row"><span class="det-lbl">DESIGN HOURS (est.)</span><span class="det-val">' + fmtHrs(p.hours) + ' this month · complexity-based, not IT-provided</span></div>';
+            /* Stacked preview bar (7/6/26, per Jerry) — Design-stage projects
+               usually already have an eventual Build→Post Support hours figure
+               from IT (p.itEstHrs) even though that work hasn't started. Show
+               both pieces as one small stacked bar so stakeholders see the full
+               expected picture, not just "this month's Design hours" in isolation. */
+            if (p.itEstHrs) {
+              var designShare = p.hours, buildShare = p.itEstHrs, totalShare = designShare + buildShare;
+              var designPct = totalShare > 0 ? Math.round((designShare / totalShare) * 100) : 0;
+              h += '<div class="det-row" style="display:block"><span class="det-lbl">FULL PROJECT PREVIEW</span></div>'
+                + '<div style="display:flex;height:14px;border-radius:3px;overflow:hidden;margin:4px 0 4px;font-size:9px">'
+                + '<div style="width:' + designPct + '%;background:#0EA5E9;min-width:2px"></div>'
+                + '<div style="width:' + (100 - designPct) + '%;background:#D1D5DB;min-width:2px"></div>'
+                + '</div>'
+                + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)">'
+                + '<span><span style="color:#0EA5E9">●</span> Design (ongoing): ' + fmtHrs(designShare) + '/mo</span>'
+                + '<span><span style="color:#9CA3AF">●</span> Build→Post Support (upcoming): ' + fmtHrs(buildShare) + ' total</span>'
+                + '</div>';
+            }
+          } else {
+            h += '<div class="det-row"><span class="det-lbl">FTE ALLOC</span><span class="det-val">' + p.fte + ' FTE → ' + fmtHrs(p.hours) + ' this month</span></div>';
+          }
           if (p.source === 'Business Support' && p.statusUpdate) {
             h += '<div class="det-row" style="display:block"><span class="det-lbl">STATUS UPDATE</span></div>'
               + '<div style="font-size:11px;color:var(--text);font-style:italic;margin:-3px 0 7px">"' + esc(p.statusUpdate.length > 220 ? p.statusUpdate.slice(0, 220) + '…' : p.statusUpdate) + '"</div>';
