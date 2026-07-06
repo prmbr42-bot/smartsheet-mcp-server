@@ -1453,6 +1453,14 @@
     var COMM_ID = '6139100361871236';
     var BS_ID = '2416337407135620';
     var HRS = 8; // 1 FTE = 8 hrs/working day = 40 hrs/week
+    /* Plausibility ceiling for the Desired-Completed-Date hours fallback (7/6/26,
+       post-live-data check) — Desired Completed Date is a business target, not
+       an IT delivery commitment, and can sit unrealistically close to Build Date
+       (see OTIF: 400 hrs over 7 working days = 7.14 FTE). Above this, the
+       synthetic Build Date + Hours estimate is used instead. 2.0 was picked as
+       "more than two people full-time on one BS initiative is already a red
+       flag" — adjust if that's too aggressive/lenient once more data is live. */
+    var MAX_PLAUSIBLE_FTE = 2.0;
 
     /* ── CAPACITY (FTE) ── */
     var CAP = {
@@ -1832,22 +1840,50 @@
              text entries (e.g. "320-500", free-text notes) are intentionally skipped
              rather than guessed at, per Jerry — cleanup happens on the sheet. */
           var itHrs = (typeof itHrsRaw === 'number' && isFinite(itHrsRaw) && itHrsRaw > 0) ? itHrsRaw : null;
-          /* Synthetic end-date fallback (7/6/26 feedback #3): a large share of BS
-             projects don't have Anticipated End Date populated yet (the new
-             IT-lead process to keep it current is still rolling out). Rather than
-             dropping these projects from the hours matrix / Gantt entirely for
-             want of an end date, assume one dedicated FTE (8 hrs/day, working
-             days only) starting at Build Date and derive an end date long enough
-             to burn down IT Estimated Hours. endDateEstimated flags this so the
-             UI can visually mark it as inferred rather than a real commitment
-             from the sheet — see renderPFRowDetailHTML / Gantt detail block. */
+          /* Anticipated End Date read directly (raw, unfallen-back) — needed below
+             to tell whether "ed" is the real IT-committed date or just borrowed
+             from Desired Completed Date (a business wish-date, not a delivery
+             estimate). See the guard immediately below for why that distinction
+             matters for the hours math specifically. */
+          var antEndDateRaw = g('Anticipated End Date') || null;
+          /* Synthetic end-date fallback (7/6/26 feedback #3, extended 7/6/26 after
+             checking live data against OTIF): covers TWO cases, both meaning the
+             hours math can't trust "ed" as an IT-committed date:
+             (1) No end date at all (neither Anticipated End nor Desired Completed
+                 populated) — assume one dedicated FTE (8 hrs/day) from Build Date
+                 and derive an end date long enough to burn down IT Estimated
+                 Hours.
+             (2) Anticipated End Date is blank but Desired Completed Date filled
+                 the gap AND using it produces an implausible FTE concentration
+                 (>MAX_PLAUSIBLE_FTE) — confirmed against real data: OTIF's
+                 Desired Completed Date is only 7 working days after Build Date,
+                 which forces 400 hours into a 7.14-FTE burst. Desired Completed
+                 Date is a business target, not an IT commitment, so when it's
+                 this implausible the same Build+Hours synthetic estimate is used
+                 instead — for OTIF that lands on 8/31/26, matching Jerry's own
+                 ~2.5-month/September expectation almost exactly.
+             Either way, endDateEstimated flags it so the UI marks it as inferred
+             rather than a real commitment from the sheet (see renderPFRowDetailHTML
+             / Gantt detail block / Heatmap drill popup). */
           var endDateEstimated = false;
-          if (!ed && buildDateRaw && itHrs) {
+          if (buildDateRaw && itHrs) {
             var _bd = pd(buildDateRaw);
             if (_bd) {
-              var neededWd = itHrs / HRS; // working days at 1.0 FTE
-              var synthEnd = addWorkingDays(_bd, neededWd);
-              if (synthEnd) { ed = synthEnd.toISOString().split('T')[0]; endDateEstimated = true; }
+              var noEndAtAll = !ed;
+              var implausibleDesiredCompleted = false;
+              if (!noEndAtAll && !antEndDateRaw) {
+                var _ieCheck = pd(ed);
+                if (_ieCheck && _ieCheck >= _bd) {
+                  var wdCheck = wdays(_bd, _ieCheck);
+                  var fteCheck = wdCheck > 0 ? (itHrs / (HRS * wdCheck)) : Infinity;
+                  if (fteCheck > MAX_PLAUSIBLE_FTE) implausibleDesiredCompleted = true;
+                }
+              }
+              if (noEndAtAll || implausibleDesiredCompleted) {
+                var neededWd = itHrs / HRS; // working days at 1.0 FTE
+                var synthEnd = addWorkingDays(_bd, neededWd);
+                if (synthEnd) { ed = synthEnd.toISOString().split('T')[0]; endDateEstimated = true; }
+              }
             }
           }
           /* Dept attribution — CHANGED per 7/1 meeting: "Owning Department" is read
