@@ -3212,16 +3212,25 @@
       var fp = applyPFSlicer(curProjects());
       var byDept = {}; // mainDept -> {subs:{subDept:{label,projs:[]}}, projs:[]} — same shape as Portfolio View's tree
       var totalBars = 0;
-      /* Projects that SHOULD be expected to show a bar (i.e. past the pre-Build
-         stage) but don't — Enterprise Review/Design are intentionally excluded
-         per the meeting notes (no Build Date yet is expected, not a data issue,
-         and those projects are already shown elsewhere as flat lists), so they're
-         never added here. Everything else that fails to get a bar is a genuine
-         accounting gap and gets a reason, same treatment as the Heatmap/Portfolio. */
+      /* FIX (7/6/26): Enterprise Review/Design projects used to just `return`
+         here with zero accounting — they never got a bar (correct, no Build
+         Date exists yet) but also never showed up in ANY count, so the Gantt's
+         visible total silently fell far short of the Heatmap's (which counts
+         them as flat-list rows). That's what caused the 23-vs-8 mismatch: same
+         underlying "fp" set size in both views, but Gantt only accounted for
+         the bars, not the deliberately-bar-less pre-Build projects. Now every
+         project in fp lands in exactly one bucket — a bar, preBuild, or missing
+         — so totalBars + preBuild.length + missing.length === fp.length always,
+         and that fp.length is the same number the Heatmap's status badges sum
+         to (both read from the identical applyPFSlicer(curProjects()) call). */
+      var preBuild = [];
       var missing = [];
       fp.forEach(function (p) {
         var status = pfNormalizeStatus(p.status);
-        if (PF_UTILIZATION_EXEMPT_STATUSES.indexOf(status) > -1) return; // pre-Build — expected, not a gap
+        if (PF_UTILIZATION_EXEMPT_STATUSES.indexOf(status) > -1) {
+          preBuild.push({ name: p.name, status: status });
+          return;
+        }
         if (!p.itDept) {
           missing.push({ name: p.name, reason: pfOwningDeptGapReason(p) });
           return;
@@ -3262,14 +3271,21 @@
         }
         totalBars++;
       });
-      if (!totalBars && !missing.length) {
-        inner.innerHTML = '<div class="gantt-empty">No projects with both a Build Date and Anticipated End Date match the current filters.</div>';
+      if (!totalBars && !missing.length && !preBuild.length) {
+        inner.innerHTML = '<div class="gantt-empty">No projects match the current filters.</div>';
         return;
       }
-      var h = '<div class="gantt-timeline-hdr"><div class="gantt-corner">DEPARTMENT / PROJECT</div><div class="gantt-month-track">'
+      var h = '<div style="margin:10px 16px 0;font-size:11px;color:var(--muted)">'
+        + '<strong style="color:var(--text)">' + fp.length + ' project' + (fp.length === 1 ? '' : 's') + ' total</strong> — '
+        + totalBars + ' shown as bar' + (totalBars === 1 ? '' : 's')
+        + (preBuild.length ? ' · ' + preBuild.length + ' pre-Build (no bar yet, see below)' : '')
+        + (missing.length ? ' · ' + missing.length + ' data gap' + (missing.length === 1 ? '' : 's') + ' (see below)' : '')
+        + '</div>';
+      h += '<div class="gantt-timeline-hdr"><div class="gantt-corner">DEPARTMENT / PROJECT</div><div class="gantt-month-track">'
         + MONTHS.map(function (mo) { return '<div class="gantt-mo' + (mo.key === CK ? ' now' : '') + '">' + mo.label + '</div>'; }).join('')
         + '</div></div>';
       if (missing.length) h += renderGanttMissingCallout(missing);
+      if (preBuild.length) h += renderGanttPreBuildCallout(preBuild);
       Object.keys(byDept).sort().forEach(function (dept) {
         var dnode = byDept[dept];
         var subKeys = Object.keys(dnode.subs);
@@ -3322,17 +3338,25 @@
       });
       return h;
     }
-    /* Callout for non-pre-Build projects that don't get a Gantt bar — same
-       "always account for every counted project" treatment as the Heatmap and
-       Portfolio View. Gantt has no natural per-status subdivision (it's
-       dept-grouped), so this is one combined block up top rather than per-status. */
+    /* Callout for genuine accounting gaps (dept unattributed, missing dates, or
+       out-of-window) — these are real data problems, distinct from pre-Build
+       projects below which are expected to have no bar. */
     function renderGanttMissingCallout(missing) {
       var lines = missing.map(function (m) { return '<span style="font-weight:600">' + esc(m.name) + '</span> — ' + m.reason; });
       return '<div style="margin:10px 16px;padding:8px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:5px;font-size:11px;color:#92400E;line-height:1.6">'
-        + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' not shown as a bar (Enterprise Review/Design excluded by design, not counted here): ' + lines.join(' · ')
+        + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' not shown as a bar — data gap: ' + lines.join(' · ')
         + '</div>';
     }
-
+    /* Callout for pre-Build (Enterprise Review/Design) projects — expected to
+       have no bar (no Build Date exists yet at these stages), NOT a data gap.
+       Listed here (7/6/26 fix) rather than silently dropped, so the Gantt's
+       total always ties to the Heatmap's — see renderGantt's totalBars comment. */
+    function renderGanttPreBuildCallout(preBuild) {
+      var lines = preBuild.map(function (m) { return '<span style="font-weight:600">' + esc(m.name) + '</span> (' + esc(m.status) + ')'; });
+      return '<div style="margin:10px 16px;padding:8px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:5px;font-size:11px;color:#0369A1;line-height:1.6">'
+        + 'ℹ ' + preBuild.length + ' project' + (preBuild.length === 1 ? '' : 's') + ' pre-Build — no bar yet by design, shown as a flat list in the Heatmap instead: ' + lines.join(' · ')
+        + '</div>';
+    }
     function setBSView(v) {
       BS_VIEW = v;
       document.getElementById('vt-heatmap').className = 'vt-btn' + (v === 'heatmap' ? ' active' : '');
