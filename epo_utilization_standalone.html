@@ -1393,14 +1393,14 @@
             <div class="li">
               <div class="ls" style="background:#FEE2E2;border:1px solid #F87171"></div>&gt; 100%
             </div>
-            <span style="color:#D1D5DB;font-size:11px">· Gray = no capacity defined (shows FTE demand) · Click cell to
-              drill down</span>
+            <span style="color:#D1D5DB;font-size:11px">· Gray = no capacity defined (BS shows FTE demand · Comm shows
+              raw hours) · Click cell to drill down</span>
           </div>
         </div>
         <div class="mbar" id="mbar">
           <strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days
           Overlap &nbsp;|&nbsp;
-          Capacity = Dept FTE × 8 hrs/day × Working Days in Month &nbsp;|&nbsp;
+          Capacity = Dept Capacity (team size) × 8 hrs/day × Working Days in Month &nbsp;|&nbsp;
           <span style="color:#6EE7B7">●</span> Live Smartsheet
         </div>
         <div class="tscroll">
@@ -2707,7 +2707,7 @@
       document.getElementById('tab-count').textContent = countTxt;
       /* Swap methodology bar */
       document.getElementById('mbar').innerHTML = TAB === 'comm'
-        ? '<strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days Overlap &nbsp;|&nbsp; Capacity = Dept FTE × 8 hrs/day × Working Days in Month &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet'
+        ? '<strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days Overlap &nbsp;|&nbsp; Capacity = Dept Capacity (team size) × 8 hrs/day × Working Days in Month &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet'
         : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days, except Design = flat complexity-based estimate (High=28/Medium=12/Low=8 hrs/mo, not prorated) &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
       /* View toggle only applies to BS */
       document.getElementById('view-toggle').className = 'view-toggle' + (TAB === 'bs' ? ' show' : '');
@@ -2913,14 +2913,24 @@
         if (ic) return;
         g.depts.forEach(function (dept, di) {
           var dm = mx[dept] || {};
-          /* Hide department row if it has no FTE demand in any visible month */
+          /* Hide department row if it has no hours demand in any visible month */
           var hasData = Object.keys(dm).some(function (mk) { return dm[mk] && dm[mk].totalHours > 0.1; });
           if (!hasData) return;
           var rb = di % 2 === 0 ? '#ffffff' : '#FAFEF9';
           h += '<tr style="background:' + rb + ';border-bottom:1px solid var(--border)">';
-          /* Tab-aware capacity label in the sticky dept column */
+          /* Tab-aware capacity label in the sticky dept column.
+             7/14/26: Comm capacity used to display as "4.8 FTE" — the underlying
+             CAP table is still a team-size figure internally (unchanged), but it
+             must never surface as an "FTE" label to the user anymore. Converted
+             to hours/month using the current visible month's working days, same
+             basis as the capH used for the cells themselves just below. */
           var capDisp, hasCapacity;
-          if (TAB === 'comm') { var cFte = CAP[dept]; hasCapacity = !!cFte; capDisp = cFte ? cFte + ' FTE' : '—'; }
+          if (TAB === 'comm') {
+            var cFte = CAP[dept];
+            var curMo = MONTHS.filter(function (m) { return m.key === CK; })[0];
+            var cHrsComm = cFte && curMo ? Math.round(cFte * HRS * wdays(curMo.start, curMo.end)) : null;
+            hasCapacity = !!cHrsComm; capDisp = cHrsComm ? cHrsComm + ' h/mo' : '—';
+          }
           else { var cHrs = effectiveBSCap()[dept]; hasCapacity = !!cHrs; capDisp = cHrs ? cHrs + ' h/mo' : '—'; }
           h += '<td class="dtd" style="background:' + rb + '"><div class="dinn"><span class="dnm" title="' + esc(dept) + '">' + esc(dept) + '</span><span style="font-size:10px;color:' + (hasCapacity ? 'var(--muted)' : '#E5E7EB') + '">' + esc(capDisp) + '</span></div></td>';
           MONTHS.forEach(function (mo) {
@@ -3184,14 +3194,17 @@
       }
       h += '</tbody>';
       document.getElementById('htbl').innerHTML = h;
-      var fp = curProjects(), nf = fp.filter(function (p) { return !p.ftes || !Object.keys(p.ftes).length; }).length;
+      var fp = curProjects(), nf = fp.filter(function (p) { return !Object.keys(p.ftes || {}).length && !Object.keys(p.hoursByDept || {}).length; }).length;
       var ft = document.getElementById('hm-footer');
       /* BS: the per-status missing-callouts (added 7/2/26) already explain, project
          by project, exactly which ones are excluded and why — this blanket note
          doesn't add anything beyond that and just duplicates/confuses on top of
          them, so it's suppressed for BS. Comm has no per-status callout system,
-         so it keeps this as its only signal. */
-      if (TAB === 'comm' && nf > 0) { ft.textContent = '⚠ ' + nf + ' of ' + fp.length + ' projects have no FTE values and are excluded.'; ft.style.display = 'block'; }
+         so it keeps this as its only signal.
+         7/14/26 fix: this was checking p.ftes, which is now ALWAYS empty for
+         Comm by design (Comm hours live in p.hoursByDept — see parseSheet) —
+         was silently flagging 100% of Comm projects as excluded every render. */
+      if (TAB === 'comm' && nf > 0) { ft.textContent = '⚠ ' + nf + ' of ' + fp.length + ' projects have no hours data and are excluded.'; ft.style.display = 'block'; }
       else ft.style.display = 'none';
     }
 
@@ -3704,8 +3717,11 @@
       var mo = MONTHS.filter(function (m) { return m.key === mk; })[0];
       /* Tab-aware capacity — was previously always reading Comm's FTE-based CAP map
          regardless of tab, which silently broke the capacity/utilization stats for
-         every BS drill. */
-      var cap = TAB === 'comm' ? CAP[dept] : null; // FTE basis only exists for Comm
+         every BS drill. CAP itself is still a team-size figure internally, but
+         7/14/26: dropped the separate "FTE BASIS" readout below — Comm is purely
+         hours-based now, and the CAPACITY row already shows the hours figure
+         derived from it, so a second "X FTE" line was pure redundant leakage. */
+      var cap = TAB === 'comm' ? CAP[dept] : null;
       var capH = TAB === 'comm' ? (cap ? cap * HRS * wdays(mo.start, mo.end) : null) : (effectiveBSCap()[dept] || null);
       var pct = capH && cell ? cell.totalHours / capH : null;
       document.getElementById('d-dept').textContent = dept;
@@ -3713,7 +3729,6 @@
       var st = '<div><div class="sl">DEMAND</div><div class="sv">' + fmtHrs(cell ? cell.totalHours : 0) + ' <span class="su">hrs</span></div></div>';
       if (capH) {
         st += '<div><div class="sl">CAPACITY</div><div class="sv">' + fmtHrs(capH) + ' <span class="su">hrs</span></div></div>';
-        if (cap) st += '<div><div class="sl">FTE BASIS</div><div class="sv">' + cap + ' <span class="su">FTE</span></div></div>';
         var uc = pct > 1 ? '#FCA5A5' : pct > 0.9 ? '#FED7AA' : '#52B788';
         st += '<div><div class="sl">UTILIZATION</div><div class="sv" style="color:' + uc + '">' + Math.round(pct * 100) + '%</div></div>';
         var ub = document.getElementById('ubar'), uf = document.getElementById('ufill');
