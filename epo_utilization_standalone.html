@@ -1515,7 +1515,7 @@
       'Procurement ING Est Total Project Hours': 'Procurement ING',
       'Quality/Regulatory Est Total Project Hours': 'Quality/Regulatory',
       'Finance Est Total Project Hours': 'Finance',
-      'PCM Est Total Project Hours': 'HR'
+      'PCM Est Total Project Hours': 'PCM'
     };
     /* Priority rework (7/1 meeting #8) — new High/Medium/Low dropdown column.
        Confirmed by Jerry (7/2/26): "Cross-Functional Complexity Rating". The
@@ -1599,7 +1599,7 @@
       { label: 'Finance', color: '#0D2818', depts: ['Finance'] },
       { label: 'Legal', color: '#0D2818', depts: ['Legal'] },
       { label: 'EHS&S', color: '#0D2818', depts: ['EHS&S'] },
-      { label: 'HR', color: '#0D2818', depts: ['HR'] },
+      { label: 'PCM', color: '#0D2818', depts: ['PCM'] },
       { label: 'R&D - Product/Process', color: '#1B4D35', depts: ['R&D - Product/Process'] },
       { label: 'R&D - Packaging', color: '#1B4D35', depts: ['R&D - Packaging'] },
       { label: 'Ops/Engineering MS', color: '#1B4D35', depts: ['Ops/Engineering MS'] },
@@ -2444,7 +2444,7 @@
     }
 
     /* ════════════════════════════════════════════════════════
-       COMM CAPACITY LOAD (7/16/26)
+       COMM CAPACITY LOAD (7/16/26, alias updated 7/16/26 later same day)
        Discovery path: Comm workspace → "Reference" folder → "Department
        Capacity" sheet (confirmed via screenshot from Jerry — sheet id
        682203567574916, 16 dept rows, columns "Department" / "Capacity (FTE)" /
@@ -2454,17 +2454,17 @@
        actual per-month working days). This replaces the old hardcoded CAP guess
        table, which was materially wrong for several departments (Sales was
        guessed at 5, actually 0.5; IT guessed at 5, actually 0).
-       Two department-name mismatches between this sheet and the canonical dept
-       keys used everywhere else in the dashboard (COMM_GROUPS/CFMAP targets):
-       the sheet says "Operations/Engineering FE/MS" where the rest of the app
-       says "Ops/Engineering FE/MS", and "PCM" where the rest of the app says
-       "HR" (PCM Est Total Project Hours → HR, per the 7/14/26 CFMAP mapping).
-       Aliased below so COMM_CAP keys line up with everything else.
+       One department-name mismatch remains between this sheet and the canonical
+       dept keys used everywhere else in the dashboard (COMM_GROUPS/CFMAP
+       targets): the sheet says "Operations/Engineering FE/MS" where the rest of
+       the app says "Ops/Engineering FE/MS". The PCM→HR alias that used to live
+       here is gone — per Jerry (7/16/26), every sheet now uses "PCM" natively,
+       so the canonical dept key is "PCM" throughout the dashboard, no aliasing
+       needed for that one anymore.
        Result: COMM_CAP = { deptName: monthlyHours, ... } */
     var COMM_CAP_ALIASES = {
       'Operations/Engineering FE': 'Ops/Engineering FE',
-      'Operations/Engineering MS': 'Ops/Engineering MS',
-      'PCM': 'HR'
+      'Operations/Engineering MS': 'Ops/Engineering MS'
     };
     function loadCommCapacity() {
       return ssGet('/workspaces/' + COMM_WS)
