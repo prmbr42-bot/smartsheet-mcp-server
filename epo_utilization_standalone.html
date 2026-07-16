@@ -1355,6 +1355,8 @@
     <button class="btn-toggle-hold on" id="btn-hold" type="button"
       title="On Hold projects are included in calculations but dimmed — click to exclude">&#9646; On Hold:
       Included</button>
+    <button class="btn-toggle-hold off" id="btn-gridmode" type="button"
+      title="Switch capacitated grid cells between % utilization and raw hours">&#9646; Grid: %</button>
   </div>
 
   <div class="slicer-bar" id="slicer-bar"></div>
@@ -1400,7 +1402,7 @@
         <div class="mbar" id="mbar">
           <strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days
           Overlap &nbsp;|&nbsp;
-          Capacity = Dept Capacity (team size) × 8 hrs/day × Working Days in Month &nbsp;|&nbsp;
+          Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp;
           <span style="color:#6EE7B7">●</span> Live Smartsheet
         </div>
         <div class="tscroll">
@@ -1454,6 +1456,7 @@
     var SS = '/api';
     var COMM_ID = '6139100361871236';
     var BS_ID = '2416337407135620';
+    var COMM_WS = '8580344233387908';
     var HRS = 8; // 1 FTE = 8 hrs/working day = 40 hrs/week
     /* Plausibility ceiling for the Desired-Completed-Date hours fallback (7/6/26,
        post-live-data check) — Desired Completed Date is a business target, not
@@ -1474,14 +1477,18 @@
        a rate — better to show as a gap needing a rating than to guess. */
     var DESIGN_COMPLEXITY_HOURS_PER_MONTH = { 'High': 28, 'Medium': 12, 'Low': 8 };
 
-    /* ── CAPACITY (FTE) ── */
-    var CAP = {
-      'EHS&S': 2, 'Finance': 0.9, 'HR': 2, 'IT': 5, 'Legal': 2, 'Marketing': 3,
-      'Ops/Engineering FE': 2, 'Ops/Engineering MS': 2,
-      'Procurement Co-man': 0.25, 'Procurement ING': 0.5, 'Procurement PKG/Repack': 1.75,
-      'Quality/Regulatory': 4.8, 'R&D - Packaging': 3, 'R&D - Product/Process': 6.7,
-      'Sales': 5, 'Supply Chain': 3
-    };
+    /* ── CAPACITY (Comm) ──
+       7/16/26, per Jerry: this was a hardcoded guess table and it was wrong —
+       compare the old values (Sales:5, IT:5, Legal:2, EHS&S:2, Marketing:3,
+       Supply Chain:3...) against the real Department Capacity sheet Jerry
+       pointed to (Comm workspace → Intake & Management → Reference →
+       "Department Capacity"): Sales is actually 0.5 FTE/80 h·mo, IT is 0.0/0,
+       Legal is 0.1/16, EHS&S is 0.05/8. Not close. Removed entirely — COMM_CAP
+       below is loaded live from that sheet by loadCommCapacity(), the same
+       pattern BS already uses for BS_CAP. If the load fails, COMM_CAP stays
+       empty and cells fall back to showing raw hours (uncapacitated) rather
+       than silently reverting to a guessed number. */
+    var COMM_CAP = {}; // dept → Capacity/Month (hours), read directly from the sheet, not derived
 
     /* ── HOURS COLUMN MAP ──
        7/14/26: Comm master sheet switched from per-dept FTE-rate columns to
@@ -1490,7 +1497,7 @@
        sub-columns are gone too, replaced by the single project-level
        Cross-Functional Complexity Rating). Sales, Marketing, IT, Legal, EHS&S,
        and Supply Chain no longer have ANY hours column on the sheet at all —
-       per Jerry (7/14/26), they stay defined in CAP/COMM_GROUPS below so the
+       per Jerry (7/14/26), they stay defined in COMM_CAP/COMM_GROUPS below so the
        dept model doesn't need re-building if/when those columns come back;
        they just won't get any ftes[] value from parseSheet right now since no
        key below maps to them. Values here are TOTAL hours, not a rate — see
@@ -1517,6 +1524,12 @@
        text ("High"/"Medium"/"Low") or that same 5/3/1 numeric encoding —
        pfNormalizePriorityTier handles both defensively rather than assuming one. */
     var PRIORITY_COLUMN_NAME = 'Cross-Functional Complexity Rating';
+    /* Comm priority (7/16/26, added for the High Priority Projects KPI card):
+       confirmed via live sheet — "Proposed Priority" is a High/Med/Low picklist,
+       distinct from "Stage Gate Priority" and "Calculated Priority" (both
+       numeric scores, not a tier). pfNormalizePriorityTier already handles
+       "Med" as an abbreviation for Medium, so it's reused as-is. */
+    var COMM_PRIORITY_COLUMN_NAME = 'Proposed Priority';
     var PRIORITY_TIER_RANK = { 'High': 0, 'Medium': 1, 'Low': 2 };
     function pfNormalizePriorityTier(raw) {
       if (raw == null || raw === '') return null;
@@ -1571,6 +1584,13 @@
     function pfNormName(s) { return String(s || '').trim().replace(/\s+/g, ' ').toUpperCase(); }
 
     /* ── DEPARTMENT GROUPS ── */
+    /* 7/16/26, per end-user feedback: department rollup groups (R&D,
+       Operations & Engineering, Procurement) removed — every Comm department
+       is now its own top-level line, not nested under a shared group header.
+       Kept as single-dept "groups" (rather than restructuring the render loop)
+       since renderHMGroupsHTML already iterates groups→depts generically and
+       showGroupHeader is now false for Comm too (see below), so no header row
+       ever prints — this array just becomes the flat ordered list of dept rows. */
     var COMM_GROUPS = [
       { label: 'Sales', color: '#0D2818', depts: ['Sales'] },
       { label: 'Marketing', color: '#0D2818', depts: ['Marketing'] },
@@ -1580,9 +1600,13 @@
       { label: 'Legal', color: '#0D2818', depts: ['Legal'] },
       { label: 'EHS&S', color: '#0D2818', depts: ['EHS&S'] },
       { label: 'HR', color: '#0D2818', depts: ['HR'] },
-      { label: 'R&D', color: '#1B4D35', depts: ['R&D - Product/Process', 'R&D - Packaging'] },
-      { label: 'Operations & Engineering', color: '#1B4D35', depts: ['Ops/Engineering MS', 'Ops/Engineering FE'] },
-      { label: 'Procurement', color: '#1B4D35', depts: ['Procurement Co-man', 'Procurement PKG/Repack', 'Procurement ING'] },
+      { label: 'R&D - Product/Process', color: '#1B4D35', depts: ['R&D - Product/Process'] },
+      { label: 'R&D - Packaging', color: '#1B4D35', depts: ['R&D - Packaging'] },
+      { label: 'Ops/Engineering MS', color: '#1B4D35', depts: ['Ops/Engineering MS'] },
+      { label: 'Ops/Engineering FE', color: '#1B4D35', depts: ['Ops/Engineering FE'] },
+      { label: 'Procurement Co-man', color: '#1B4D35', depts: ['Procurement Co-man'] },
+      { label: 'Procurement PKG/Repack', color: '#1B4D35', depts: ['Procurement PKG/Repack'] },
+      { label: 'Procurement ING', color: '#1B4D35', depts: ['Procurement ING'] },
       { label: 'IT', color: '#1B4D35', depts: ['IT'] }
     ];
     /* Per the 7/1 meeting: non-IT functions are excluded from BS entirely (Sales,
@@ -1721,6 +1745,13 @@
     var MX_BS_GRANULAR = {};
     var DRILL_PROJS = [], EXPANDED = {}, RAID_CACHE = {};
     var SHOW_ON_HOLD = true;
+    /* 7/16/26: grid cell display toggle — % (default) vs raw hours. Display-only,
+       doesn't affect any underlying calculation or matrix, so no rebuildMatrices()
+       needed when toggled, just a re-render. Only affects capacitated cells
+       (where a % is shown today) — the uncapacitated fallbacks (BS's FTE demand,
+       Comm's raw hours when no capacity is defined) are untouched either way,
+       since those already show hours-derived numbers, not a percentage. */
+    var GRID_SHOW_HOURS = false;
     var SHEET_PERMALINKS = {}; // source → API-provided sheet permalink (SSO-aware)
     var BS_CAP = {};           // dept → monthly capacity hours (loaded at runtime from Dept Capacity sheet)
     var BS_CAP_GRANULAR = {};  // pre-rollup capacity, keyed by the sheet's own granular dept rows (MDM/EDI/Power Apps/etc) — see MX_BS_GRANULAR
@@ -2047,8 +2078,13 @@
            PRIORITY_COLUMN_NAME (currently null) and gracefully resolves to null
            for everyone until that's confirmed — see pfPrioritySort, which still
            improves on plain alphabetical sort by falling through to Build-date
-           ordering in the meantime. */
-        var priorityTier = (src === 'Business Support' && PRIORITY_COLUMN_NAME) ? pfNormalizePriorityTier(g(PRIORITY_COLUMN_NAME)) : null;
+           ordering in the meantime.
+           7/16/26: added Comm's own priority source ("Proposed Priority") for
+           the new High Priority Projects KPI card — separate column, separate
+           constant, same normalizer. */
+        var priorityTier = src === 'Business Support'
+          ? (PRIORITY_COLUMN_NAME ? pfNormalizePriorityTier(g(PRIORITY_COLUMN_NAME)) : null)
+          : pfNormalizePriorityTier(g(COMM_PRIORITY_COLUMN_NAME));
         /* NEW: additional fields for drill panel */
         var pct = parseFloat(g('% Complete') || g('Percent Complete') || g('% Completion') || 0);
         var owner = g('Project Owner') || g('Owner') || g('Project Lead') || g('Assigned To') || g('Business Owner') || null;
@@ -2298,16 +2334,26 @@
        Result: BS_CAP = { deptName: monthlyHours, ... }
        The generic /api proxy forwards workspace + folder requests transparently.
     ════════════════════════════════════════════════════════ */
-    function parseCapacitySheet(sheet) {
-      var t2id = {};
-      (sheet.columns || []).forEach(function (c) { t2id[c.title] = c.id; });
-      /* Try common column name patterns for dept and hours */
+    function parseCapacitySheet(sheet, aliasMap) {
+      var t2id = {}, titleByLower = {};
+      (sheet.columns || []).forEach(function (c) { t2id[c.title] = c.id; titleByLower[c.title.toLowerCase()] = c.title; });
+      /* Try common column name patterns for dept and hours — case-insensitive,
+         since the Comm Department Capacity sheet uses "Capacity/Month (hours)"
+         (lowercase h) where these candidates were originally written for BS's
+         "Capacity/Month (Hours)" (capital H). */
       var DEPT_COLS = ['Department', 'Department Name', 'Dept', 'Function', 'Team', 'Name'];
       var HRS_COLS = ['Capacity/Month (Hours)', 'Monthly Capacity (Hours)', 'Monthly Capacity',
         'Capacity (Hours)', 'Capacity (Hrs/Month)', 'Capacity (Hrs)',
         'Capacity', 'Hrs/Month', 'Hours/Month', 'Monthly Hours', 'Hours'];
-      var deptCol = DEPT_COLS.find(function (n) { return t2id[n] != null; });
-      var hrsCol = HRS_COLS.find(function (n) { return t2id[n] != null; });
+      function findCol(candidates) {
+        for (var i = 0; i < candidates.length; i++) {
+          var lc = candidates[i].toLowerCase();
+          if (titleByLower[lc]) return titleByLower[lc];
+        }
+        return null;
+      }
+      var deptCol = findCol(DEPT_COLS);
+      var hrsCol = findCol(HRS_COLS);
       if (!deptCol || !hrsCol) {
         console.warn('[EPO] parseCapacitySheet — could not find expected columns. Available:', Object.keys(t2id).join(', '));
         return {};
@@ -2318,9 +2364,13 @@
         (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
         var dept = by[t2id[deptCol]];
         var hrs = parseFloat(by[t2id[hrsCol]]);
-        if (dept && !isNaN(hrs) && hrs > 0) cap[String(dept).trim()] = hrs;
+        if (dept) {
+          dept = String(dept).trim();
+          if (aliasMap && aliasMap[dept]) dept = aliasMap[dept];
+        }
+        if (dept && !isNaN(hrs) && hrs > 0) cap[dept] = hrs;
       });
-      console.log('[EPO] BS capacity parsed (' + Object.keys(cap).length + ' depts):', cap);
+      console.log('[EPO] Capacity sheet parsed (' + Object.keys(cap).length + ' depts):', cap);
       return cap;
     }
 
@@ -2390,6 +2440,62 @@
         })
         .catch(function (e) {
           console.warn('[EPO] BS capacity load failed — BS depts will show FTE demand (uncapacitated):', e.message);
+        });
+    }
+
+    /* ════════════════════════════════════════════════════════
+       COMM CAPACITY LOAD (7/16/26)
+       Discovery path: Comm workspace → "Reference" folder → "Department
+       Capacity" sheet (confirmed via screenshot from Jerry — sheet id
+       682203567574916, 16 dept rows, columns "Department" / "Capacity (FTE)" /
+       "Capacity/Month (hours)"). Reads Capacity/Month directly — no ×8×working-
+       days recomputation, since the sheet already precomputes that (confirmed:
+       every row is FTE × 160, i.e. a flat 20-working-day/month assumption, not
+       actual per-month working days). This replaces the old hardcoded CAP guess
+       table, which was materially wrong for several departments (Sales was
+       guessed at 5, actually 0.5; IT guessed at 5, actually 0).
+       Two department-name mismatches between this sheet and the canonical dept
+       keys used everywhere else in the dashboard (COMM_GROUPS/CFMAP targets):
+       the sheet says "Operations/Engineering FE/MS" where the rest of the app
+       says "Ops/Engineering FE/MS", and "PCM" where the rest of the app says
+       "HR" (PCM Est Total Project Hours → HR, per the 7/14/26 CFMAP mapping).
+       Aliased below so COMM_CAP keys line up with everything else.
+       Result: COMM_CAP = { deptName: monthlyHours, ... } */
+    var COMM_CAP_ALIASES = {
+      'Operations/Engineering FE': 'Ops/Engineering FE',
+      'Operations/Engineering MS': 'Ops/Engineering MS',
+      'PCM': 'HR'
+    };
+    function loadCommCapacity() {
+      return ssGet('/workspaces/' + COMM_WS)
+        .then(function (ws) {
+          var folders = ws.folders || [];
+          var refFolder = folders.find(function (f) { return /reference/i.test(f.name || ''); });
+          if (refFolder) return ssGet('/folders/' + refFolder.id);
+          return Promise.all(folders.map(function (f) {
+            return ssGet('/folders/' + f.id).catch(function () { return null; });
+          })).then(function (fds) {
+            for (var i = 0; i < fds.length; i++) {
+              if (!fds[i]) continue;
+              var rf = (fds[i].folders || []).find(function (sf) { return /reference/i.test(sf.name || ''); });
+              if (rf) return ssGet('/folders/' + rf.id);
+            }
+            return null;
+          });
+        })
+        .then(function (refContents) {
+          if (!refContents) { console.warn('[EPO] Reference folder not found in Comm workspace'); return null; }
+          var capSheet = (refContents.sheets || []).find(function (s) { return /department\s*capacity/i.test(s.name || ''); });
+          if (!capSheet) { console.warn('[EPO] Department Capacity sheet not found in Comm Reference folder'); return null; }
+          console.log('[EPO] Found Comm capacity sheet:', capSheet.name, 'id:', capSheet.id);
+          return ssGet('/sheets/' + capSheet.id);
+        })
+        .then(function (sheet) {
+          if (!sheet) return;
+          COMM_CAP = parseCapacitySheet(sheet, COMM_CAP_ALIASES);
+        })
+        .catch(function (e) {
+          console.warn('[EPO] Comm capacity load failed — Comm depts will show raw hours (uncapacitated):', e.message);
         });
     }
 
@@ -2631,13 +2737,14 @@
     }
 
     function loadData() {
-      setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; IT_ACTIVE_INDEX = {}; PF_EXPANDED = {}; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
+      setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; COMM_CAP = {}; IT_ACTIVE_INDEX = {}; PF_EXPANDED = {}; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
       document.getElementById('load-msg').textContent = 'Fetching Commercialization + Business Support…';
       Promise.all([
         ssGet('/sheets/' + COMM_ID + '?include=rowPermalink'),
         ssGet('/sheets/' + BS_ID + '?include=rowPermalink'),
         buildRaidIndex(),
         loadBSCapacity(),
+        loadCommCapacity(),
         loadITActiveProjects()
       ])
         .then(function (res) {
@@ -2707,7 +2814,7 @@
       document.getElementById('tab-count').textContent = countTxt;
       /* Swap methodology bar */
       document.getElementById('mbar').innerHTML = TAB === 'comm'
-        ? '<strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days Overlap &nbsp;|&nbsp; Capacity = Dept Capacity (team size) × 8 hrs/day × Working Days in Month &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet'
+        ? '<strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days Overlap &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(COMM_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>')
         : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days, except Design = flat complexity-based estimate (High=28/Medium=12/Low=8 hrs/mo, not prorated) &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
       /* View toggle only applies to BS */
       document.getElementById('view-toggle').className = 'view-toggle' + (TAB === 'bs' ? ' show' : '');
@@ -2725,34 +2832,46 @@
       renderKPIsComm(fp, mx);
     }
 
-    /* Comm KPI strip — UNCHANGED, this is the original 5-tile set. Jerry's 7/2/26
-       request to redesign the tiles was specifically for "the top of all 3
-       screens" (Heatmap/Portfolio/Gantt — all BS-only views), so Comm keeps its
-       original tiles. */
+    /* Comm KPI strip — restructured 7/16/26 per end-user feedback:
+         1. High Priority Projects — same tile/mechanism as BS's (clickable,
+            toggles PF_SLICER.priority to "High"; the Comm heatmap branch of
+            renderHM() now honors this via applyPFSlicer, see 7/16/26 comment
+            there). Priority source is Comm's own "Proposed Priority" column
+            (see COMM_PRIORITY_COLUMN_NAME), not BS's Cross-Functional
+            Complexity Rating — different field, same normalizer.
+         2. Total Projects — the original card 1, unchanged, just moved.
+         3. Current Month Hour Demand — now a whole number ("1450 h") instead
+            of fmtHrs' k-abbreviated form ("1.45k h"); fmtHrs itself is left
+            alone since it's used all over BS's drill panels/captions where the
+            abbreviation is still wanted.
+         4-5. Depts Near Capacity / Projects On Hold — unchanged. */
     function renderKPIsComm(fp, mx) {
       function ia(s) { return /active|in.progress|test|build|deployment|post.support|design/i.test(s || ''); }
       function ip(s) { return /pending|discovery|enterprise.review/i.test(s || ''); }
       var dem = 0, nr = 0, ov = 0;
-      var moNow = MONTHS.filter(function (m) { return m.key === CK; })[0];
-      var wdNow = moNow ? wdays(moNow.start, moNow.end) : 0;
       Object.keys(mx).forEach(function (d) {
         var cell = mx[d][CK]; if (!cell) return;
         dem += cell.totalHours;
-        var capH = CAP[d] ? CAP[d] * HRS * wdNow : null;
+        var capH = COMM_CAP[d] || null;
         if (capH) { if (cell.totalHours >= capH * 0.9) nr++; if (cell.totalHours > capH) ov++; }
       });
       var holdKpi = PROJECTS.filter(function (p) { return p.source === 'Commercialization' && !p.capacityExcluded && isOnHold(p.status); }).length;
-      var acc = ['#52B788', '#52B788', '#2563EB', '#F97316', ov > 0 ? '#EF4444' : '#22C55E'];
+      var highProjs = curPortfolioProjects().filter(function (p) { return p.priorityTier === 'High'; });
+      var priorityActive = PF_SLICER.priority === 'High';
       var ks = [
-        { v: fp.length, l: 'Total Projects', s: fp.filter(function (p) { return ia(p.status); }).length + ' active · ' + fp.filter(function (p) { return ip(p.status); }).length + ' pending' },
-        { v: Object.keys(mx).length, l: 'Active Departments', s: Object.keys(CAP).length + ' with defined capacity' },
-        { v: fmtHrs(dem), l: 'Current Month Hour Demand', s: 'Est. hours prorated by working-day overlap' },
-        { v: nr, l: 'Depts Near Capacity', s: '≥ 90% hours utilized this month' },
-        { v: holdKpi, l: 'Projects On Hold', s: SHOW_ON_HOLD ? 'Included in hrs (dimmed)' : 'Currently excluded from hrs' }
+        {
+          v: highProjs.length, l: 'High Priority Projects', s: priorityActive ? 'Filter active — click to clear' : 'Click to filter dashboard',
+          acc: priorityActive ? '#EF4444' : '#F97316', clickable: true
+        },
+        { v: fp.length, l: 'Total Projects', s: fp.filter(function (p) { return ia(p.status); }).length + ' active · ' + fp.filter(function (p) { return ip(p.status); }).length + ' pending', acc: '#52B788', clickable: false },
+        { v: Math.round(dem) + ' h', l: 'Current Month Hour Demand', s: 'Est. hours prorated by working-day overlap', acc: '#2563EB', clickable: false },
+        { v: nr, l: 'Depts Near Capacity', s: '≥ 90% hours utilized this month', acc: '#F97316', clickable: false },
+        { v: holdKpi, l: 'Projects On Hold', s: SHOW_ON_HOLD ? 'Included in hrs (dimmed)' : 'Currently excluded from hrs', acc: ov > 0 ? '#EF4444' : '#22C55E', clickable: false }
       ];
       document.getElementById('kpi-strip').innerHTML = ks.map(function (k, i) {
-        return '<div class="kpi-card" style="border-top:3px solid ' + acc[i] + '">'
-          + '<div class="kv" style="color:' + (i >= 3 && k.v > 0 ? acc[i] : 'var(--dark)') + '">' + k.v + '</div>'
+        return '<div class="kpi-card' + (k.clickable ? ' kpi-clickable' : '') + (k === ks[0] && priorityActive ? ' kpi-active' : '') + '" style="border-top:3px solid ' + k.acc + '"'
+          + (k.clickable ? ' data-kpi-priority="1"' : '') + '>'
+          + '<div class="kv" style="color:' + (i >= 3 && k.v > 0 ? k.acc : 'var(--dark)') + '">' + k.v + '</div>'
           + '<div class="kl">' + k.l + '</div><div class="ks">' + k.s + '</div></div>';
       }).join('');
     }
@@ -2888,10 +3007,13 @@
       /* BS has only one BS_GROUPS entry ("IT & Digital") since the non-IT dept
          exclusion (7/1 meeting) — showing its header row is redundant clutter
          when every dept on screen is already IT & Digital by definition. Removed
-         for BS (7/2/26); Comm still has multiple named groups, so its headers
-         stay. When skipped, dept rows always render — there's no header left to
-         collapse against. */
-      var showGroupHeader = TAB !== 'bs';
+         for BS (7/2/26). Comm (7/16/26): department rollup groups removed per
+         end-user feedback — COMM_GROUPS is now single-dept-per-group too, so a
+         header row would just repeat the dept name that's already on the row
+         below it. Same reasoning as BS, now applied to both tabs — headers off
+         everywhere. When skipped, dept rows always render — there's no header
+         left to collapse against. */
+      var showGroupHeader = false;
       groups.forEach(function (g) {
         var collKey = collPrefix + g.label;
         /* Skip entire group if none of its departments have any data */
@@ -2919,34 +3041,37 @@
           var rb = di % 2 === 0 ? '#ffffff' : '#FAFEF9';
           h += '<tr style="background:' + rb + ';border-bottom:1px solid var(--border)">';
           /* Tab-aware capacity label in the sticky dept column.
-             7/14/26: Comm capacity used to display as "4.8 FTE" — the underlying
-             CAP table is still a team-size figure internally (unchanged), but it
-             must never surface as an "FTE" label to the user anymore. Converted
-             to hours/month using the current visible month's working days, same
-             basis as the capH used for the cells themselves just below. */
+             7/16/26: was recomputing Comm capacity from a hardcoded FTE guess
+             table × working days. Now reads COMM_CAP directly — live from the
+             Department Capacity sheet, already a flat monthly hours figure
+             (confirmed: Capacity/Month = FTE × 160, a fixed 20-working-day/month
+             assumption, not actual per-month working days) — same shape as
+             effectiveBSCap() below, so both branches are now symmetric. */
           var capDisp, hasCapacity;
-          if (TAB === 'comm') {
-            var cFte = CAP[dept];
-            var curMo = MONTHS.filter(function (m) { return m.key === CK; })[0];
-            var cHrsComm = cFte && curMo ? Math.round(cFte * HRS * wdays(curMo.start, curMo.end)) : null;
-            hasCapacity = !!cHrsComm; capDisp = cHrsComm ? cHrsComm + ' h/mo' : '—';
-          }
+          if (TAB === 'comm') { var cHrsComm = COMM_CAP[dept]; hasCapacity = !!cHrsComm; capDisp = cHrsComm ? cHrsComm + ' h/mo' : '—'; }
           else { var cHrs = effectiveBSCap()[dept]; hasCapacity = !!cHrs; capDisp = cHrs ? cHrs + ' h/mo' : '—'; }
           h += '<td class="dtd" style="background:' + rb + '"><div class="dinn"><span class="dnm" title="' + esc(dept) + '">' + esc(dept) + '</span><span style="font-size:10px;color:' + (hasCapacity ? 'var(--muted)' : '#E5E7EB') + '">' + esc(capDisp) + '</span></div></td>';
           MONTHS.forEach(function (mo) {
             var cell = dm[mo.key], hrs = cell ? cell.totalHours : 0;
-            /* Tab-aware capH: Comm = FTE×8×wdays; BS = fixed monthly hours from capacity sheet.
-               Capacity is always the dept's FULL monthly capacity — when status-split, each
-               status row shows its slice of that same total, so the % values across every
-               status group for one dept/month sum back to today's (unsplit) total. */
-            var capH = TAB === 'comm' ? (CAP[dept] ? CAP[dept] * HRS * wdays(mo.start, mo.end) : null) : (effectiveBSCap()[dept] || null);
+            /* Tab-aware capH: both tabs now read a flat monthly capacity figure
+               straight from their respective live capacity sheet — no more
+               FTE×8×wdays recomputation for Comm. Capacity is always the dept's
+               FULL monthly capacity — when status-split, each status row shows
+               its slice of that same total, so the % values across every
+               status group for one dept/month sum back to today's (unsplit)
+               total. */
+            var capH = TAB === 'comm' ? (COMM_CAP[dept] || null) : (effectiveBSCap()[dept] || null);
             var pct = capH ? hrs / capH : null, cl = clr(pct, hasCapacity, hrs);
             var is = SEL && SEL.dept === dept && SEL.mk === mo.key && (SEL.status || null) === (status || null), ic2 = mo.key === CK;
             var cs = 'ctd' + (hrs > 0 ? ' cl' : '') + (is ? ' sel' : '') + (ic2 && !is ? ' cur' : '');
-            /* Capacitated → %; BS uncapacitated fallback → FTE demand; Comm uncapacitated → raw hours */
+            /* Capacitated → % (or hours, if GRID_SHOW_HOURS is on); BS
+               uncapacitated fallback → FTE demand; Comm uncapacitated → raw
+               hours (unaffected by the toggle either way — these already show
+               an hours-derived number, not a percentage, so there's nothing to
+               switch). */
             var display = '';
             if (hrs > 0.1) {
-              if (capH) { display = Math.round(pct * 100) + '%'; }
+              if (capH) { display = GRID_SHOW_HOURS ? fmtHrs(hrs) : (Math.round(pct * 100) + '%'); }
               else if (TAB === 'bs') {
                 var wdMo = wdays(mo.start, mo.end);
                 var fteDemand = wdMo > 0 ? hrs / (HRS * wdMo) : 0;
@@ -3190,11 +3315,18 @@
           h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:40px 20px;text-align:center;color:var(--muted)">No projects match the current filters.</td></tr>';
         }
       } else {
-        h += renderHMGroupsHTML(curMX(), groups, '', null);
+        /* 7/16/26: Comm now supports the High Priority Projects KPI filter —
+           applyPFSlicer only ever has .priority set for Comm (dept/itOwner/
+           itResource are BS-only concepts, never touched by any Comm control),
+           so this is a safe, minimal reuse of the same shared filter BS already
+           uses. Rebuilding via buildMX() only when a filter is actually active
+           avoids any cost/behavior change on the default (unfiltered) path. */
+        var mxComm = PF_SLICER.priority ? buildMX(applyPFSlicer(curProjects())) : curMX();
+        h += renderHMGroupsHTML(mxComm, groups, '', null);
       }
       h += '</tbody>';
       document.getElementById('htbl').innerHTML = h;
-      var fp = curProjects(), nf = fp.filter(function (p) { return !Object.keys(p.ftes || {}).length && !Object.keys(p.hoursByDept || {}).length; }).length;
+      var fp = applyPFSlicer(curProjects()), nf = fp.filter(function (p) { return !Object.keys(p.ftes || {}).length && !Object.keys(p.hoursByDept || {}).length; }).length;
       var ft = document.getElementById('hm-footer');
       /* BS: the per-status missing-callouts (added 7/2/26) already explain, project
          by project, exactly which ones are excluded and why — this blanket note
@@ -3717,12 +3849,10 @@
       var mo = MONTHS.filter(function (m) { return m.key === mk; })[0];
       /* Tab-aware capacity — was previously always reading Comm's FTE-based CAP map
          regardless of tab, which silently broke the capacity/utilization stats for
-         every BS drill. CAP itself is still a team-size figure internally, but
-         7/14/26: dropped the separate "FTE BASIS" readout below — Comm is purely
-         hours-based now, and the CAPACITY row already shows the hours figure
-         derived from it, so a second "X FTE" line was pure redundant leakage. */
-      var cap = TAB === 'comm' ? CAP[dept] : null;
-      var capH = TAB === 'comm' ? (cap ? cap * HRS * wdays(mo.start, mo.end) : null) : (effectiveBSCap()[dept] || null);
+         every BS drill. 7/16/26: now reads COMM_CAP directly, live from the
+         Department Capacity sheet — already a flat monthly hours figure, same
+         shape as effectiveBSCap(), no more FTE derivation anywhere in this path. */
+      var capH = TAB === 'comm' ? (COMM_CAP[dept] || null) : (effectiveBSCap()[dept] || null);
       var pct = capH && cell ? cell.totalHours / capH : null;
       document.getElementById('d-dept').textContent = dept;
       document.getElementById('d-mon').textContent = (mo ? mo.label : mk) + (status ? ' · ' + status : '');
@@ -3967,6 +4097,19 @@
       closeDrill();
     }
 
+    function toggleGridMode() {
+      GRID_SHOW_HOURS = !GRID_SHOW_HOURS;
+      var btn = document.getElementById('btn-gridmode');
+      if (GRID_SHOW_HOURS) {
+        btn.textContent = '\u258E Grid: Hours';
+        btn.className = 'btn-toggle-hold on';
+      } else {
+        btn.textContent = '\u258E Grid: %';
+        btn.className = 'btn-toggle-hold off';
+      }
+      renderHM();
+    }
+
     function setLoad(on) {
       document.getElementById('loading-state').style.display = on ? 'block' : 'none';
       document.getElementById('data-view').style.display = on ? 'none' : 'block';
@@ -3992,6 +4135,7 @@
       document.getElementById('tab-comm').onclick = function () { switchTab('comm'); };
       document.getElementById('tab-bs').onclick = function () { switchTab('bs'); };
       document.getElementById('btn-hold').onclick = function () { toggleHold(); };
+      document.getElementById('btn-gridmode').onclick = function () { toggleGridMode(); };
       document.getElementById('vt-heatmap').onclick = function () { setBSView('heatmap'); };
       document.getElementById('vt-gantt').onclick = function () { setBSView('gantt'); };
 
