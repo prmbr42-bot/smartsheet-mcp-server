@@ -1171,6 +1171,128 @@
       padding: 14px 16px
     }
 
+    .pl-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px
+    }
+
+    .pl-tbl th {
+      text-align: left;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: #6B7280;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap
+    }
+
+    .pl-tbl td {
+      padding: 7px 8px;
+      border-bottom: 1px solid #F1F1EE;
+      vertical-align: top;
+      color: var(--dark)
+    }
+
+    .pl-grp td {
+      background: var(--dark);
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 6px 8px;
+      border-bottom: none
+    }
+
+    .pl-own td {
+      background: #F0EDE6;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: .03em;
+      color: var(--dark);
+      padding: 5px 8px 5px 20px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .pl-own .pl-own-ct {
+      float: right;
+      font-weight: 600;
+      color: #6B7280
+    }
+
+    .pl-name {
+      font-weight: 600
+    }
+
+    .pl-pid {
+      color: #9CA3AF;
+      font-weight: 400;
+      font-size: 10px;
+      margin-left: 5px
+    }
+
+    .pl-chip {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 9px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      white-space: nowrap
+    }
+
+    .pl-p-High {
+      background: #FEE2E2;
+      color: #991B1B
+    }
+
+    .pl-p-Medium {
+      background: #FEF3C7;
+      color: #92400E
+    }
+
+    .pl-p-Low {
+      background: #E5E7EB;
+      color: #4B5563
+    }
+
+    .pl-p-none {
+      background: #F3F4F6;
+      color: #9CA3AF;
+      font-style: italic
+    }
+
+    .pl-muted {
+      color: #9CA3AF;
+      font-style: italic
+    }
+
+    .pl-nowrap {
+      white-space: nowrap
+    }
+
+    .pl-upd {
+      max-width: 340px;
+      white-space: pre-wrap;
+      line-height: 1.45;
+      color: #4B5563;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden
+    }
+
+    .pl-hrs {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap
+    }
+
     .gantt-card {
       background: #fff;
       border-radius: 8px;
@@ -3649,11 +3771,11 @@
 
     /* Priority rework sort (7/1 meeting #8): tier first (High → Medium → Low,
        unranked/unknown sorts last), then Build date ascending within a tier
-       (earlier start ranks first), then name as a final stable tiebreaker. Since
-       PRIORITY_COLUMN_NAME is still unconfirmed, every project's tier is
-       currently null → this degrades gracefully to Build-date-then-name, which is
-       still an improvement over plain alphabetical and requires no further
-       changes once the tier column is wired in. */
+       (earlier start ranks first), then name as a final stable tiebreaker.
+       UPDATED 7/27/26: the old note here said the tier column was unconfirmed and
+       every tier was therefore null. That is no longer true — PRIORITY_COLUMN_NAME
+       now points at "Project Priority" (1-High / 2-Med / 3-Low), so tiers are
+       populated and this sort is live rather than degrading to Build-date order. */
     function pfPrioritySort(a, b) {
       var ta = PRIORITY_TIER_RANK.hasOwnProperty(a.priorityTier) ? PRIORITY_TIER_RANK[a.priorityTier] : 99;
       var tb = PRIORITY_TIER_RANK.hasOwnProperty(b.priorityTier) ? PRIORITY_TIER_RANK[b.priorityTier] : 99;
@@ -4001,30 +4123,162 @@
        "Approved" at parse time, so sourcing from it would silently drop any report
        row that hasn't cleared initial review. The view's contract is "everything in
        the report", so it reads the report.
-       STEP 3 = scaffold only. Grouping/sorting/fields land in step 4, slicer
-       integration in step 5.
+       Grouped Owning Department -> IT Function Owner; sorted priority High->Low
+       then estimated hours ascending. Slicer integration lands in step 5.
     ════════════════════════════════════════════════════════ */
+    /* Maps a report row to the date that put it in its CURRENT status.
+       Keyed off the RAW status string, deliberately NOT canonicalStatus: the
+       canonical map collapses "0 - Discovery" into "Enterprise Review", so it
+       can't tell those two apart. The raw strings are exact (the sheet's Status
+       column is a formula emitting exactly these 10 literals).
+       The mapping is just that formula read backwards — Status is derived from
+       whichever of these dates is populated, in this precedence order, so the
+       date that set the status IS the status date.
+       Cancelled/Enterprise Approval/Created are absent from the report's column
+       set (confirmed 7/27/26) and resolve to null. Per Jerry, the report only
+       ever contains active statuses, so those branches shouldn't fire; they're
+       kept so that adding the columns to the report is the only fix needed. */
+    function plStatusDate(r) {
+      var d = r.dates || {};
+      switch (String(r.status || '').trim()) {
+        case '8 - Cancelled': return { v: d.cancelled, src: 'Cancelled Date' };
+        case '7 - Paused': return { v: d.onHoldStart, src: 'On Hold Start' };
+        case '6 - Complete': return { v: d.complete, src: 'Complete Date' };
+        case '5 - Post Support': return { v: d.postSupport, src: 'Post Support Date' };
+        case '4 - Deploy': return { v: d.deploy, src: 'Deployment Date' };
+        case '3 - Test': return { v: d.test, src: 'Test Date' };
+        case '2 - Build': return { v: d.build, src: 'Build Date' };
+        case '1 - Design': return { v: d.design, src: 'Design (Kickoff) Date' };
+        case '0 - Enterprise Review': return { v: d.entApproval, src: 'Enterprise Approval Date' };
+        case '0 - Discovery': return { v: d.created, src: 'Created date' };
+      }
+      return { v: null, src: null };
+    }
+
+    /* Day-precision date formatter. Does NOT reuse pd()/fmtDate() on purpose:
+       pd() does new Date("2026-07-16"), which the spec parses as UTC midnight, so
+       toLocaleDateString in any negative-offset zone (Chicago) renders it as the
+       PREVIOUS day. fmtDate() only ever shows month+year so it never exposed the
+       bug, but a status date shown to the day would be wrong on every row. Parsing
+       the Y/M/D parts into a LOCAL date sidesteps it entirely. */
+    function plFmtDay(v) {
+      if (!v) return null;
+      var s = String(v).trim(), m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+      var d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : pd(s);
+      if (!d || isNaN(d.getTime())) return null;
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    var PL_UNASSIGNED = 'Unassigned';
+    /* Group keys sort alphabetically with Unassigned pinned last, so a blank never
+       floats to the top of the list and reads as a real department/owner. */
+    function plGroupSort(a, b) {
+      if (a === PL_UNASSIGNED && b !== PL_UNASSIGNED) return 1;
+      if (b === PL_UNASSIGNED && a !== PL_UNASSIGNED) return -1;
+      return String(a).localeCompare(String(b));
+    }
+    /* Row sort within an owner group, per Jerry 7/27/26:
+         1. Priority High -> Low  (PRIORITY_TIER_RANK: High 0, Medium 1, Low 2)
+         2. IT Owner Estimated Hours ASCENDING (smallest job first)
+         3. Project name, purely so the order is stable and reproducible run-to-run
+       Unrated priority sorts to the BOTTOM of its group (rank 99) rather than being
+       treated as Low, and blank hours sort to the bottom of their priority tier
+       rather than as zero, which would otherwise fake them to the top of an
+       ascending sort. */
+    function plRowSort(a, b) {
+      var pa = PRIORITY_TIER_RANK.hasOwnProperty(a.priorityTier) ? PRIORITY_TIER_RANK[a.priorityTier] : 99;
+      var pb = PRIORITY_TIER_RANK.hasOwnProperty(b.priorityTier) ? PRIORITY_TIER_RANK[b.priorityTier] : 99;
+      if (pa !== pb) return pa - pb;
+      var ha = (a.itEstHrs == null) ? Infinity : a.itEstHrs;
+      var hb = (b.itEstHrs == null) ? Infinity : b.itEstHrs;
+      if (ha !== hb) return ha - hb;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    }
+
     function renderProjectList() {
       var body = document.getElementById('projlist-body');
       var sub = document.getElementById('pl-sub');
       if (!body) return;
-      var rows = IT_ACTIVE_ROWS || [];
-      sub.textContent = 'Source: IT Active Projects report · ' + rows.length + ' rows';
-      if (!rows.length) {
-        body.innerHTML = '<div style="color:#9CA3AF;font-size:12px;padding:12px 0">'
+      var all = IT_ACTIVE_ROWS || [];
+      /* Slicer integration (7/27/26). applyPFSlicer reads exactly four fields —
+         itDept / itOwnerName / itResources / priorityTier — and IT_ACTIVE_ROWS is
+         shaped to carry all four (see loadITActiveProjects), so the existing BS
+         Dept / IT Owner / IT Resource / Priority slicers filter this view with no
+         changes on the slicer side at all. */
+      var rows = applyPFSlicer(all).slice();
+      /* Two DIFFERENT empty states, deliberately not merged: "the report never
+         loaded" is a fault to investigate, "your filters match nothing" is normal
+         and self-inflicted. Showing the load-failure copy to someone who just
+         over-filtered would send them chasing a non-existent bug. */
+      if (!all.length) {
+        if (sub) sub.textContent = 'Source: IT Active Projects report';
+        body.innerHTML = '<div class="pl-muted" style="font-size:12px;padding:12px 0">'
           + 'No rows loaded from the IT Active Projects report. If this persists after a Refresh, '
           + 'check the console for an [EPO] warning from loadITActiveProjects.</div>';
         return;
       }
-      var noDept = rows.filter(function (r) { return !r.itDept; }).length;
-      var noOwner = rows.filter(function (r) { return !r.itOwnerName; }).length;
-      var noPrio = rows.filter(function (r) { return !r.priorityTier; }).length;
-      body.innerHTML = '<div style="font-size:12px;color:var(--dark);line-height:1.8">'
-        + '<strong>Scaffold OK.</strong> ' + rows.length + ' rows captured from the report.<br>'
-        + 'Blank Owning Department: <strong>' + noDept + '</strong> &nbsp;·&nbsp; '
-        + 'Blank IT Function Owner: <strong>' + noOwner + '</strong> &nbsp;·&nbsp; '
-        + 'No usable Project Priority: <strong>' + noPrio + '</strong><br>'
-        + '<span style="color:#9CA3AF">Grouping, sorting and fields land in step 4.</span></div>';
+      if (!rows.length) {
+        if (sub) sub.textContent = 'Source: IT Active Projects report · 0 of ' + all.length + ' projects match';
+        body.innerHTML = '<div class="pl-muted" style="font-size:12px;padding:12px 0">'
+          + 'No projects match the current filters. ' + all.length + ' rows are loaded &mdash; '
+          + 'clear or widen the filters above to see them.</div>';
+        return;
+      }
+      /* Group: Owning Department -> IT Function Owner */
+      var tree = {};
+      rows.forEach(function (r) {
+        var d = r.itDept || PL_UNASSIGNED, o = r.itOwnerName || PL_UNASSIGNED;
+        (tree[d] || (tree[d] = {}))[o] = (tree[d][o] || []);
+        tree[d][o].push(r);
+      });
+      var depts = Object.keys(tree).sort(plGroupSort);
+      var html = '<table class="pl-tbl"><thead><tr>'
+        + '<th>Project</th><th>Priority</th><th>Resources Assigned</th><th>Status</th>'
+        + '<th>Status Date</th><th class="pl-hrs">Est. Hrs</th><th>Business Owner</th>'
+        + '<th>Current Status Update</th></tr></thead><tbody>';
+      var shown = 0;
+      depts.forEach(function (dept) {
+        var owners = Object.keys(tree[dept]).sort(plGroupSort);
+        var deptCt = owners.reduce(function (n, o) { return n + tree[dept][o].length; }, 0);
+        html += '<tr class="pl-grp"><td colspan="8">' + esc(dept)
+          + ' <span style="opacity:.6;font-weight:600">· ' + deptCt + (deptCt === 1 ? ' project' : ' projects') + '</span></td></tr>';
+        owners.forEach(function (owner) {
+          var list = tree[dept][owner].slice().sort(plRowSort);
+          html += '<tr class="pl-own"><td colspan="8">' + esc(owner)
+            + '<span class="pl-own-ct">' + list.length + '</span></td></tr>';
+          list.forEach(function (r) {
+            shown++;
+            var sd = plStatusDate(r), sdTxt = plFmtDay(sd.v);
+            var prio = r.priorityTier;
+            var prioCls = prio ? ('pl-p-' + prio) : 'pl-p-none';
+            var prioTxt = r.priorityRaw || (prio || PL_UNASSIGNED);
+            var res = (r.itResources || []).join(', ');
+            var upd = r.statusUpdate || '';
+            html += '<tr>'
+              + '<td><span class="pl-name">' + esc(r.name) + '</span>'
+              + (r.projectId ? '<span class="pl-pid">' + esc(r.projectId) + '</span>' : '') + '</td>'
+              + '<td><span class="pl-chip ' + prioCls + '">' + esc(prioTxt) + '</span></td>'
+              + '<td>' + (res ? esc(res) : '<span class="pl-muted">' + PL_UNASSIGNED + '</span>') + '</td>'
+              + '<td class="pl-nowrap">' + (r.status ? esc(r.status) : '<span class="pl-muted">&mdash;</span>') + '</td>'
+              + '<td class="pl-nowrap">' + (sdTxt
+                ? '<span title="' + esc(sd.src || '') + '">' + esc(sdTxt) + '</span>'
+                : '<span class="pl-muted" title="' + esc(sd.src || 'no mapped date column') + '">&mdash;</span>') + '</td>'
+              + '<td class="pl-hrs">' + (r.itEstHrs != null ? esc(String(r.itEstHrs)) : '<span class="pl-muted">&mdash;</span>') + '</td>'
+              + '<td>' + (r.businessOwner ? esc(r.businessOwner) : '<span class="pl-muted">' + PL_UNASSIGNED + '</span>') + '</td>'
+              + '<td>' + (upd ? '<div class="pl-upd" title="' + esc(upd) + '">' + esc(upd) + '</div>' : '<span class="pl-muted">&mdash;</span>') + '</td>'
+              + '</tr>';
+          });
+        });
+      });
+      html += '</tbody></table>';
+      /* Always show shown-of-total when a filter is active, so a sliced list is
+         never mistaken for missing data. */
+      var filtered = shown !== all.length;
+      if (sub) sub.textContent = 'Source: IT Active Projects report · '
+        + (filtered ? (shown + ' of ' + all.length + ' projects') : (shown + ' projects'))
+        + ' · ' + depts.length + (depts.length === 1 ? ' department' : ' departments')
+        + (filtered ? ' · filtered' : '');
+      body.innerHTML = html;
     }
 
     function setBSView(v) {
