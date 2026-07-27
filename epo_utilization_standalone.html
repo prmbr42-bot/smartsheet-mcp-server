@@ -1144,6 +1144,33 @@
       padding: 14px 24px 24px
     }
 
+    /* Project List view (added 7/27/26) — mirrors the Gantt wrapper/card pattern
+   so the three BS views share identical outer chrome and spacing. */
+    .pl-wrap {
+      padding: 14px 24px 24px
+    }
+
+    .pl-card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+      overflow: hidden
+    }
+
+    .pl-head {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px
+    }
+
+    .pl-body {
+      padding: 14px 16px
+    }
+
     .gantt-card {
       background: #fff;
       border-radius: 8px;
@@ -1350,6 +1377,7 @@
     <div class="view-toggle" id="view-toggle">
       <button class="vt-btn active" id="vt-heatmap" type="button">Heatmap</button>
       <button class="vt-btn" id="vt-gantt" type="button">Gantt</button>
+      <button class="vt-btn" id="vt-projlist" type="button">Project List</button>
     </div>
     <span id="tab-count"></span>
     <button class="btn-toggle-hold on" id="btn-hold" type="button"
@@ -1421,6 +1449,15 @@
         <div class="gantt-scroll">
           <div class="gantt-inner" id="gantt-inner"></div>
         </div>
+      </div>
+    </div>
+    <div class="pl-wrap" id="projlist-wrap" style="display:none">
+      <div class="pl-card">
+        <div class="pl-head">
+          <div class="pf-title">BUSINESS SUPPORT — PROJECT LIST</div>
+          <span id="pl-sub" style="color:#9CA3AF;font-size:11px">Source: IT Active Projects report</span>
+        </div>
+        <div class="pl-body" id="projlist-body"></div>
       </div>
     </div>
   </div>
@@ -1796,7 +1833,14 @@
     var IT_ACTIVE_ROWS = [];
 
     /* ── BS PORTFOLIO VIEW STATE ── */
-    var BS_VIEW = 'heatmap';         // 'heatmap' | 'portfolio' — toggle within the BS tab
+    /* BS_VIEW — which view is active inside the BS tab.
+       Live values: 'heatmap' | 'gantt' | 'projlist'.
+       ('portfolio' was removed 7/2/26; the old comment here still listed it and was
+       misleading. 'projlist' added 7/27/26.)
+       NOTE: the show/hide + render dispatch for this is duplicated in THREE places
+       (setBSView, renderAll, refreshBSDetailView). Adding a fourth view means
+       touching all three. See the comment in renderAll for why they aren't shared. */
+    var BS_VIEW = 'heatmap';
     var PF_EXPANDED = {};            // Portfolio View: expanded project-drill state, keyed by projectId
     var PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; // active Portfolio View + Heatmap slicer filters (shared — BS only)
     var HM_STATUS_COLL = {};  // Heatmap Status-first grouping (BS only): collapse state per status
@@ -2933,11 +2977,21 @@
         : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days, except Design = flat complexity-based estimate (High=28/Medium=12/Low=8 hrs/mo, not prorated) &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
       /* View toggle only applies to BS */
       document.getElementById('view-toggle').className = 'view-toggle' + (TAB === 'bs' ? ' show' : '');
-      var showHM = !(TAB === 'bs' && BS_VIEW === 'gantt');
+      /* NOTE (7/27/26): this show/hide + dispatch block is a DUPLICATE of the one in
+         setBSView. It exists because renderAll runs on paths setBSView never touches
+         (initial load, Refresh, slicer changes, tab switch) and must restore the
+         correct surface for the current BS_VIEW. Kept parallel rather than factored
+         into a shared helper so this change stays additive; consolidating the two is
+         a worthwhile follow-up but is a behavior change to renderAll, not a bug fix.
+         If you add a fourth view, BOTH copies need the branch or the view will
+         render on click and silently revert to Heatmap on the next refresh. */
+      var showHM = !(TAB === 'bs' && (BS_VIEW === 'gantt' || BS_VIEW === 'projlist'));
       document.querySelector('.hm-wrap').style.display = showHM ? 'block' : 'none';
       document.getElementById('gantt-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'gantt') ? 'block' : 'none';
+      document.getElementById('projlist-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'projlist') ? 'block' : 'none';
       renderKPIs(fp, mx);
       if (TAB === 'bs' && BS_VIEW === 'gantt') renderGantt();
+      else if (TAB === 'bs' && BS_VIEW === 'projlist') renderProjectList();
       else renderHM();
       renderSlicers();
     }
@@ -3680,6 +3734,7 @@
     }
     function refreshBSDetailView() {
       if (BS_VIEW === 'gantt') renderGantt();
+      else if (BS_VIEW === 'projlist') renderProjectList();
       else if (BS_VIEW === 'heatmap') renderHM();
     }
 
@@ -3939,15 +3994,53 @@
        have no bar (no Build Date exists yet at these stages), NOT a data gap.
        Listed here (7/6/26 fix) rather than silently dropped, so the Gantt's
        total always ties to the Heatmap's — see renderGantt's totalBars comment. */
+    /* ════════════════════════════════════════════════════════
+       PROJECT LIST VIEW  (BS only, added 7/27/26)
+       Sourced from IT_ACTIVE_ROWS (the "IT Active Projects" report), NOT from
+       PROJECTS. Deliberate: PROJECTS hard-filters EPO Initial Review Status =
+       "Approved" at parse time, so sourcing from it would silently drop any report
+       row that hasn't cleared initial review. The view's contract is "everything in
+       the report", so it reads the report.
+       STEP 3 = scaffold only. Grouping/sorting/fields land in step 4, slicer
+       integration in step 5.
+    ════════════════════════════════════════════════════════ */
+    function renderProjectList() {
+      var body = document.getElementById('projlist-body');
+      var sub = document.getElementById('pl-sub');
+      if (!body) return;
+      var rows = IT_ACTIVE_ROWS || [];
+      sub.textContent = 'Source: IT Active Projects report · ' + rows.length + ' rows';
+      if (!rows.length) {
+        body.innerHTML = '<div style="color:#9CA3AF;font-size:12px;padding:12px 0">'
+          + 'No rows loaded from the IT Active Projects report. If this persists after a Refresh, '
+          + 'check the console for an [EPO] warning from loadITActiveProjects.</div>';
+        return;
+      }
+      var noDept = rows.filter(function (r) { return !r.itDept; }).length;
+      var noOwner = rows.filter(function (r) { return !r.itOwnerName; }).length;
+      var noPrio = rows.filter(function (r) { return !r.priorityTier; }).length;
+      body.innerHTML = '<div style="font-size:12px;color:var(--dark);line-height:1.8">'
+        + '<strong>Scaffold OK.</strong> ' + rows.length + ' rows captured from the report.<br>'
+        + 'Blank Owning Department: <strong>' + noDept + '</strong> &nbsp;·&nbsp; '
+        + 'Blank IT Function Owner: <strong>' + noOwner + '</strong> &nbsp;·&nbsp; '
+        + 'No usable Project Priority: <strong>' + noPrio + '</strong><br>'
+        + '<span style="color:#9CA3AF">Grouping, sorting and fields land in step 4.</span></div>';
+    }
+
     function setBSView(v) {
       BS_VIEW = v;
       document.getElementById('vt-heatmap').className = 'vt-btn' + (v === 'heatmap' ? ' active' : '');
       document.getElementById('vt-gantt').className = 'vt-btn' + (v === 'gantt' ? ' active' : '');
-      var showHM = !(TAB === 'bs' && v === 'gantt');
+      document.getElementById('vt-projlist').className = 'vt-btn' + (v === 'projlist' ? ' active' : '');
+      /* Heatmap is the default surface, so it shows unless a BS-only alternate view
+         has taken over. Extended 7/27/26 for 'projlist'. */
+      var showHM = !(TAB === 'bs' && (v === 'gantt' || v === 'projlist'));
       document.querySelector('.hm-wrap').style.display = showHM ? 'block' : 'none';
       document.getElementById('gantt-wrap').style.display = (TAB === 'bs' && v === 'gantt') ? 'block' : 'none';
+      document.getElementById('projlist-wrap').style.display = (TAB === 'bs' && v === 'projlist') ? 'block' : 'none';
       renderSlicers();
       if (TAB === 'bs' && v === 'gantt') renderGantt();
+      else if (TAB === 'bs' && v === 'projlist') renderProjectList();
       else renderHM();
     }
 
@@ -4237,6 +4330,7 @@
       document.getElementById('tab-bs').className = 'tab ' + (t === 'bs' ? 'active' : '');
       document.getElementById('vt-heatmap').className = 'vt-btn active';
       document.getElementById('vt-gantt').className = 'vt-btn';
+      document.getElementById('vt-projlist').className = 'vt-btn';
       closeDrill(); renderAll();
     }
 
@@ -4253,6 +4347,7 @@
       document.getElementById('btn-gridmode').onclick = function () { toggleGridMode(); };
       document.getElementById('vt-heatmap').onclick = function () { setBSView('heatmap'); };
       document.getElementById('vt-gantt').onclick = function () { setBSView('gantt'); };
+      document.getElementById('vt-projlist').onclick = function () { setBSView('projlist'); };
 
       /* Event delegation — heatmap cells, group headers, project card toggles */
       document.onclick = function (ev) {
