@@ -1523,7 +1523,22 @@
        column, so the value here could plausibly come through as either literal
        text ("High"/"Medium"/"Low") or that same 5/3/1 numeric encoding —
        pfNormalizePriorityTier handles both defensively rather than assuming one. */
-    var PRIORITY_COLUMN_NAME = 'Cross-Functional Complexity Rating';
+    /* RE-POINTED 7/27/26 (Jerry): BS priority now reads "Project Priority", NOT
+       "Cross-Functional Complexity Rating". These are two different things and the
+       old mapping conflated them:
+         - "Project Priority" is a manual picklist (1-High / 2-Med / 3-Low), i.e.
+           what the EPO actually decides a project's priority is. Verified live
+           against the Portfolio Master Sheet + IT Active Projects report 7/27/26.
+         - "Cross-Functional Complexity Rating" is a FORMULA averaging 26 per-dept
+           complexity scores into High/Medium/Low. It measures how hard a project
+           is, not how important it is.
+       IMPORTANT — this re-point deliberately does NOT touch Design-phase hours.
+       Those read the separate `crossFunctionalComplexity` field (see parseSheet),
+       which still points at "Cross-Functional Complexity Rating" and still drives
+       DESIGN_COMPLEXITY_HOURS_PER_MONTH (High=28/Medium=12/Low=8). Only the
+       priorityTier field, the High Priority KPI cards, and the Priority slicer
+       move to the new column. Don't "helpfully" consolidate these two later. */
+    var PRIORITY_COLUMN_NAME = 'Project Priority';
     /* Comm priority (7/16/26, added for the High Priority Projects KPI card):
        confirmed via live sheet — "Proposed Priority" is a High/Med/Low picklist,
        distinct from "Stage Gate Priority" and "Calculated Priority" (both
@@ -1538,6 +1553,15 @@
         return null;
       }
       var s = String(raw).trim();
+      /* "Project Priority" values carry a numeric sort prefix: "1-High", "2-Med",
+         "3-Low" (confirmed live 7/27/26). Strip it before tier matching.
+         GUARDED deliberately: only strips when a non-empty label follows the
+         digit, so a bare "1"/"3"/"5" falls through untouched to the complexity
+         encoding below — where 1 means LOW. The two schemes rank in opposite
+         directions (1-High vs 1=Low), so an unguarded strip would silently invert
+         priority for any numerically-encoded value. */
+      var prefixStripped = s.replace(/^\d+\s*-\s*/, '');
+      if (prefixStripped !== s && prefixStripped !== '') s = prefixStripped;
       if (/^high$/i.test(s) || s === '5') return 'High';
       if (/^med(ium)?$/i.test(s) || s === '3') return 'Medium';
       if (/^low$/i.test(s) || s === '1') return 'Low';
@@ -1757,6 +1781,19 @@
     var BS_CAP_GRANULAR = {};  // pre-rollup capacity, keyed by the sheet's own granular dept rows (MDM/EDI/Power Apps/etc) — see MX_BS_GRANULAR
     var BS_FOLDER_INDEX = {};  // normalized folder name → {raidSheetId, projectSheetPermalink, ...}
     var IT_ACTIVE_INDEX = {};  // pfNormName(project name) → {dept, epoLead, resources} from the "IT Active Projects" report (authoritative dept signal — the report has no Project ID column, so this is keyed by normalized project name)
+    /* IT_ACTIVE_ROWS (added 7/27/26) — full normalized capture of every row in the
+       "IT Active Projects" report, for the Project List view. Deliberately SEPARATE
+       from IT_ACTIVE_INDEX above rather than an extension of it, for two reasons:
+         1. IT_ACTIVE_INDEX drops any row with a blank Owning Department (see the
+            `if(dept)` guard in loadITActiveProjects). parseSheet depends on that
+            behavior. The Project List must NOT drop those rows — the whole premise
+            of the view is "everything in the report", so a silent undercount would
+            be a correctness bug. Separate structures keep both contracts intact.
+         2. It's an ordered array, not a name-keyed map, so duplicate or blank
+            project names can't collapse rows the way the index would.
+       Entries are shaped project-LIKE (itDept/itOwnerName/itResources/priorityTier)
+       specifically so applyPFSlicer() works on them unmodified. */
+    var IT_ACTIVE_ROWS = [];
 
     /* ── BS PORTFOLIO VIEW STATE ── */
     var BS_VIEW = 'heatmap';         // 'heatmap' | 'portfolio' — toggle within the BS tab
@@ -2606,7 +2643,38 @@
             console.warn('[EPO] IT Active Projects report — missing expected columns. Available:', Object.keys(t2id).join(', '));
             return;
           }
-          var idx = {};
+          /* ── Project List view columns (added 7/27/26) ──
+             Verified live against the report 7/27/26. NOTE the 7/1/26 comment above
+             is now STALE: the report DOES expose a "Project ID" column today (it's
+             flagged hidden, but hidden columns still return cell values over the
+             API). IT_ACTIVE_INDEX is deliberately left keyed on normalized name
+             anyway — re-keying it would change parseSheet's matching behavior and
+             is out of scope here. IT_ACTIVE_ROWS captures the ID for its own use. */
+          var pidCol = t2id['Project ID'];
+          var statusCol = t2id['Status'];
+          var priorityCol = t2id['Project Priority'];
+          var statusUpdateCol = t2id['Current Status Update'];
+          var estHrsCol = t2id['IT Owner Estimated Hours'];
+          var bizOwnerCol = t2id['Business Owner'];
+          var itOwnerCol = t2id['IT Function Owner'];
+          /* Status gate dates. Present in the report: Design/Build/Test/Deployment/
+             Post Support/Complete/On Hold Start. ABSENT: Cancelled Date, Enterprise
+             Approval Date, Created date — so those three statuses can't resolve a
+             status date from the report alone. Looked up defensively anyway so that
+             adding the columns to the report is the only fix needed, no code change. */
+          var dateCols = {
+            design: t2id['Design (Kickoff) Date'],
+            build: t2id['Build Date'],
+            test: t2id['Test Date'],
+            deploy: t2id['Deployment Date'],
+            postSupport: t2id['Post Support Date'],
+            complete: t2id['Complete Date'],
+            onHoldStart: t2id['On Hold Start'],
+            cancelled: t2id['Cancelled Date'],
+            entApproval: t2id['Enterprise Approval Date'],
+            created: t2id['Created date']
+          };
+          var idx = {}, rows = [];
           (report.rows || []).forEach(function (row) {
             var byVal = {}, byDisp = {};
             (row.cells || []).forEach(function (c) {
@@ -2614,7 +2682,21 @@
               byVal[cid] = c.value != null ? c.value : null;
               byDisp[cid] = c.displayValue != null ? c.displayValue : null;
             });
+            /* Cell extraction is NOT uniform across columns — verified against a live
+               row 7/27/26, and getting this wrong yields silent blanks:
+                 - Owning Department: value populated, displayValue NULL (its
+                   "contacts" are pseudo-entries with no email), so read value first.
+                 - IT Function Owner / Business Owner: value is an EMAIL,
+                   displayValue is the friendly name, so read displayValue first.
+                 - Resources Assigned: value NULL, displayValue is the comma-joined
+                   name list, so displayValue is the only usable source.
+                 - Dates / picklists / numbers: value populated, displayValue often
+                   null or a formatted string, so read value first.
+               Hence two helpers rather than one generic `value || displayValue`. */
+            function cVal(cid) { return cid != null && byVal[cid] != null ? byVal[cid] : (cid != null ? byDisp[cid] : null); }
+            function cDisp(cid) { return cid != null && byDisp[cid] != null ? byDisp[cid] : (cid != null ? byVal[cid] : null); }
             var nameKey = byVal[nameCol]; if (!nameKey) return;
+            var projName = String(nameKey).trim();
             nameKey = pfNormName(nameKey);
             var rawDept = byVal[deptCol];
             var dept = rawDept ? (IT_DEPT_ABBREV[String(rawDept).trim()] || String(rawDept).trim()) : null;
@@ -2626,9 +2708,42 @@
             var resourcesRaw = resourcesCol != null ? (byDisp[resourcesCol] || byVal[resourcesCol]) : null;
             var resources = resourcesRaw ? String(resourcesRaw).split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
             if (dept) idx[nameKey] = { dept: dept, epoLead: lead || null, resources: resources };
+            /* ── Project List row (added 7/27/26) — captured for EVERY report row,
+               including blank-dept rows that the index above drops on purpose. */
+            var estHrsRaw = cVal(estHrsCol);
+            var estHrs = estHrsRaw == null || estHrsRaw === '' ? null : parseFloat(estHrsRaw);
+            var itOwnerRaw = cDisp(itOwnerCol);
+            var priorityRaw = cVal(priorityCol);
+            var dates = {};
+            Object.keys(dateCols).forEach(function (k) { dates[k] = cVal(dateCols[k]) || null; });
+            rows.push({
+              name: projName,
+              nameKey: nameKey,
+              projectId: cVal(pidCol) || null,
+              rowId: row.id,
+              /* itDept/itOwnerName/itResources/priorityTier are named to match the
+                 PROJECTS object shape so applyPFSlicer() consumes these unmodified. */
+              itDept: dept,
+              itOwnerName: itOwnerRaw ? normalizeOwnerKey(itOwnerRaw) : null,
+              itResources: resources,
+              priorityTier: pfNormalizePriorityTier(priorityRaw),
+              priorityRaw: priorityRaw || null,
+              status: cVal(statusCol) || null,
+              canonicalStatus: pfNormalizeStatus(cVal(statusCol)),
+              statusUpdate: cVal(statusUpdateCol) || null,
+              itEstHrs: (estHrs != null && !isNaN(estHrs)) ? estHrs : null,
+              businessOwner: cDisp(bizOwnerCol) || null,
+              epoLead: lead || null,
+              dates: dates
+            });
           });
           IT_ACTIVE_INDEX = idx;
+          IT_ACTIVE_ROWS = rows;
           console.log('[EPO] IT Active Projects index built —', Object.keys(idx).length, 'projects');
+          console.log('[EPO] IT Active Projects rows captured —', rows.length, 'rows ('
+            + rows.filter(function (r) { return !r.itDept; }).length + ' with no Owning Department, '
+            + rows.filter(function (r) { return !r.itOwnerName; }).length + ' with no IT Function Owner, '
+            + rows.filter(function (r) { return !r.priorityTier; }).length + ' with no usable Project Priority)');
         })
         .catch(function (e) {
           console.warn('[EPO] IT Active Projects report load failed — falling back to IT Function Owner inference only:', e.message);
@@ -2737,7 +2852,7 @@
     }
 
     function loadData() {
-      setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; COMM_CAP = {}; IT_ACTIVE_INDEX = {}; PF_EXPANDED = {}; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
+      setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; COMM_CAP = {}; IT_ACTIVE_INDEX = {}; IT_ACTIVE_ROWS = []; PF_EXPANDED = {}; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
       document.getElementById('load-msg').textContent = 'Fetching Commercialization + Business Support…';
       Promise.all([
         ssGet('/sheets/' + COMM_ID + '?include=rowPermalink'),
