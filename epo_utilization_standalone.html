@@ -1276,6 +1276,13 @@
       white-space: nowrap
     }
 
+    .pl-owner {
+      max-width: 140px;
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word
+    }
+
     .pl-upd {
       max-width: 340px;
       white-space: pre-wrap;
@@ -1497,9 +1504,16 @@
     <button class="tab active" id="tab-comm" type="button">Commercialization</button>
     <button class="tab" id="tab-bs" type="button">Business Support</button>
     <div class="view-toggle" id="view-toggle">
-      <button class="vt-btn active" id="vt-heatmap" type="button">Heatmap</button>
-      <button class="vt-btn" id="vt-gantt" type="button">Gantt</button>
-      <button class="vt-btn" id="vt-projlist" type="button">Project List</button>
+      <!-- 7/31/26, per Jerry: Heatmap/Gantt hidden (not deleted) — Project List
+         is the only BS view surfaced to users for now. Both keep rendering
+         normally in the background on every data refresh (rebuildMatrices/
+         buildMX don't read BS_VIEW at all, so hiding these buttons has zero
+         effect on data currency) — flip display back to '' to restore them,
+         no other change needed. See setBSView/switchTab for the matching
+         default-view change to 'projlist'. -->
+      <button class="vt-btn" id="vt-heatmap" type="button" style="display:none">Heatmap</button>
+      <button class="vt-btn" id="vt-gantt" type="button" style="display:none">Gantt</button>
+      <button class="vt-btn active" id="vt-projlist" type="button">Project List</button>
     </div>
     <span id="tab-count"></span>
     <button class="btn-toggle-hold on" id="btn-hold" type="button"
@@ -1962,7 +1976,13 @@
        NOTE: the show/hide + render dispatch for this is duplicated in THREE places
        (setBSView, renderAll, refreshBSDetailView). Adding a fourth view means
        touching all three. See the comment in renderAll for why they aren't shared. */
-    var BS_VIEW = 'heatmap';
+    /* 7/31/26: default changed 'heatmap'->'projlist' — Heatmap/Gantt buttons are
+       hidden per Jerry's request (see view-toggle HTML), so defaulting to a view
+       with no visible toggle button would leave users looking at Heatmap with no
+       way to tell that's what they're on. Heatmap/Gantt still fully render on
+       demand if BS_VIEW is set back programmatically — nothing about them was
+       removed, just the default entry point and the buttons. */
+    var BS_VIEW = 'projlist';
     var PF_EXPANDED = {};            // Portfolio View: expanded project-drill state, keyed by projectId
     var PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; // active Portfolio View + Heatmap slicer filters (shared — BS only)
     var HM_STATUS_COLL = {};  // Heatmap Status-first grouping (BS only): collapse state per status
@@ -2823,6 +2843,13 @@
           var estHrsCol = t2id['IT Owner Estimated Hours'];
           var bizOwnerCol = t2id['Business Owner'];
           var itOwnerCol = t2id['IT Function Owner'];
+          /* Estimated End Date (added 7/31/26 for the Project List column) — same
+             fallback chain as the main BS parseSheet call (line ~1775): Anticipated
+             End Date first, Desired Completed Date if that's blank. Looked up
+             defensively like everything else here — if neither column exists in
+             the report, this just renders as blank, no error. */
+          var antEndCol = t2id['Anticipated End Date'];
+          var desiredEndCol = t2id['Desired Completed Date'];
           /* Status gate dates. Present in the report: Design/Build/Test/Deployment/
              Post Support/Complete/On Hold Start. ABSENT: Cancelled Date, Enterprise
              Approval Date, Created date — so those three statuses can't resolve a
@@ -2882,6 +2909,7 @@
             var priorityRaw = cVal(priorityCol);
             var dates = {};
             Object.keys(dateCols).forEach(function (k) { dates[k] = cVal(dateCols[k]) || null; });
+            var estEndDate = cVal(antEndCol) || cVal(desiredEndCol) || null;
             rows.push({
               name: projName,
               nameKey: nameKey,
@@ -2899,6 +2927,7 @@
               statusUpdate: cVal(statusUpdateCol) || null,
               itEstHrs: (estHrs != null && !isNaN(estHrs)) ? estHrs : null,
               businessOwner: cDisp(bizOwnerCol) || null,
+              estEndDate: estEndDate,
               epoLead: lead || null,
               dates: dates
             });
@@ -3111,6 +3140,13 @@
       document.querySelector('.hm-wrap').style.display = showHM ? 'block' : 'none';
       document.getElementById('gantt-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'gantt') ? 'block' : 'none';
       document.getElementById('projlist-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'projlist') ? 'block' : 'none';
+      /* 7/31/26, per Jerry: KPI tiles are hidden on Project List specifically
+         (kept on Heatmap/Gantt) — the tiles' numbers (utilization %, Enterprise
+         Review count) don't mean anything in a flat project-list context, and
+         removing them closes the gap rather than leaving dead whitespace.
+         display:grid restores .kpi-strip's own layout (see .kpi-strip CSS) —
+         'block' would silently break its column layout when re-shown. */
+      document.getElementById('kpi-strip').style.display = (TAB === 'bs' && BS_VIEW === 'projlist') ? 'none' : 'grid';
       renderKPIs(fp, mx);
       if (TAB === 'bs' && BS_VIEW === 'gantt') renderGantt();
       else if (TAB === 'bs' && BS_VIEW === 'projlist') renderProjectList();
@@ -4235,20 +4271,21 @@
       var html = '<table class="pl-tbl"><thead><tr>'
         + '<th>Project</th><th>Priority</th><th>Resources Assigned</th><th>Status</th>'
         + '<th>Status Date</th><th class="pl-hrs">Est. Hrs</th><th>Business Owner</th>'
-        + '<th>Current Status Update</th></tr></thead><tbody>';
+        + '<th>Est. End Date</th><th>Current Status Update</th></tr></thead><tbody>';
       var shown = 0;
       depts.forEach(function (dept) {
         var owners = Object.keys(tree[dept]).sort(plGroupSort);
         var deptCt = owners.reduce(function (n, o) { return n + tree[dept][o].length; }, 0);
-        html += '<tr class="pl-grp"><td colspan="8">' + esc(dept)
+        html += '<tr class="pl-grp"><td colspan="9">' + esc(dept)
           + ' <span style="opacity:.6;font-weight:600">· ' + deptCt + (deptCt === 1 ? ' project' : ' projects') + '</span></td></tr>';
         owners.forEach(function (owner) {
           var list = tree[dept][owner].slice().sort(plRowSort);
-          html += '<tr class="pl-own"><td colspan="8">' + esc(owner)
+          html += '<tr class="pl-own"><td colspan="9">' + esc(owner)
             + '<span class="pl-own-ct">' + list.length + '</span></td></tr>';
           list.forEach(function (r) {
             shown++;
             var sd = plStatusDate(r), sdTxt = plFmtDay(sd.v);
+            var estEndTxt = plFmtDay(r.estEndDate);
             var prio = r.priorityTier;
             var prioCls = prio ? ('pl-p-' + prio) : 'pl-p-none';
             var prioTxt = r.priorityRaw || (prio || PL_UNASSIGNED);
@@ -4264,7 +4301,8 @@
                 ? '<span title="' + esc(sd.src || '') + '">' + esc(sdTxt) + '</span>'
                 : '<span class="pl-muted" title="' + esc(sd.src || 'no mapped date column') + '">&mdash;</span>') + '</td>'
               + '<td class="pl-hrs">' + (r.itEstHrs != null ? esc(String(r.itEstHrs)) : '<span class="pl-muted">&mdash;</span>') + '</td>'
-              + '<td>' + (r.businessOwner ? esc(r.businessOwner) : '<span class="pl-muted">' + PL_UNASSIGNED + '</span>') + '</td>'
+              + '<td class="pl-owner">' + (r.businessOwner ? esc(r.businessOwner) : '<span class="pl-muted">' + PL_UNASSIGNED + '</span>') + '</td>'
+              + '<td class="pl-nowrap">' + (estEndTxt ? esc(estEndTxt) : '<span class="pl-muted">&mdash;</span>') + '</td>'
               + '<td>' + (upd ? '<div class="pl-upd" title="' + esc(upd) + '">' + esc(upd) + '</div>' : '<span class="pl-muted">&mdash;</span>') + '</td>'
               + '</tr>';
           });
@@ -4292,6 +4330,7 @@
       document.querySelector('.hm-wrap').style.display = showHM ? 'block' : 'none';
       document.getElementById('gantt-wrap').style.display = (TAB === 'bs' && v === 'gantt') ? 'block' : 'none';
       document.getElementById('projlist-wrap').style.display = (TAB === 'bs' && v === 'projlist') ? 'block' : 'none';
+      document.getElementById('kpi-strip').style.display = (TAB === 'bs' && v === 'projlist') ? 'none' : 'grid';
       renderSlicers();
       if (TAB === 'bs' && v === 'gantt') renderGantt();
       else if (TAB === 'bs' && v === 'projlist') renderProjectList();
@@ -4579,12 +4618,12 @@
       var b = document.getElementById('btn-refresh'); b.disabled = on; b.textContent = on ? '↻  Loading…' : '↻  Refresh';
     }
     function switchTab(t) {
-      TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'heatmap'; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
+      TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'projlist'; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
       document.getElementById('tab-comm').className = 'tab ' + (t === 'comm' ? 'active' : '');
       document.getElementById('tab-bs').className = 'tab ' + (t === 'bs' ? 'active' : '');
-      document.getElementById('vt-heatmap').className = 'vt-btn active';
+      document.getElementById('vt-heatmap').className = 'vt-btn';
       document.getElementById('vt-gantt').className = 'vt-btn';
-      document.getElementById('vt-projlist').className = 'vt-btn';
+      document.getElementById('vt-projlist').className = 'vt-btn active';
       closeDrill(); renderAll();
     }
 
