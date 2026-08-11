@@ -2180,8 +2180,15 @@
              to tell whether "ed" is the real IT-committed date or just borrowed
              from Desired Completed Date (a business wish-date, not a delivery
              estimate). See the guard immediately below for why that distinction
-             matters for the hours math specifically. */
-          var antEndDateRaw = g('Anticipated End Date') || null;
+             matters for the hours math specifically.
+             8/3/26 fix, per Jerry: this column was renamed on the sheet to
+             "Estimated Go-Live Date" (to match the Project List display label) —
+             g() is an exact-title lookup with no fuzzy match, so this was
+             silently returning null for every BS project since the rename,
+             degrading the hours math to the Desired-Completed-Date/synthetic
+             fallback path across the board, not just the Project List column
+             Jerry originally flagged. Old name kept as a fallback, not removed. */
+          var antEndDateRaw = g('Estimated Go-Live Date') || g('Anticipated End Date') || null;
           /* Synthetic end-date fallback (7/6/26 feedback #3, extended 7/6/26 after
              checking live data against OTIF): covers TWO cases, both meaning the
              hours math can't trust "ed" as an IT-committed date:
@@ -2843,11 +2850,15 @@
           var estHrsCol = t2id['IT Owner Estimated Hours'];
           var bizOwnerCol = t2id['Business Owner'];
           var itOwnerCol = t2id['IT Function Owner'];
-          /* Estimated End Date (added 7/31/26 for the Project List column) — same
-             fallback chain as the main BS parseSheet call (line ~1775): Anticipated
-             End Date first, Desired Completed Date if that's blank. Looked up
-             defensively like everything else here — if neither column exists in
-             the report, this just renders as blank, no error. */
+          /* Est. Go-Live Date (added 7/31/26 for the Project List column).
+             8/3/26 fix, per Jerry: the Smartsheet column was renamed to
+             "Estimated Go-Live Date" to match the dashboard label — that's now
+             the primary lookup. Anticipated End Date / Desired Completed Date
+             kept as fallbacks (not removed) in case the rename hasn't propagated
+             to every report/sheet this pulls from yet — costs nothing if the
+             new name is always present, and avoids another silent-blank repeat
+             of this exact bug if it hasn't. */
+          var goLiveCol = t2id['Estimated Go-Live Date'];
           var antEndCol = t2id['Anticipated End Date'];
           var desiredEndCol = t2id['Desired Completed Date'];
           /* Status gate dates. Present in the report: Design/Build/Test/Deployment/
@@ -2909,7 +2920,7 @@
             var priorityRaw = cVal(priorityCol);
             var dates = {};
             Object.keys(dateCols).forEach(function (k) { dates[k] = cVal(dateCols[k]) || null; });
-            var estEndDate = cVal(antEndCol) || cVal(desiredEndCol) || null;
+            var estEndDate = cVal(goLiveCol) || cVal(antEndCol) || cVal(desiredEndCol) || null;
             rows.push({
               name: projName,
               nameKey: nameKey,
@@ -3066,7 +3077,7 @@
             'Project Owner Estimated Duration (Months)', 'Created date', 'Commercialization');
           /* Note: 'Project ID' column is fetched automatically — parseSheet reads all columns */
           var bs = parseSheet(res[1], BFMAP, 'Design (Kickoff) Date',
-            ['Anticipated End Date', 'Desired Completed Date'], null, 'Ent SteerCo Agenda Date', 'Business Support');
+            ['Estimated Go-Live Date', 'Anticipated End Date', 'Desired Completed Date'], null, 'Ent SteerCo Agenda Date', 'Business Support');
           PROJECTS = comm.concat(bs);
           MONTHS = mkMonths(); CK = nk();
           rebuildMatrices();
