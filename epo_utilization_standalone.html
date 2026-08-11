@@ -4313,7 +4313,7 @@
                 : '<span class="pl-muted" title="' + esc(sd.src || 'no mapped date column') + '">&mdash;</span>') + '</td>'
               + '<td class="pl-hrs">' + (r.itEstHrs != null ? esc(String(r.itEstHrs)) : '<span class="pl-muted">&mdash;</span>') + '</td>'
               + '<td class="pl-owner">' + (r.businessOwner ? esc(r.businessOwner) : '<span class="pl-muted">' + PL_UNASSIGNED + '</span>') + '</td>'
-              + '<td class="pl-nowrap">' + (estEndTxt ? esc(estEndTxt) : '<span class="pl-muted pl-await">Awaiting Requirements</span>') + '</td>'
+              + '<td class="pl-nowrap">' + (estEndTxt ? esc(estEndTxt) : (r.canonicalStatus === 'Design' ? '<span class="pl-muted pl-await">Awaiting Requirements</span>' : '<span class="pl-muted">&mdash;</span>')) + '</td>'
               + '<td>' + (upd ? '<div class="pl-upd" title="' + esc(upd) + '">' + esc(upd) + '</div>' : '<span class="pl-muted">&mdash;</span>') + '</td>'
               + '</tr>';
           });
