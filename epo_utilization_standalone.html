@@ -1197,6 +1197,14 @@
       color: var(--dark)
     }
 
+    .pl-row {
+      cursor: pointer
+    }
+
+    .pl-row:hover {
+      background: #F5F7F5
+    }
+
     .pl-grp td {
       background: var(--dark);
       color: #fff;
@@ -1941,6 +1949,12 @@
        else. Populated alongside MX_BS in rebuildMatrices(). */
     var MX_BS_GRANULAR = {};
     var DRILL_PROJS = [], EXPANDED = {}, RAID_CACHE = {};
+    /* 8/3/26: flat, click-indexable copy of whatever rows renderProjectList() just
+       rendered (post-filter, post-sort) — populated fresh on every render, same
+       pattern as DRILL_PROJS. Lets the row-click delegation handler look up the
+       real row object by index without re-deriving it from the DOM. */
+    var PL_ROWS_FLAT = [];
+    var PL_DRILL_IDX = null, PL_DRILL_RAID = null;
     var SHOW_ON_HOLD = true;
     /* 7/16/26: grid cell display toggle — % (default) vs raw hours. Display-only,
        doesn't affect any underlying calculation or matrix, so no rebuildMatrices()
@@ -2861,6 +2875,14 @@
           var goLiveCol = t2id['Estimated Go-Live Date'];
           var antEndCol = t2id['Anticipated End Date'];
           var desiredEndCol = t2id['Desired Completed Date'];
+          /* 8/3/26, added for Project List row click-in (sidebar drill parity with
+             the heatmap's project cards): Project Folder (RAID lookup key,
+             BS_FOLDER_INDEX) and % Complete, same column-name candidates already
+             proven on the main BS sheet in parseSheet(). Defensive lookups like
+             everything else in this function — null if the report doesn't carry
+             either column, no error either way. */
+          var folderCol = t2id['Project Folder'];
+          var pctCol = t2id['% Complete'] || t2id['Percent Complete'] || t2id['% Completion'];
           /* Status gate dates. Present in the report: Design/Build/Test/Deployment/
              Post Support/Complete/On Hold Start. ABSENT: Cancelled Date, Enterprise
              Approval Date, Created date — so those three statuses can't resolve a
@@ -2921,6 +2943,7 @@
             var dates = {};
             Object.keys(dateCols).forEach(function (k) { dates[k] = cVal(dateCols[k]) || null; });
             var estEndDate = cVal(goLiveCol) || cVal(antEndCol) || cVal(desiredEndCol) || null;
+            var pctRaw = parseFloat(cVal(pctCol));
             rows.push({
               name: projName,
               nameKey: nameKey,
@@ -2939,6 +2962,8 @@
               itEstHrs: (estHrs != null && !isNaN(estHrs)) ? estHrs : null,
               businessOwner: cDisp(bizOwnerCol) || null,
               estEndDate: estEndDate,
+              bsFolder: cVal(folderCol) || null,
+              percentComplete: isNaN(pctRaw) ? null : pctRaw,
               epoLead: lead || null,
               dates: dates
             });
@@ -4279,6 +4304,7 @@
         tree[d][o].push(r);
       });
       var depts = Object.keys(tree).sort(plGroupSort);
+      PL_ROWS_FLAT = [];
       var html = '<table class="pl-tbl"><thead><tr>'
         + '<th>Project</th><th>Priority</th><th>Resources Assigned</th><th>Status</th>'
         + '<th>Status Date</th><th class="pl-hrs">Est. Hrs</th><th>Business Owner</th>'
@@ -4295,6 +4321,8 @@
             + '<span class="pl-own-ct">' + list.length + '</span></td></tr>';
           list.forEach(function (r) {
             shown++;
+            var plIdx = PL_ROWS_FLAT.length;
+            PL_ROWS_FLAT.push(r);
             var sd = plStatusDate(r), sdTxt = plFmtDay(sd.v);
             var estEndTxt = plFmtDay(r.estEndDate);
             var prio = r.priorityTier;
@@ -4302,7 +4330,7 @@
             var prioTxt = r.priorityRaw || (prio || PL_UNASSIGNED);
             var res = (r.itResources || []).join(', ');
             var upd = r.statusUpdate || '';
-            html += '<tr>'
+            html += '<tr class="pl-row" data-plrow="' + plIdx + '">'
               + '<td><span class="pl-name">' + esc(r.name) + '</span>'
               + (r.projectId ? '<span class="pl-pid">' + esc(r.projectId) + '</span>' : '') + '</td>'
               + '<td><span class="pl-chip ' + prioCls + '">' + esc(prioTxt) + '</span></td>'
@@ -4555,6 +4583,81 @@
       return h;
     }
 
+    /* ════════════════════════════════════════════════════════
+       PROJECT LIST ROW CLICK-IN (8/3/26, per Jerry)
+       Opens the same #drill sidebar the Heatmap uses, but populated with a
+       single project's detail instead of a dept/month aggregate — clicking a
+       Project List row should feel like the same "click in" experience as
+       clicking into a project from a Heatmap cell.
+       IT_ACTIVE_ROWS (Project List's source, the IT Active Projects report) is a
+       thinner record than PROJECTS (the main BS sheet parse) — no month-specific
+       hours, no FTE concept, no Design-estimate flags. So this is deliberately a
+       separate render path from renderDrillProjs()/toggleProject(), built
+       against what a Project List row actually has, not a forced reuse of the
+       heatmap's cell-shaped data. Same visual language (.pc/.det-row/RAID
+       section) for consistency, "as close as possible" per Jerry, not identical
+       underlying data. DEMAND/CAPACITY/UTILIZATION stats and the utilization bar
+       don't apply to a single project (no month/capacity context here), so
+       those are replaced with project-level stats instead. */
+    function openProjectListDrill(idx) {
+      var p = PL_ROWS_FLAT[idx];
+      if (!p) return;
+      PL_DRILL_IDX = idx; PL_DRILL_RAID = null;
+      document.getElementById('d-dept').textContent = p.name;
+      var sub = [p.status || 'Unspecified'];
+      if (p.priorityRaw || p.priorityTier) sub.push(p.priorityRaw || p.priorityTier);
+      document.getElementById('d-mon').textContent = sub.join(' · ');
+      var st = '';
+      if (p.itEstHrs != null) st += '<div><div class="sl">EST. HOURS</div><div class="sv">' + fmtHrs(p.itEstHrs) + '</div></div>';
+      var sd = plStatusDate(p), sdTxt = plFmtDay(sd.v);
+      if (sdTxt) st += '<div><div class="sl">STATUS DATE</div><div class="sv" style="font-size:16px">' + sdTxt + '</div></div>';
+      if (p.percentComplete != null) st += '<div><div class="sl">% COMPLETE</div><div class="sv">' + Math.round(p.percentComplete) + '%</div></div>';
+      document.getElementById('d-stats').innerHTML = st || '<div class="pl-muted" style="font-size:12px">No summary stats available for this project.</div>';
+      document.getElementById('ubar').style.display = 'none';
+      document.getElementById('d-lhdr').textContent = 'PROJECT DETAIL';
+      document.getElementById('d-projs').innerHTML = renderProjectListDrillCard(p);
+      document.getElementById('drill').style.display = 'flex';
+      document.getElementById('data-view').style.paddingRight = '424px';
+      /* RAID lazy-load, same trigger pattern as toggleProject() */
+      var isBSFolder = !!p.bsFolder;
+      var cKey = isBSFolder ? 'bs-folder:' + p.bsFolder.toLowerCase().trim() : (p.projectId ? raidKey('Business Support') + ':' + p.projectId : null);
+      var canLoad = isBSFolder || !!p.projectId;
+      if (canLoad && cKey && RAID_CACHE[cKey] === undefined) {
+        PL_DRILL_RAID = 'loading';
+        document.getElementById('d-projs').innerHTML = renderProjectListDrillCard(p);
+        loadRaid(p.projectId, 'Business Support', p.bsFolder, function () {
+          if (PL_DRILL_IDX === idx) { PL_DRILL_RAID = true; document.getElementById('d-projs').innerHTML = renderProjectListDrillCard(p); }
+        });
+      } else if (canLoad) {
+        PL_DRILL_RAID = true;
+      }
+    }
+
+    function renderProjectListDrillCard(p) {
+      var ssLink = SHEET_PERMALINKS['Business Support']
+        ? SHEET_PERMALINKS['Business Support'] + (p.rowId ? '?rowId=' + p.rowId : '')
+        : ('https://app.smartsheet.com/sheets/' + BS_ID);
+      var estEndTxt = plFmtDay(p.estEndDate);
+      var h = '<div class="pc">';
+      h += '<div class="pc-detail" style="display:block;padding-top:10px">';
+      if (p.businessOwner) h += '<div class="det-row"><span class="det-lbl">BUSINESS OWNER</span><span class="det-val">' + esc(p.businessOwner) + '</span></div>';
+      if (p.itOwnerName) h += '<div class="det-row"><span class="det-lbl">IT FUNCTIONAL OWNER</span><span class="det-val">' + esc(p.itOwnerName) + '</span></div>';
+      if (p.itResources && p.itResources.length) h += '<div class="det-row"><span class="det-lbl">RESOURCES</span><span class="det-val">' + esc(p.itResources.join(', ')) + '</span></div>';
+      /* Same "Awaiting Requirements" logic as the table column (8/3/26) — only
+         meaningful while still in Design; any other status with a blank date is
+         a real gap, shown as a plain dash instead. */
+      var goLiveTxt = estEndTxt ? estEndTxt : (p.canonicalStatus === 'Design' ? 'Awaiting Requirements' : '—');
+      h += '<div class="det-row"><span class="det-lbl">EST. GO-LIVE DATE</span><span class="det-val">' + esc(goLiveTxt) + '</span></div>';
+      if (p.statusUpdate) {
+        h += '<div class="det-row" style="display:block"><span class="det-lbl">STATUS UPDATE</span></div>'
+          + '<div style="font-size:11px;color:var(--text);font-style:italic;margin:-3px 0 7px">"' + esc(p.statusUpdate.length > 220 ? p.statusUpdate.slice(0, 220) + '…' : p.statusUpdate) + '"</div>';
+      }
+      h += '<a class="ss-link" href="' + ssLink + '" target="_blank" rel="noopener">⬡ Open Project Sheet ↗</a>';
+      h += renderRaidSection(p.projectId, 'Business Support', 'pl-' + PL_DRILL_IDX, PL_DRILL_RAID, p.bsFolder);
+      h += '</div></div>';
+      return h;
+    }
+
     function toggleProject(idx) {
       var p = DRILL_PROJS[idx];
       if (!p) return;
@@ -4586,7 +4689,7 @@
     }
 
     function closeDrill() {
-      SEL = null; EXPANDED = {};
+      SEL = null; EXPANDED = {}; PL_DRILL_IDX = null; PL_DRILL_RAID = null;
       document.getElementById('drill').style.display = 'none';
       document.getElementById('data-view').style.paddingRight = '0';
       renderHM();
@@ -4671,6 +4774,16 @@
         if (pfRow && pfRow.getAttribute && pfRow.getAttribute('data-pfrow')) {
           if (t.tagName === 'A' || t.closest && t.closest('a')) return;
           togglePFProject(pfRow.getAttribute('data-pfrow')); return;
+        }
+        /* Project List (BS) — row click opens the same sidebar used for Heatmap
+           cell drill-downs, populated with that one project's detail instead of
+           a dept/month aggregate. 8/3/26, per Jerry — parity with the project
+           card detail already shown from the Heatmap. */
+        var plRow = t;
+        while (plRow && !(plRow.getAttribute && plRow.getAttribute('data-plrow'))) plRow = plRow.parentNode;
+        if (plRow && plRow.getAttribute && plRow.getAttribute('data-plrow')) {
+          if (t.tagName === 'A' || t.closest && t.closest('a')) return;
+          openProjectListDrill(parseInt(plRow.getAttribute('data-plrow'), 10)); return;
         }
         /* Heatmap Design/Enterprise Review — individual row expand/collapse */
         var hmExemptRow = t;
