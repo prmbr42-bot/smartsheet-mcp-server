@@ -4650,8 +4650,14 @@
       var goLiveTxt = estEndTxt ? estEndTxt : (p.canonicalStatus === 'Design' ? 'Awaiting Requirements' : '—');
       h += '<div class="det-row"><span class="det-lbl">EST. GO-LIVE DATE</span><span class="det-val">' + esc(goLiveTxt) + '</span></div>';
       if (p.statusUpdate) {
+        /* 8/3/26, per Jerry: full text, no truncation — this sidebar only ever
+           shows one project at a time, so it's fine for it to stretch vertically
+           to fit. (The Heatmap's project-card version of this same field still
+           truncates at 220 chars — that context can have several projects
+           expanded in the same sidebar at once, so unbounded growth there is a
+           different tradeoff; left as-is unless that's wanted too.) */
         h += '<div class="det-row" style="display:block"><span class="det-lbl">STATUS UPDATE</span></div>'
-          + '<div style="font-size:11px;color:var(--text);font-style:italic;margin:-3px 0 7px">"' + esc(p.statusUpdate.length > 220 ? p.statusUpdate.slice(0, 220) + '…' : p.statusUpdate) + '"</div>';
+          + '<div style="font-size:11px;color:var(--text);font-style:italic;margin:-3px 0 7px;white-space:pre-wrap">"' + esc(p.statusUpdate) + '"</div>';
       }
       h += '<a class="ss-link" href="' + ssLink + '" target="_blank" rel="noopener">⬡ Open Project Sheet ↗</a>';
       h += renderRaidSection(p.projectId, 'Business Support', 'pl-' + PL_DRILL_IDX, PL_DRILL_RAID, p.bsFolder);
