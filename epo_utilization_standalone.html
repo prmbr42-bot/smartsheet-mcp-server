@@ -4067,22 +4067,22 @@ var ENT_MONTHS=['2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','202
   '2027-03','2027-04','2027-05','2027-06','2027-07','2027-08','2027-09','2027-10',
   '2027-11','2027-12','2028-01','2028-02','2028-03','2028-04'];
 var ENT_INITIATIVES=[
-  {n:'Project Imagine',s:'On Track',l:'Chris Volk',f:'All',sg:'imagine',
+  {n:'Project Imagine',s:'On Track',l:'Chris Volk',f:'All',sg:'imagine',ids:[],
    ms:{'2026-10':'Foundation complete · First wall installed','2027-01':'Building fully enclosed'}},
-  {n:'Ignite HR (Workday)',s:'On Track',l:'Erin Campbell',f:'All',sg:null,
+  {n:'Ignite HR (Workday)',s:'On Track',l:'Erin Campbell',f:'All',sg:null,ids:[],
    ms:{'2026-08':'End to End Testing','2026-09':'Training','2026-10':'Oct 1 · Go Live'}},
-  {n:'Project Dodgers',s:'At Risk',l:'David Leal',f:'Ops, Eng, IT, Sales',sg:'P-0087',ms:{}},
-  {n:'Innovation: Pastabilities',s:'Behind',l:'JB',f:'',sg:'P-0041',ms:{}},
-  {n:'Innovation: Protein Sauce',s:'',l:'',f:'',sg:'protein',ms:{}},
-  {n:'ZZ Integration',s:'',l:'Aidan Harper',f:'',sg:null,ms:{}},
-  {n:'ZZ Warehouse Transition',s:'',l:'Steve Kassinger',f:'',sg:null,ms:{}},
-  {n:'Coupa Purch Req Migration',s:'',l:'Danny Endo',f:'',sg:null,ms:{}},
-  {n:'Coupa Expense Migration',s:'',l:'',f:'',sg:null,ms:{}},
-  {n:'xTracta Migration',s:'',l:'',f:'',sg:null,ms:{}},
-  {n:'Item Master Workflow',s:'',l:'Kristen Ramirez',f:'',sg:null,ms:{}},
-  {n:'Commercialization Transformation',s:'',l:'Kristen Ramirez',f:'',sg:'portfolio',ms:{}},
-  {n:'AI Acceleration',s:'',l:'All Functions',f:'',sg:null,ms:{}},
-  {n:'Project Simplify',s:'',l:'All Functions',f:'',sg:'journeys',ms:{}}
+  {n:'Project Dodgers',s:'At Risk',l:'David Leal',f:'Ops, Eng, IT, Sales',sg:'P-0087',ids:[],ms:{}},
+  {n:'Innovation: Pastabilities',s:'Behind',l:'JB',f:'',sg:'P-0041',ids:[],ms:{}},
+  {n:'Innovation: Protein Sauce',s:'',l:'',f:'',sg:'protein',ids:[],ms:{}},
+  {n:'ZZ Integration',s:'',l:'Aidan Harper',f:'',sg:null,ids:[],ms:{}},
+  {n:'ZZ Warehouse Transition',s:'',l:'Steve Kassinger',f:'',sg:null,ids:[],ms:{}},
+  {n:'Coupa Purch Req Migration',s:'',l:'Danny Endo',f:'',sg:null,ids:[],ms:{}},
+  {n:'Coupa Expense Migration',s:'',l:'',f:'',sg:null,ids:[],ms:{}},
+  {n:'xTracta Migration',s:'',l:'',f:'',sg:null,ids:[],ms:{}},
+  {n:'Item Master Workflow',s:'',l:'Kristen Ramirez',f:'',sg:null,ids:[],ms:{}},
+  {n:'Commercialization Transformation',s:'',l:'Kristen Ramirez',f:'',sg:'portfolio',ids:[],ms:{}},
+  {n:'AI Acceleration',s:'',l:'All Functions',f:'',sg:null,ids:[],ms:{}},
+  {n:'Project Simplify',s:'',l:'All Functions',f:'',sg:'journeys',ids:[],ms:{}}
 ];
 /* 8/27/26 STEP 2 — live Smartsheet resolution for the Enterprise roadmap.
    Reads SG_ROWS (already parsed from the Comm master on every load), so this
@@ -4124,6 +4124,37 @@ function entTokenMatch(a,b){
   function covers(x,y){return y.every(function(t){return x.indexOf(t)>-1;});}
   if(!(covers(a,b)||covers(b,a)))return false;
   return Math.min(a.length,b.length)>=2;   /* one shared word is not a match */
+}
+/* 8/27/26 REVISED, same day. Auto-matching is NO LONGER used to render.
+   Evidence (entMatchReport run against 229 live projects): Patty's initiative
+   names and the Smartsheet project names share almost no vocabulary.
+   "ZZ Integration" is tracked as "ZZ RJW Implementation"; "Item Master
+   Workflow" as "Master Data Module - Data Audit & Item Creation/Modification";
+   "Ignite HR (Workday)" spans TWO Workday projects. Coupa and xTracta are on
+   neither master sheet at all. Any matcher loose enough to bridge those gaps
+   would produce false matches everywhere, and a wrong project shown to
+   leadership is worse than an honest blank.
+   So: `ids` is an explicit, human-confirmed list of Project IDs per
+   initiative, and it is one-to-MANY by design. entAutoMatch survives only as
+   a discovery aid behind entMatchReport() in the console. */
+function entByIds(ids){
+  if(!ids||!ids.length)return null;
+  if((!SG_ROWS||!SG_ROWS.length)&&(!PROJECTS||!PROJECTS.length))return {pending:true};
+  var found=[],missing=[];
+  ids.forEach(function(want){
+    var w=String(want).toUpperCase(),hit=null;
+    (SG_ROWS||[]).forEach(function(r){
+      if(!hit&&String(r.id||'').toUpperCase()===w)
+        hit={name:r.name,id:r.id,stage:r.stage,
+             pct:r.pct!=null?Math.round(r.pct*100):null,src:'Comm'};});
+    (PROJECTS||[]).forEach(function(pr){
+      if(!hit&&String(pr.projectId||'').toUpperCase()===w)
+        hit={name:pr.name,id:pr.projectId,stage:pr.status,
+             pct:pr.percentComplete!=null?Math.round(pr.percentComplete*100):null,
+             src:pr.source==='Business Support'?'BS':'Comm'};});
+    if(hit)found.push(hit);else missing.push(want);
+  });
+  return {found:found,missing:missing};
 }
 function entAutoMatch(name){
   var want=entTokens(name),hits=[];
@@ -4180,24 +4211,27 @@ function entResolve(key){
   return null;   /* 'journeys' and anything unrecognised */
 }
 function entLiveCell(i){
-  if(!i.sg){
-    /* No explicit mapping — try to find one live. */
-    if(!SG_ROWS||!SG_ROWS.length)return '<span class="ent-src no">loading&hellip;</span>';
-    var m=entAutoMatch(i.n);
-    if(!m.length)return '<span class="ent-src no">NO SOURCE</span>';
-    if(m.length===1){
-      var h=m[0];
-      return '<span class="ent-src live">'+esc(h.src)+(h.id?' '+esc(h.id):'')+'</span>'+
-        '<div class="ent-live" title="Auto-matched on project name">'+esc(h.name)+
-        (h.pct!=null?' &middot; '+h.pct+'%':'')+'</div>';
-    }
-    var pcts=m.filter(function(x){return x.pct!=null;});
+  /* Explicit confirmed IDs win over everything. */
+  var e=entByIds(i.ids);
+  if(e&&!e.pending){
+    var lines=e.found.map(function(h){
+      return esc(h.src)+' '+esc(h.id||'?')+' &middot; '+esc(h.name)+
+        (h.pct!=null?' &middot; '+h.pct+'%':'');});
+    var miss=e.missing.length
+      ? '<div class="ent-live" style="color:#B7791F">'+e.missing.length+
+        ' mapped id(s) not found: '+esc(e.missing.join(', '))+'</div>' : '';
+    if(!e.found.length)return '<span class="ent-src no">NOT FOUND</span>'+miss;
+    var pcts=e.found.filter(function(x){return x.pct!=null;});
     var avg=pcts.length?Math.round(pcts.reduce(function(a,x){return a+x.pct;},0)/pcts.length):null;
-    return '<span class="ent-src live">'+m.length+' matched</span>'+
-      '<div class="ent-live" title="'+esc(m.map(function(x){return x.name;}).join(' | '))+
-      '">'+esc(m[0].name)+' +'+(m.length-1)+
-      (avg!=null?' &middot; '+avg+'% avg':'')+'</div>';
+    var badge=e.found.length===1
+      ? esc(e.found[0].src)+' '+esc(e.found[0].id)
+      : e.found.length+' projects'+(avg!=null?' &middot; '+avg+'%':'');
+    return '<span class="ent-src live">'+badge+'</span>'+
+      '<div class="ent-live" title="'+esc(e.found.map(function(x){return x.name;}).join(' | '))+
+      '">'+lines.join('<br>')+'</div>'+miss;
   }
+  if(e&&e.pending)return '<span class="ent-src no">loading&hellip;</span>';
+  if(!i.sg)return '<span class="ent-src no">NO SOURCE</span>';
   var v=entResolve(i.sg);
   if(v===null)return '<span class="ent-src no" title="Mapping known but the source '+
     'sheets are not read by this dashboard.">SOURCE NOT READ</span>';
@@ -4226,8 +4260,10 @@ function entMonthLabel(k){
 function renderEnterprise(){
   var now=nk();
   var sourced=ENT_INITIATIVES.filter(function(i){
+    var e=entByIds(i.ids);
+    if(e&&!e.pending&&e.found.length)return true;
     if(i.sg){var v=entResolve(i.sg);return !!(v&&!v.missing&&!v.pending);}
-    return entAutoMatch(i.n).length>0;}).length;
+    return false;}).length;
   var noStatus=ENT_INITIATIVES.filter(function(i){return !i.s;}).length;
 
   var head='<div class="ent-head"><div class="ent-cnt"><b>'+ENT_INITIATIVES.length+
