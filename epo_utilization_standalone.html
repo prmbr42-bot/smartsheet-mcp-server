@@ -787,7 +787,7 @@ var SG_ROWS=[];                                  // Stage Gate Status rows (8/27
    twice. That's a bad first impression for a leadership audience, so retry
    automatically instead. Capped at 2 retries; a manual Refresh always resets. */
 var LOAD_RETRY=0;
-var LOAD_RETRY_MAX=2;
+var LOAD_RETRY_MAX=3;
 var SG_FILTER={status:'active',bu:'all'};        // Kristen's two filters
 var PF_EXPANDED={};            // Portfolio View: expanded project-drill state, keyed by projectId
 var PF_SLICER={dept:null,itOwner:null,itResource:null,priority:null}; // active Portfolio View + Heatmap slicer filters (shared — BS only)
@@ -1898,14 +1898,27 @@ function loadData(isRetry){
         /* Note: 'Project ID' column is fetched automatically — parseSheet reads all columns */
       var bs=parseSheet(res[1],BFMAP,'Design (Kickoff) Date',
         ['Estimated Go-Live Date','Anticipated End Date','Desired Completed Date'],null,'Ent SteerCo Agenda Date','Business Support');
-      /* 8/27/26 cold-start guard: a healthy response always yields rows on BOTH
-         sheets. Zero on either means a partial/empty body, not a real state —
-         neither master sheet is ever empty in practice. Retry rather than
-         render a misleading all-zeros dashboard. */
-      if((comm.length===0||bs.length===0)&&LOAD_RETRY<LOAD_RETRY_MAX){
+      /* 8/27/26 cold-start guard.
+         REVISED same day: the first version only checked the two master sheets
+         and let a real cold start through. All SIX calls in the Promise.all fire
+         in parallel against the same App Service, so a cold start typically has
+         some succeed and some fail — and loadCommCapacity/loadBSCapacity/
+         loadITActiveProjects all swallow their own errors and resolve anyway, so
+         Promise.all still succeeds. Observed 8/27 08:08: master sheets loaded
+         (77 projects) but COMM_CAP was empty (no heatmap colours, "Capacity
+         sheet loading…") and IT_ACTIVE_ROWS was empty (BS Project List blank).
+         None of these five collections is ever legitimately empty, so any one of
+         them being empty means a partial load. Check them all. */
+      var gaps=[];
+      if(comm.length===0)gaps.push('comm');
+      if(bs.length===0)gaps.push('bs');
+      if(Object.keys(COMM_CAP).length===0)gaps.push('commCapacity');
+      if(Object.keys(BS_CAP).length===0)gaps.push('bsCapacity');
+      if(IT_ACTIVE_ROWS.length===0)gaps.push('itActiveProjects');
+      if(gaps.length&&LOAD_RETRY<LOAD_RETRY_MAX){
         LOAD_RETRY++;
-        console.warn('[EPO] Empty payload (comm='+comm.length+', bs='+bs.length+
-                     ') — cold start suspected. Retry '+LOAD_RETRY+'/'+LOAD_RETRY_MAX);
+        console.warn('[EPO] Partial load — empty: '+gaps.join(', ')+
+                     '. Cold start suspected. Retry '+LOAD_RETRY+'/'+LOAD_RETRY_MAX);
         document.getElementById('load-msg').textContent=
           'Waking the data service\u2026 retry '+LOAD_RETRY+' of '+LOAD_RETRY_MAX;
         setTimeout(function(){loadData(true);},1500*LOAD_RETRY);
@@ -1928,7 +1941,13 @@ function loadData(isRetry){
          throws (5xx / network) than returns an empty body. Same retry budget.
          401 is excluded — that's a token problem and retrying just delays a
          real error the user needs to see. */
-      if(LOAD_RETRY<LOAD_RETRY_MAX&&!/401/.test(e.message||'')){
+      /* 8/27/26 REVISED: only retry on 5xx / network failures. A 4xx is a
+         deterministic answer — the route or token is wrong — and retrying just
+         burns 4.5s and floods the console with duplicate warnings. Observed in
+         the Claude preview pane, where the relative /api path 404s against the
+         wrong origin and every warning printed four times. 404 in particular
+         means a missing route in src/index.ts, never a cold start. */
+      if(LOAD_RETRY<LOAD_RETRY_MAX&&!/\b4\d\d\b/.test(e.message||'')){
         LOAD_RETRY++;
         console.warn('[EPO] Fetch failed ('+e.message+') — retry '+LOAD_RETRY+'/'+LOAD_RETRY_MAX);
         document.getElementById('load-msg').textContent=
