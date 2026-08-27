@@ -3335,7 +3335,28 @@ function parseStageGate(sheet){
       /* 8/27/26: both are flagged hidden on the Smartsheet grid but return
          cell values normally over the API (confirmed 8/24). Feeds the inline
          drill's PROJECT DETAILS block. */
-      objective:g('High Level Objective'), context:g('Project Context')
+      objective:g('High Level Objective'), context:g('Project Context'),
+      /* Threshold Review (8/27/26 step 3). Read as STRINGS, not numbers: the
+         three "Score" columns return "Pass"/"Fail" text, not numerics, despite
+         the column names. Confirmed against the live sheet. */
+      critMet:g('Criteria Met Count'), sgFilter:g('SG Filter Result'),
+      scCost:g('Cost Savings Score'), scMargin:g('Gross Margin Score'),
+      scNetSales:g('Incremental Net Sales Score'), scOGSM:g('OGSM Strategy Score'),
+      ogsmCat:g('OGSM Categories'), top10:g('Top 10 Customer Impacted?'),
+      imagine:g('Project Imagine related?'),
+      /* Financial Summary (8/27/26 step 2) */
+      finOwner:g('Project Financials Owners'), salesChannel:g('Sales Channel'),
+      projCost:num('Anticipated Project Cost $K'),
+      rdCost:num('Project Costs - R&D Estimate $K'),
+      y1GrossSales:num('Y1 Gross Sales $K'),
+      y1IncGP:num('Y1 Incremental Gross Profit $K'),
+      y1IncNetSales:num('Y1 Expected Incremental Net Sales $K'),
+      y1ExpMargin:num('Y1 Expected Gross Profit Margin %'),
+      y1TgtMargin:num('Y1 Target Gross Profit Margin %'),
+      marginVsTgt:g('Gross Profit Margin vs Target'),
+      costRiskSav:num('Cost/Risk Savings $K'),
+      salesFTE:g('Sales FTE'), salesComplexity:g('Sales Complexity'),
+      salesCallOuts:g('Sales Call Outs')
     };
   }).filter(function(r){return r.id||r.name;});
 }
@@ -3469,17 +3490,81 @@ function sgDetail(r){
   return '<div class="sg-dgrid">'+det+'</div>'+lower;
 }
 
-/* STEP 3 replaces this. */
-function sgThresholdBlock(r){
-  return '<div class="sg-blk"><h4>Threshold Review <span class="sg-dec">3</span></h4>'+
-    '<div class="sg-val muted">Columns confirmed present on the master sheet. '+
-    'Wiring in step 3.</div></div>';
+/* ── Inline drill formatters (8/27/26) ──────────────────────────────────
+   sgVerdict: the three "Score" columns hold Pass/Fail text. Anything that
+   isn't recognisably pass or fail is rendered verbatim rather than forced
+   into a badge, so an unexpected picklist value stays visible instead of
+   being silently coloured wrong.
+   sgFlag: Yes/No columns ("Top 10 Customer Impacted?", "Project Imagine
+   related?") render as a check or a dash.
+   sgMoney: every money column on this sheet is already denominated in $K
+   (per the column titles), so the value is NOT rescaled here.
+   sgPct: the margin columns are stored inconsistently — some rows hold 0.42,
+   others 42. Treat <=1.5 as a fraction. Flagged rather than silently
+   normalised: if a genuine 1.2% margin ever appears it will read as 120%. */
+function sgVerdict(v){
+  var t=String(v||'').trim();if(!t)return '<span class="sg-no">&mdash;</span>';
+  if(/^pass/i.test(t))return '<span class="sg-pass">'+esc(t)+'</span>';
+  if(/^fail/i.test(t))return '<span class="sg-fail">'+esc(t)+'</span>';
+  return esc(t);
 }
-/* STEP 2 replaces this. */
+function sgFlag(v){
+  var t=String(v||'').trim();
+  if(/^(y|yes|true|1)$/i.test(t))return '<span class="sg-yes">&#10003;</span>';
+  if(!t)return '<span class="sg-no">&mdash;</span>';
+  if(/^(n|no|false|0)$/i.test(t))return '<span class="sg-no">&mdash;</span>';
+  return esc(t);
+}
+function sgMoney(v){
+  if(v==null)return null;
+  return '$'+Math.round(v).toLocaleString()+'K';
+}
+function sgPct(v){
+  if(v==null)return null;
+  var n=(Math.abs(v)<=1.5)?v*100:v;
+  return (Math.round(n*10)/10)+'%';
+}
+function sgKV(k,v){
+  if(v==null||v==='')return '';
+  return '<div class="sg-kv"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>';
+}
+
+function sgThresholdBlock(r){
+  var rows=
+    sgKV('Criteria Met Count',r.critMet?esc(r.critMet):null)+
+    sgKV('SG Filter Result',r.sgFilter?sgVerdict(r.sgFilter):null)+
+    sgKV('Cost Savings Score',r.scCost?sgVerdict(r.scCost):null)+
+    sgKV('Gross Margin Score',r.scMargin?sgVerdict(r.scMargin):null)+
+    sgKV('Incremental Net Sales',r.scNetSales?sgVerdict(r.scNetSales):null)+
+    sgKV('OGSM Strategy Score',r.scOGSM?sgVerdict(r.scOGSM):null)+
+    sgKV('OGSM Categories',r.ogsmCat?esc(r.ogsmCat):null)+
+    sgKV('Top 10 Customer Impacted',sgFlag(r.top10))+
+    sgKV('Project Imagine related',sgFlag(r.imagine));
+  return '<div class="sg-blk"><h4>Threshold Review <span class="sg-dec">3</span></h4>'+
+    (rows||'<div class="sg-val muted">No threshold data on this row.</div>')+'</div>';
+}
+
 function sgFinancialBlock(r){
+  var rows=
+    sgKV('Anticipated Project Cost',sgMoney(r.projCost))+
+    sgKV('R&amp;D Estimate',sgMoney(r.rdCost))+
+    sgKV('Y1 Gross Sales',sgMoney(r.y1GrossSales))+
+    sgKV('Y1 Incremental Gross Profit',sgMoney(r.y1IncGP))+
+    sgKV('Y1 Incremental Net Sales',sgMoney(r.y1IncNetSales))+
+    sgKV('Cost / Risk Savings',sgMoney(r.costRiskSav))+
+    sgKV('Y1 Expected GP Margin',sgPct(r.y1ExpMargin))+
+    sgKV('Y1 Target GP Margin',sgPct(r.y1TgtMargin))+
+    sgKV('Margin vs Target',r.marginVsTgt?sgVerdict(r.marginVsTgt):null)+
+    sgKV('Sales Channel',r.salesChannel?esc(r.salesChannel):null)+
+    sgKV('Sales Complexity',r.salesComplexity?esc(r.salesComplexity):null)+
+    sgKV('Sales FTE',r.salesFTE?esc(r.salesFTE):null)+
+    sgKV('Financials Owner',r.finOwner?esc(r.finOwner):null);
+  var callouts=r.salesCallOuts
+    ? '<div class="sg-lbl" style="margin-top:10px">Sales Call Outs</div>'+
+      '<div class="sg-val">'+esc(r.salesCallOuts)+'</div>' : '';
   return '<div class="sg-blk"><h4>Financial Summary</h4>'+
-    '<div class="sg-val muted">19 columns confirmed present on the master sheet. '+
-    'Wiring in step 2.</div></div>';
+    (rows||'<div class="sg-val muted">No financial data on this row.</div>')+
+    callouts+'</div>';
 }
 
 function toggleSGRow(key){
