@@ -298,6 +298,34 @@ html,body{margin:0;padding:0;background:#F7FAF8;font-family:'Barlow',sans-serif;
 .sg-note{border-left:3px solid #3B82F6;background:#EEF4FF;padding:10px 14px;border-radius:0 3px 3px 0}
 .sg-note b{display:block;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#1D4ED8;margin-bottom:4px}
 .sg-note span{font-size:12.5px;color:#1F2937;line-height:1.5}
+/* ── ENTERPRISE ROADMAP (8/27/26) ── */
+.ent-wrap{padding:0}
+.ent-head{display:flex;align-items:flex-end;gap:16px;padding:12px 14px 14px;border-bottom:1px solid #E5E7EB}
+.ent-cnt{margin-left:auto;font-size:12px;color:#4B5563}
+.ent-cnt b{font-size:16px;color:#0D2818}
+.ent-scroll{overflow-x:auto}
+.ent-tbl{border-collapse:collapse;font-size:13px;min-width:100%}
+.ent-tbl th{background:#1B4D35;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:.03em;padding:7px 8px;white-space:nowrap;text-align:left;position:sticky;top:0;z-index:2}
+.ent-tbl th.mo{text-align:center;font-size:10px;min-width:62px;padding:7px 4px}
+.ent-tbl th.mo.q1{border-left:2px solid #2F6B4C}
+.ent-tbl td{border-bottom:1px solid #EDEFED;padding:9px 8px;vertical-align:middle}
+.ent-tbl tbody tr:hover{background:#F0F7F3}
+.ent-nm{font-weight:700;color:#0D2818;white-space:nowrap}
+.ent-lead{font-size:12px;color:#4B5563;white-space:nowrap}
+.ent-lead.unk{color:#B7791F;font-style:italic}
+.ent-mo{padding:6px 4px!important;text-align:center;vertical-align:middle}
+.ent-mo.q1{border-left:2px solid #E3EAE6}
+.ent-mo.now{background:#F3F9F5}
+.ent-ms{display:block;background:#52B788;color:#0D2818;font-size:9.5px;font-weight:700;line-height:1.25;padding:4px 5px;border-radius:3px;white-space:normal}
+.ent-st{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:800;letter-spacing:.03em;white-space:nowrap}
+.ent-st.ontrack{background:#D9F0E3;color:#166534}
+.ent-st.atrisk{background:#FDF0DC;color:#8A5A12}
+.ent-st.behind{background:#FBDDDD;color:#991B1B}
+.ent-st.none{background:#EDEFED;color:#9CA3AF}
+.ent-src{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.ent-src.live{background:#CDE9DA;color:#14532D}
+.ent-src.no{background:#F3F4F6;color:#9CA3AF}
+.ent-foot{padding:10px 14px;font-size:11px;color:#6B7280;border-top:1px solid #E5E7EB;line-height:1.6}
 </style>
 </head>
 <body>
@@ -316,6 +344,7 @@ html,body{margin:0;padding:0;background:#F7FAF8;font-family:'Barlow',sans-serif;
 <div class="tab-bar">
   <button class="tab active" id="tab-comm" type="button">Commercialization</button>
   <button class="tab" id="tab-bs" type="button">Business Support</button>
+  <button class="tab" id="tab-ent" type="button">Enterprise</button>
   <div class="view-toggle" id="view-toggle">
     <!-- 7/31/26, per Jerry: Heatmap/Gantt hidden (not deleted) — Project List
          is the only BS view surfaced to users for now. Both keep rendering
@@ -396,6 +425,19 @@ html,body{margin:0;padding:0;background:#F7FAF8;font-family:'Barlow',sans-serif;
         <span id="sg-sub" style="color:#9CA3AF;font-size:11px">Source: Stage Gate Project Master Sheet</span>
       </div>
       <div class="pl-body" id="stagegate-body"></div>
+    </div>
+  </div>
+
+  <!-- 8/27/26: Enterprise roadmap (Patty). Option A per Jerry — config-array
+       source, NOT a Smartsheet fetch. See ENT_INITIATIVES for the rationale
+       and the migration note. -->
+  <div class="pl-wrap" id="ent-wrap" style="display:none">
+    <div class="pl-card">
+      <div class="pl-head">
+        <div class="pf-title">ENTERPRISE — INITIATIVE ROADMAP</div>
+        <span style="color:#9CA3AF;font-size:11px">Source: Enterprise Portfolio Summary (LT)</span>
+      </div>
+      <div class="pl-body" id="ent-body"></div>
     </div>
   </div>
 
@@ -2091,6 +2133,23 @@ function curPortfolioProjects(){
    RENDER
 ════════════════════════════════════════════════════════ */
 function renderAll(){
+  /* 8/27/26: Enterprise is a standalone surface — no heatmap, no KPI strip, no
+     view toggle, and no dependency on PROJECTS/MX. Branch out before any of
+     that runs rather than threading a third case through the existing show/hide
+     logic, which is already duplicated between here and setBSView. */
+  if(TAB==='ent'){
+    document.getElementById('h-sub').textContent='Enterprise · Initiative Roadmap · Manual source';
+    document.getElementById('tab-count').textContent=ENT_INITIATIVES.length+' initiatives';
+    document.getElementById('view-toggle').className='view-toggle';
+    document.getElementById('kpi-strip').style.display='none';
+    document.querySelector('.hm-wrap').style.display='none';
+    document.getElementById('stagegate-wrap').style.display='none';
+    document.getElementById('projlist-wrap').style.display='none';
+    document.getElementById('ent-wrap').style.display='block';
+    renderEnterprise();
+    return;
+  }
+  document.getElementById('ent-wrap').style.display='none';
   var fp=curProjects(),mx=curMX();
   var holdCount=PROJECTS.filter(function(p){
     return p.source===(TAB==='comm'?'Commercialization':'Business Support')&&!p.capacityExcluded&&isOnHold(p.status);
@@ -3980,10 +4039,102 @@ function setLoad(on){
   document.getElementById('error-state').style.display='none';
   var b=document.getElementById('btn-refresh');b.disabled=on;b.textContent=on?'↻  Loading…':'↻  Refresh';
 }
+/* ════════════════════════════════════════════════════════
+   ENTERPRISE ROADMAP  (8/27/26)
+   ────────────────────────────────────────────────────────
+   OPTION A, chosen deliberately by Jerry 8/27/26: this array is the source of
+   truth for the Enterprise tab, NOT a Smartsheet fetch. Eight of Patty's
+   fourteen initiatives exist in neither master sheet, so there is nothing to
+   read them from yet.
+   TRANSCRIBED from Enterprise_Portfolio_Summary.xlsx (sheet "LT") on 8/27/26.
+   That workbook is a skeleton: only 4 of 14 rows carry a Status, only 2 carry
+   milestones, every timeline cell is unfilled, and two leads read literally
+   "?". Nothing is invented here — a blank in the workbook is a blank below.
+   THIS GOES STALE. It does not update when Patty edits her workbook. The
+   intended replacement is an Enterprise Initiatives sheet in Smartsheet read
+   like every other source; when that exists, delete this array and swap
+   renderEnterprise's data source. Everything else can stay.
+   `sg` maps an initiative to live Smartsheet data where a mapping is known
+   (audit 8/24/26). Not yet consumed — step 2 wires it. */
+var ENT_MONTHS=['2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','2027-02',
+  '2027-03','2027-04','2027-05','2027-06','2027-07','2027-08','2027-09','2027-10',
+  '2027-11','2027-12','2028-01','2028-02','2028-03','2028-04'];
+var ENT_INITIATIVES=[
+  {n:'Project Imagine',s:'On Track',l:'Chris Volk',f:'All',sg:'multi',
+   ms:{'2026-10':'Foundation complete · First wall installed','2027-01':'Building fully enclosed'}},
+  {n:'Ignite HR (Workday)',s:'On Track',l:'Erin Campbell',f:'All',sg:null,
+   ms:{'2026-08':'End to End Testing','2026-09':'Training','2026-10':'Oct 1 · Go Live'}},
+  {n:'Project Dodgers',s:'At Risk',l:'David Leal',f:'Ops, Eng, IT, Sales',sg:'P-0087',ms:{}},
+  {n:'Innovation: Pastabilities',s:'Behind',l:'JB',f:'',sg:'P-0041',ms:{}},
+  {n:'Innovation: Protein Sauce',s:'',l:'',f:'',sg:'multi',ms:{}},
+  {n:'ZZ Integration',s:'',l:'Aidan Harper',f:'',sg:null,ms:{}},
+  {n:'ZZ Warehouse Transition',s:'',l:'Steve Kassinger',f:'',sg:null,ms:{}},
+  {n:'Coupa Purch Req Migration',s:'',l:'Danny Endo',f:'',sg:null,ms:{}},
+  {n:'Coupa Expense Migration',s:'',l:'',f:'',sg:null,ms:{}},
+  {n:'xTracta Migration',s:'',l:'',f:'',sg:null,ms:{}},
+  {n:'Item Master Workflow',s:'',l:'Kristen Ramirez',f:'',sg:null,ms:{}},
+  {n:'Commercialization Transformation',s:'',l:'Kristen Ramirez',f:'',sg:'portfolio',ms:{}},
+  {n:'AI Acceleration',s:'',l:'All Functions',f:'',sg:null,ms:{}},
+  {n:'Project Simplify',s:'',l:'All Functions',f:'',sg:'journeys',ms:{}}
+];
+function entStatusClass(v){
+  var t=String(v||'').toLowerCase();
+  if(/on track/.test(t))return 'ontrack';
+  if(/risk/.test(t))return 'atrisk';
+  if(/behind|delay/.test(t))return 'behind';
+  return 'none';
+}
+function entMonthLabel(k){
+  var p=k.split('-'),d=new Date(+p[0],+p[1]-1,1);
+  return d.toLocaleString('default',{month:'short'})+" '"+p[0].slice(2);
+}
+function renderEnterprise(){
+  var now=nk();
+  var sourced=ENT_INITIATIVES.filter(function(i){return i.sg;}).length;
+  var noStatus=ENT_INITIATIVES.filter(function(i){return !i.s;}).length;
+
+  var head='<div class="ent-head"><div class="ent-cnt"><b>'+ENT_INITIATIVES.length+
+    '</b> initiatives &middot; '+sourced+' with a live Smartsheet source &middot; '+
+    '<span style="color:#B7791F;font-weight:700">'+noStatus+' with no status reported</span></div></div>';
+
+  var ths=ENT_MONTHS.map(function(k){
+    var q=/-(01|04|07|10)$/.test(k)?' q1':'';
+    return '<th class="mo'+q+'">'+entMonthLabel(k)+'</th>';
+  }).join('');
+
+  var body=ENT_INITIATIVES.map(function(i){
+    var cells=ENT_MONTHS.map(function(k){
+      var q=/-(01|04|07|10)$/.test(k)?' q1':'';
+      var n=(k===now)?' now':'';
+      var m=i.ms[k];
+      return '<td class="ent-mo'+q+n+'">'+(m?'<span class="ent-ms">'+esc(m)+'</span>':'')+'</td>';
+    }).join('');
+    return '<tr>'+
+      '<td class="ent-nm">'+esc(i.n)+'</td>'+
+      '<td class="ent-lead'+(i.l?'':' unk')+'">'+esc(i.l||'unassigned')+'</td>'+
+      '<td><span class="ent-st '+entStatusClass(i.s)+'">'+esc(i.s||'NOT REPORTED')+'</span></td>'+
+      '<td>'+(i.sg?'<span class="ent-src live">LIVE SOURCE</span>'
+                  :'<span class="ent-src no">NO SOURCE</span>')+'</td>'+
+      cells+'</tr>';
+  }).join('');
+
+  document.getElementById('ent-body').innerHTML=head+
+    '<div class="ent-scroll"><table class="ent-tbl"><thead><tr>'+
+    '<th>Initiative</th><th>Lead</th><th>Status</th><th>Data Source</th>'+ths+
+    '</tr></thead><tbody>'+body+'</tbody></table></div>'+
+    '<div class="ent-foot"><b>Read this as a coverage map, not a plan of record.</b> '+
+    'Status, lead and milestone text are transcribed from the Enterprise Portfolio '+
+    'Summary workbook and update only when that workbook is re-imported by hand. '+
+    '&ldquo;LIVE SOURCE&rdquo; marks initiatives that map to Smartsheet projects the '+
+    'dashboard already reads; wiring those through is the next step. '+
+    '&ldquo;NO SOURCE&rdquo; marks initiatives with no system of record anywhere.</div>';
+}
+
 function switchTab(t){
   TAB=t;SEL=null;EXPANDED={};COLL={};BS_VIEW='projlist';PF_EXPANDED={};PF_SLICER={dept:null,itOwner:null,itResource:null,priority:null};HM_STATUS_COLL={};HM_MX_BY_STATUS={};GANTT_DEPT_COLL={};PF_RAID_EXPANDED={};PF_ROW_INDEX={};
   document.getElementById('tab-comm').className='tab '+(t==='comm'?'active':'');
   document.getElementById('tab-bs').className='tab '+(t==='bs'?'active':'');
+  document.getElementById('tab-ent').className='tab '+(t==='ent'?'active':'');
   document.getElementById('vt-heatmap').className='vt-btn';
   document.getElementById('vt-gantt').className='vt-btn';
   document.getElementById('vt-projlist').className='vt-btn active';
@@ -4003,6 +4154,7 @@ function switchTab(t){
   document.getElementById('btn-close').onclick=function(){closeDrill();};
   document.getElementById('tab-comm').onclick=function(){switchTab('comm');};
   document.getElementById('tab-bs').onclick=function(){switchTab('bs');};
+  document.getElementById('tab-ent').onclick=function(){switchTab('ent');};
   document.getElementById('btn-hold').onclick=function(){toggleHold();};
   document.getElementById('btn-gridmode').onclick=function(){toggleGridMode();};
   document.getElementById('vt-heatmap').onclick=function(){setBSView('heatmap');};
