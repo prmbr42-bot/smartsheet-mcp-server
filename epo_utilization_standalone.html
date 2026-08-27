@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>EPO Resource Utilization</title>
+<title>EPO Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box}
@@ -325,6 +325,7 @@ html,body{margin:0;padding:0;background:#F7FAF8;font-family:'Barlow',sans-serif;
 .ent-src{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 6px;border-radius:3px;white-space:nowrap}
 .ent-src.live{background:#CDE9DA;color:#14532D}
 .ent-src.no{background:#F3F4F6;color:#9CA3AF}
+.ent-live{font-size:10px;color:#4B5563;margin-top:3px;white-space:nowrap}
 .ent-foot{padding:10px 14px;font-size:11px;color:#6B7280;border-top:1px solid #E5E7EB;line-height:1.6}
 </style>
 </head>
@@ -332,7 +333,9 @@ html,body{margin:0;padding:0;background:#F7FAF8;font-family:'Barlow',sans-serif;
 
 <div class="s-hdr">
   <div>
-    <div class="h-title">EPO RESOURCE UTILIZATION</div>
+    <!-- 8/27/26: renamed from "EPO Resource Utilization" — the dashboard now
+         spans three tabs and utilization is only one of its surfaces. -->
+    <div class="h-title">EPO DASHBOARD</div>
     <div class="h-sub" id="h-sub">Commercialization · Hours-Based · Live Smartsheet</div>
   </div>
   <div class="hdr-r">
@@ -342,9 +345,13 @@ html,body{margin:0;padding:0;background:#F7FAF8;font-family:'Barlow',sans-serif;
 </div>
 
 <div class="tab-bar">
+  <!-- 8/27/26 per Jerry: display order is Enterprise → Commercialization →
+       Business Support (broadest altitude first). The DEFAULT landing tab is
+       still Commercialization — see TAB='comm' in the state block, which is
+       independent of DOM order. -->
+  <button class="tab" id="tab-ent" type="button">Enterprise</button>
   <button class="tab active" id="tab-comm" type="button">Commercialization</button>
   <button class="tab" id="tab-bs" type="button">Business Support</button>
-  <button class="tab" id="tab-ent" type="button">Enterprise</button>
   <div class="view-toggle" id="view-toggle">
     <!-- 7/31/26, per Jerry: Heatmap/Gantt hidden (not deleted) — Project List
          is the only BS view surfaced to users for now. Both keep rendering
@@ -4060,13 +4067,13 @@ var ENT_MONTHS=['2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','202
   '2027-03','2027-04','2027-05','2027-06','2027-07','2027-08','2027-09','2027-10',
   '2027-11','2027-12','2028-01','2028-02','2028-03','2028-04'];
 var ENT_INITIATIVES=[
-  {n:'Project Imagine',s:'On Track',l:'Chris Volk',f:'All',sg:'multi',
+  {n:'Project Imagine',s:'On Track',l:'Chris Volk',f:'All',sg:'imagine',
    ms:{'2026-10':'Foundation complete · First wall installed','2027-01':'Building fully enclosed'}},
   {n:'Ignite HR (Workday)',s:'On Track',l:'Erin Campbell',f:'All',sg:null,
    ms:{'2026-08':'End to End Testing','2026-09':'Training','2026-10':'Oct 1 · Go Live'}},
   {n:'Project Dodgers',s:'At Risk',l:'David Leal',f:'Ops, Eng, IT, Sales',sg:'P-0087',ms:{}},
   {n:'Innovation: Pastabilities',s:'Behind',l:'JB',f:'',sg:'P-0041',ms:{}},
-  {n:'Innovation: Protein Sauce',s:'',l:'',f:'',sg:'multi',ms:{}},
+  {n:'Innovation: Protein Sauce',s:'',l:'',f:'',sg:'protein',ms:{}},
   {n:'ZZ Integration',s:'',l:'Aidan Harper',f:'',sg:null,ms:{}},
   {n:'ZZ Warehouse Transition',s:'',l:'Steve Kassinger',f:'',sg:null,ms:{}},
   {n:'Coupa Purch Req Migration',s:'',l:'Danny Endo',f:'',sg:null,ms:{}},
@@ -4077,6 +4084,134 @@ var ENT_INITIATIVES=[
   {n:'AI Acceleration',s:'',l:'All Functions',f:'',sg:null,ms:{}},
   {n:'Project Simplify',s:'',l:'All Functions',f:'',sg:'journeys',ms:{}}
 ];
+/* 8/27/26 STEP 2 — live Smartsheet resolution for the Enterprise roadmap.
+   Reads SG_ROWS (already parsed from the Comm master on every load), so this
+   adds ZERO API calls and cannot introduce a new failure mode.
+   Resolver keys, and why each is what it is:
+     'P-xxxx'    direct row lookup by Project ID.
+     'imagine'   the master sheet carries a "Project Imagine related?" column,
+                 so this rolls up every row flagged yes. That is a live answer,
+                 not a hardcoded project list.
+     'protein'   name match — there is no flag column for the Protein Sauce
+                 family, so this is the only available handle. Deliberately
+                 loose; it will pick up a renamed sibling, which is the safer
+                 failure direction here.
+     'portfolio' Commercialization Transformation IS the Stage Gate portfolio,
+                 so it rolls up every Active/On Hold row.
+     'journeys'  Project Simplify lives across 7 function journey sheets that
+                 this dashboard does not read. Left unresolved ON PURPOSE
+                 rather than faked — see entResolve's null return. */
+/* 8/27/26 per Jerry ("ZZ Integration and Item Master Workflow are tracked in
+   SS"). Rather than hardcode those two, match initiative names against every
+   project the dashboard already holds — PROJECTS (both master sheets) and
+   SG_ROWS. Self-maintaining: an initiative that shows up in Smartsheet later
+   starts resolving on its own with no code change.
+   Matching is token-containment, not substring: the initiative's meaningful
+   tokens must ALL appear in the project name, or vice versa. Substring alone
+   was rejected as too loose ("AI Acceleration" would hit anything containing
+   "ai"). Generic words are dropped so "Item Master Workflow" still matches
+   "Item Master Workflow Automation".
+   Every auto-match RENDERS THE MATCHED PROJECT NAME so a wrong match is
+   visible on the screen rather than silently wrong. Explicit sg: mappings
+   always win over auto-matching. */
+var ENT_STOPWORDS={'project':1,'the':1,'and':1,'of':1,'a':1,'an':1,'innovation':1,'phase':1};
+function entTokens(nm){
+  return String(nm||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ')
+    .split(/\s+/).filter(function(t){return t&&!ENT_STOPWORDS[t];});
+}
+function entTokenMatch(a,b){
+  if(!a.length||!b.length)return false;
+  function covers(x,y){return y.every(function(t){return x.indexOf(t)>-1;});}
+  if(!(covers(a,b)||covers(b,a)))return false;
+  return Math.min(a.length,b.length)>=2;   /* one shared word is not a match */
+}
+function entAutoMatch(name){
+  var want=entTokens(name),hits=[];
+  (SG_ROWS||[]).forEach(function(r){
+    if(entTokenMatch(want,entTokens(r.name)))
+      hits.push({name:r.name,id:r.id,stage:r.stage,status:r.status,
+                 pct:r.pct!=null?Math.round(r.pct*100):null,src:'Comm'});
+  });
+  (PROJECTS||[]).forEach(function(pr){
+    if(entTokenMatch(want,entTokens(pr.name)))
+      hits.push({name:pr.name,id:pr.projectId,stage:pr.status,status:pr.status,
+                 pct:pr.percentComplete!=null?Math.round(pr.percentComplete*100):null,
+                 src:pr.source==='Business Support'?'BS':'Comm'});
+  });
+  /* de-dupe: a Comm project appears in both PROJECTS and SG_ROWS */
+  var seen={},out=[];
+  hits.forEach(function(h){
+    var k=(h.id||h.name).toLowerCase();
+    if(seen[k])return;seen[k]=1;out.push(h);
+  });
+  return out;
+}
+/* Console helper for auditing every auto-match at once:  entMatchReport()  */
+function entMatchReport(){
+  ENT_INITIATIVES.forEach(function(i){
+    if(i.sg)return;
+    var m=entAutoMatch(i.n);
+    console.log(i.n,'->',m.length?m.map(function(h){return h.src+':'+(h.id||'?')+' '+h.name;}):'(no match)');
+  });
+}
+function entResolve(key){
+  if(!key)return null;
+  if(!SG_ROWS||!SG_ROWS.length)return {pending:true};
+  function agg(rows,label){
+    if(!rows.length)return null;
+    var withPct=rows.filter(function(r){return r.pct!=null;});
+    var avg=withPct.length
+      ? Math.round(withPct.reduce(function(a,r){return a+r.pct;},0)/withPct.length*100)
+      : null;
+    return {count:rows.length,pct:avg,label:label};
+  }
+  if(/^P-\d+$/i.test(key)){
+    var row=SG_ROWS.filter(function(r){return String(r.id||'').toUpperCase()===key.toUpperCase();})[0];
+    if(!row)return {missing:true};
+    return {single:true,id:row.id,stage:row.stage,status:row.status,
+            pct:row.pct!=null?Math.round(row.pct*100):null};
+  }
+  if(key==='imagine')return agg(SG_ROWS.filter(function(r){
+    return /^(y|yes|true|1)$/i.test(String(r.imagine||'').trim());}),'flagged');
+  if(key==='protein')return agg(SG_ROWS.filter(function(r){
+    return /protein\s*sauce/i.test(r.name||'');}),'projects');
+  if(key==='portfolio')return agg(SG_ROWS.filter(function(r){
+    return r.status==='Active'||isOnHold(r.status);}),'active');
+  return null;   /* 'journeys' and anything unrecognised */
+}
+function entLiveCell(i){
+  if(!i.sg){
+    /* No explicit mapping — try to find one live. */
+    if(!SG_ROWS||!SG_ROWS.length)return '<span class="ent-src no">loading&hellip;</span>';
+    var m=entAutoMatch(i.n);
+    if(!m.length)return '<span class="ent-src no">NO SOURCE</span>';
+    if(m.length===1){
+      var h=m[0];
+      return '<span class="ent-src live">'+esc(h.src)+(h.id?' '+esc(h.id):'')+'</span>'+
+        '<div class="ent-live" title="Auto-matched on project name">'+esc(h.name)+
+        (h.pct!=null?' &middot; '+h.pct+'%':'')+'</div>';
+    }
+    var pcts=m.filter(function(x){return x.pct!=null;});
+    var avg=pcts.length?Math.round(pcts.reduce(function(a,x){return a+x.pct;},0)/pcts.length):null;
+    return '<span class="ent-src live">'+m.length+' matched</span>'+
+      '<div class="ent-live" title="'+esc(m.map(function(x){return x.name;}).join(' | '))+
+      '">'+esc(m[0].name)+' +'+(m.length-1)+
+      (avg!=null?' &middot; '+avg+'% avg':'')+'</div>';
+  }
+  var v=entResolve(i.sg);
+  if(v===null)return '<span class="ent-src no" title="Mapping known but the source '+
+    'sheets are not read by this dashboard.">SOURCE NOT READ</span>';
+  if(v.pending)return '<span class="ent-src no">loading&hellip;</span>';
+  if(v.missing)return '<span class="ent-src no" title="Mapped to '+esc(i.sg)+
+    ' but no such row is on the Stage Gate master today.">NOT FOUND</span>';
+  if(v.single){
+    return '<span class="ent-src live">'+esc(v.id)+'</span>'+
+      '<div class="ent-live">'+esc(v.stage||'&mdash;')+
+      (v.pct!=null?' &middot; '+v.pct+'%':'')+'</div>';
+  }
+  return '<span class="ent-src live">'+v.count+' '+esc(v.label)+'</span>'+
+    (v.pct!=null?'<div class="ent-live">'+v.pct+'% avg complete</div>':'');
+}
 function entStatusClass(v){
   var t=String(v||'').toLowerCase();
   if(/on track/.test(t))return 'ontrack';
@@ -4090,11 +4225,13 @@ function entMonthLabel(k){
 }
 function renderEnterprise(){
   var now=nk();
-  var sourced=ENT_INITIATIVES.filter(function(i){return i.sg;}).length;
+  var sourced=ENT_INITIATIVES.filter(function(i){
+    if(i.sg){var v=entResolve(i.sg);return !!(v&&!v.missing&&!v.pending);}
+    return entAutoMatch(i.n).length>0;}).length;
   var noStatus=ENT_INITIATIVES.filter(function(i){return !i.s;}).length;
 
   var head='<div class="ent-head"><div class="ent-cnt"><b>'+ENT_INITIATIVES.length+
-    '</b> initiatives &middot; '+sourced+' with a live Smartsheet source &middot; '+
+    '</b> initiatives &middot; '+sourced+' resolved to live Smartsheet data &middot; '+
     '<span style="color:#B7791F;font-weight:700">'+noStatus+' with no status reported</span></div></div>';
 
   var ths=ENT_MONTHS.map(function(k){
@@ -4113,21 +4250,21 @@ function renderEnterprise(){
       '<td class="ent-nm">'+esc(i.n)+'</td>'+
       '<td class="ent-lead'+(i.l?'':' unk')+'">'+esc(i.l||'unassigned')+'</td>'+
       '<td><span class="ent-st '+entStatusClass(i.s)+'">'+esc(i.s||'NOT REPORTED')+'</span></td>'+
-      '<td>'+(i.sg?'<span class="ent-src live">LIVE SOURCE</span>'
-                  :'<span class="ent-src no">NO SOURCE</span>')+'</td>'+
+      '<td>'+entLiveCell(i)+'</td>'+
       cells+'</tr>';
   }).join('');
 
   document.getElementById('ent-body').innerHTML=head+
     '<div class="ent-scroll"><table class="ent-tbl"><thead><tr>'+
-    '<th>Initiative</th><th>Lead</th><th>Status</th><th>Data Source</th>'+ths+
+    '<th>Initiative</th><th>Lead</th><th>Reported Status</th><th>Live Data</th>'+ths+
     '</tr></thead><tbody>'+body+'</tbody></table></div>'+
     '<div class="ent-foot"><b>Read this as a coverage map, not a plan of record.</b> '+
     'Status, lead and milestone text are transcribed from the Enterprise Portfolio '+
     'Summary workbook and update only when that workbook is re-imported by hand. '+
-    '&ldquo;LIVE SOURCE&rdquo; marks initiatives that map to Smartsheet projects the '+
-    'dashboard already reads; wiring those through is the next step. '+
-    '&ldquo;NO SOURCE&rdquo; marks initiatives with no system of record anywhere.</div>';
+    'Live cells read the Stage Gate master directly and refresh with the dashboard. '+
+    '&ldquo;NO SOURCE&rdquo; means no system of record exists anywhere; '+
+    '&ldquo;SOURCE NOT READ&rdquo; means one exists but this dashboard does not '+
+    'yet consume it.</div>';
 }
 
 function switchTab(t){
