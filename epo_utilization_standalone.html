@@ -1502,7 +1502,29 @@ var COMM_CAP_ALIASES={
   'Operations/Engineering FE':'Ops/Engineering FE',
   'Operations/Engineering MS':'Ops/Engineering MS'
 };
+/* 8/27/26 (Jerry). PINNED SHEET ID.
+   Was: blind workspace traversal for a /reference/i folder at the Comm
+   workspace ROOT. "Reference" actually lives one level down inside "Intake &
+   Management", so the root find always missed and every load fell into the
+   fan-out fallback (a GET /folders/{id} per top-level folder, and Project
+   Milestone Reporting alone carries the 16 Meal Solutions project folders).
+   4-5 round trips before parsing, and any failure left COMM_CAP empty, which
+   the cold-start guard read as a partial load and retried the entire six-call
+   payload 3x. Sheet id has been stable and documented since 7/16/26, so pin
+   it. Traversal retained as a fallback only. */
+var COMM_CAP_SHEET_ID='682203567574916';
 function loadCommCapacity(){
+  return ssGet('/sheets/'+COMM_CAP_SHEET_ID)
+    .then(function(sheet){
+      COMM_CAP=parseCapacitySheet(sheet,COMM_CAP_ALIASES);
+      console.log('[EPO] Comm capacity: pinned sheet OK, '+Object.keys(COMM_CAP).length+' depts');
+    })
+    .catch(function(e){
+      console.warn('[EPO] Comm capacity: pinned sheet failed ('+e.message+'), falling back to traversal');
+      return loadCommCapacityByTraversal();
+    });
+}
+function loadCommCapacityByTraversal(){
   return ssGet('/workspaces/'+COMM_WS)
     .then(function(ws){
       var folders=ws.folders||[];
@@ -1909,12 +1931,23 @@ function loadData(isRetry){
          sheet loading…") and IT_ACTIVE_ROWS was empty (BS Project List blank).
          None of these five collections is ever legitimately empty, so any one of
          them being empty means a partial load. Check them all. */
+      /* 8/27/26 REVISED AGAIN (Jerry). Only the two master sheets are genuine
+         cold-start signals. COMM_CAP / BS_CAP / IT_ACTIVE_ROWS each swallow
+         their own errors and resolve anyway BY DESIGN (they degrade to
+         uncapacitated or fallback rendering), so an empty one of those is
+         nearly always deterministic: a wrong sheet id, a moved folder, a
+         renamed sheet. Retrying a deterministic failure burns three extra
+         full six-call passes and still ends up empty. Observed 8/27: the
+         banner counted to 3 of 3 on every load, then rendered anyway.
+         Report those gaps loudly, do not retry on them. */
       var gaps=[];
       if(comm.length===0)gaps.push('comm');
       if(bs.length===0)gaps.push('bs');
-      if(Object.keys(COMM_CAP).length===0)gaps.push('commCapacity');
-      if(Object.keys(BS_CAP).length===0)gaps.push('bsCapacity');
-      if(IT_ACTIVE_ROWS.length===0)gaps.push('itActiveProjects');
+      var softGaps=[];
+      if(Object.keys(COMM_CAP).length===0)softGaps.push('commCapacity');
+      if(Object.keys(BS_CAP).length===0)softGaps.push('bsCapacity');
+      if(IT_ACTIVE_ROWS.length===0)softGaps.push('itActiveProjects');
+      if(softGaps.length)console.error('[EPO] DEGRADED (not retrying, deterministic): '+softGaps.join(', '));
       if(gaps.length&&LOAD_RETRY<LOAD_RETRY_MAX){
         LOAD_RETRY++;
         console.warn('[EPO] Partial load — empty: '+gaps.join(', ')+
