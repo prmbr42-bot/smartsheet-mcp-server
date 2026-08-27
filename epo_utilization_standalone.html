@@ -778,6 +778,16 @@ var BS_VIEW='projlist';
    both or the view will render on click and silently revert on next refresh. */
 var COMM_VIEW='util';
 var SG_ROWS=[];                                  // Stage Gate Status rows (8/27/26)
+/* 8/27/26 — COLD START GUARD.
+   mizkan-epo-smartsheet-mcp is on an App Service plan that idles out. The first
+   request after an idle period can return 5xx, time out, or (observed 8/27) come
+   back 200 with an empty/partial body. Because the Comm heatmap AND the Stage
+   Gate view both read res[0], an empty res[0] silently renders "0 projects"
+   everywhere on the Comm tab with no error — the user has to know to hit Refresh
+   twice. That's a bad first impression for a leadership audience, so retry
+   automatically instead. Capped at 2 retries; a manual Refresh always resets. */
+var LOAD_RETRY=0;
+var LOAD_RETRY_MAX=2;
 var SG_FILTER={status:'active',bu:'all'};        // Kristen's two filters
 var PF_EXPANDED={};            // Portfolio View: expanded project-drill state, keyed by projectId
 var PF_SLICER={dept:null,itOwner:null,itResource:null,priority:null}; // active Portfolio View + Heatmap slicer filters (shared — BS only)
@@ -1864,7 +1874,10 @@ function rebuildMatrices(){
   MX_BS=rollupAppDevMX(MX_BS_GRANULAR); // Application Development rollup — see rollupAppDevMX
 }
 
-function loadData(){
+function loadData(isRetry){
+  /* Any user-initiated load (Refresh, Retry, initial boot) resets the counter so
+     the guard can never permanently exhaust itself. */
+  if(!isRetry)LOAD_RETRY=0;
   setLoad(true);RAID_CACHE={};RAID_INDEX={comm:{},bs:{}};EXPANDED={};BS_CAP={};COMM_CAP={};IT_ACTIVE_INDEX={};IT_ACTIVE_ROWS=[];PF_EXPANDED={};HM_STATUS_COLL={};HM_MX_BY_STATUS={};GANTT_DEPT_COLL={};PF_RAID_EXPANDED={};PF_ROW_INDEX={};
   document.getElementById('load-msg').textContent='Fetching Commercialization + Business Support…';
   Promise.all([
@@ -1885,6 +1898,20 @@ function loadData(){
         /* Note: 'Project ID' column is fetched automatically — parseSheet reads all columns */
       var bs=parseSheet(res[1],BFMAP,'Design (Kickoff) Date',
         ['Estimated Go-Live Date','Anticipated End Date','Desired Completed Date'],null,'Ent SteerCo Agenda Date','Business Support');
+      /* 8/27/26 cold-start guard: a healthy response always yields rows on BOTH
+         sheets. Zero on either means a partial/empty body, not a real state —
+         neither master sheet is ever empty in practice. Retry rather than
+         render a misleading all-zeros dashboard. */
+      if((comm.length===0||bs.length===0)&&LOAD_RETRY<LOAD_RETRY_MAX){
+        LOAD_RETRY++;
+        console.warn('[EPO] Empty payload (comm='+comm.length+', bs='+bs.length+
+                     ') — cold start suspected. Retry '+LOAD_RETRY+'/'+LOAD_RETRY_MAX);
+        document.getElementById('load-msg').textContent=
+          'Waking the data service\u2026 retry '+LOAD_RETRY+' of '+LOAD_RETRY_MAX;
+        setTimeout(function(){loadData(true);},1500*LOAD_RETRY);
+        return;   /* stay on the spinner — do NOT fall through to renderAll */
+      }
+      LOAD_RETRY=0;
       PROJECTS=comm.concat(bs);
       /* 8/27/26: Stage Gate Status view reads the SAME payload the utilization
          parse just consumed (res[0] = Comm master, all 179 columns). Captured
@@ -1897,6 +1924,18 @@ function loadData(){
       setLoad(false);
     })
     .catch(function(e){
+      /* 8/27/26 cold-start guard, failure path: a cold App Service more often
+         throws (5xx / network) than returns an empty body. Same retry budget.
+         401 is excluded — that's a token problem and retrying just delays a
+         real error the user needs to see. */
+      if(LOAD_RETRY<LOAD_RETRY_MAX&&!/401/.test(e.message||'')){
+        LOAD_RETRY++;
+        console.warn('[EPO] Fetch failed ('+e.message+') — retry '+LOAD_RETRY+'/'+LOAD_RETRY_MAX);
+        document.getElementById('load-msg').textContent=
+          'Waking the data service\u2026 retry '+LOAD_RETRY+' of '+LOAD_RETRY_MAX;
+        setTimeout(function(){loadData(true);},1500*LOAD_RETRY);
+        return;
+      }
       document.getElementById('loading-state').style.display='none';
       document.getElementById('data-view').style.display='none';
       document.getElementById('error-state').style.display='block';
