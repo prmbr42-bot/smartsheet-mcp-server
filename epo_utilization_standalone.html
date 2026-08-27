@@ -1493,6 +1493,217 @@
       background: #fff;
       border-top: 1px solid #F6F6F4
     }
+
+    /* ── STAGE GATE STATUS (8/27/26) ── */
+    .sg-ctl {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+      padding: 12px 14px 14px;
+      border-bottom: 1px solid #E5E7EB
+    }
+
+    .sg-grp {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
+    .sg-grp label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: #6B7280
+    }
+
+    .sg-segwrap {
+      display: flex;
+      background: #EEF0EE;
+      border-radius: 4px;
+      padding: 2px
+    }
+
+    .sg-seg {
+      border: none;
+      background: none;
+      padding: 5px 12px;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 12px;
+      color: #4B5563;
+      border-radius: 3px;
+      cursor: pointer
+    }
+
+    .sg-seg.on {
+      background: #0D2818;
+      color: #fff
+    }
+
+    .sg-cnt {
+      margin-left: auto;
+      font-size: 12px;
+      color: #4B5563
+    }
+
+    .sg-cnt b {
+      font-size: 16px;
+      color: #0D2818
+    }
+
+    .sg-flagcount {
+      color: #B7791F;
+      font-weight: 700
+    }
+
+    .sg-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px
+    }
+
+    .sg-tbl thead th {
+      background: #1B4D35;
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: .03em;
+      text-align: left;
+      padding: 8px 10px;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 2
+    }
+
+    .sg-tbl tbody td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #EDEFED;
+      vertical-align: middle
+    }
+
+    .sg-tbl tbody tr:hover {
+      background: #F0F7F3
+    }
+
+    .sg-id {
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap
+    }
+
+    .sg-rev {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #B7791F;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      margin-left: 5px;
+      cursor: help
+    }
+
+    .sg-nm {
+      font-weight: 600;
+      max-width: 300px
+    }
+
+    .sg-sm {
+      font-size: 12px;
+      color: #4B5563;
+      white-space: nowrap
+    }
+
+    .sg-tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      background: #EDEFED;
+      color: #374151;
+      white-space: nowrap
+    }
+
+    .sg-tag.hold {
+      background: #FDF0DC;
+      color: #8A5A12
+    }
+
+    .sg-stp {
+      display: flex;
+      gap: 2px
+    }
+
+    .sg-stp span {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 3px 6px;
+      background: #EFF1EF;
+      color: #9CA3AF;
+      border-radius: 2px;
+      white-space: nowrap
+    }
+
+    .sg-stp span.at {
+      background: #52B788;
+      color: #0D2818
+    }
+
+    .sg-stp span.pre {
+      background: #CDE9DA;
+      color: #4B5563
+    }
+
+    .sg-bar {
+      position: relative;
+      height: 15px;
+      background: #EDEFED;
+      border-radius: 2px;
+      min-width: 88px
+    }
+
+    .sg-bar i {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: #52B788;
+      border-radius: 2px
+    }
+
+    .sg-bar b {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      color: #0D2818
+    }
+
+    .sg-notl {
+      font-size: 10px;
+      font-weight: 700;
+      color: #B7791F;
+      background: #FDF0DC;
+      padding: 3px 7px;
+      border-radius: 3px;
+      white-space: nowrap;
+      cursor: help
+    }
   </style>
 </head>
 
@@ -1523,6 +1734,13 @@
       <button class="vt-btn" id="vt-heatmap" type="button" style="display:none">Heatmap</button>
       <button class="vt-btn" id="vt-gantt" type="button" style="display:none">Gantt</button>
       <button class="vt-btn active" id="vt-projlist" type="button">Project List</button>
+      <!-- 8/27/26, per Jerry (Kristen review): Commercialization gains its own
+         sub-views. The #view-toggle container is shared between tabs; BS buttons
+         above and Comm buttons below are shown/hidden by tab in setCommView /
+         setBSView / renderAll. Mirrors the BS_VIEW pattern deliberately rather
+         than refactoring to a generic CURRENT_VIEW — see COMM_VIEW note. -->
+      <button class="vt-btn active" id="vt-util" type="button" style="display:none">Resource Utilization</button>
+      <button class="vt-btn" id="vt-stagegate" type="button" style="display:none">Stage Gate Status</button>
     </div>
     <span id="tab-count"></span>
     <button class="btn-toggle-hold on" id="btn-hold" type="button"
@@ -1596,6 +1814,18 @@
         </div>
       </div>
     </div>
+    <!-- 8/27/26: Stage Gate Status surface (Comm tab). Step 1 = scaffolding only;
+       body is populated in a later step. -->
+    <div class="pl-wrap" id="stagegate-wrap" style="display:none">
+      <div class="pl-card">
+        <div class="pl-head">
+          <div class="pf-title">COMMERCIALIZATION — STAGE GATE STATUS</div>
+          <span id="sg-sub" style="color:#9CA3AF;font-size:11px">Source: Stage Gate Project Master Sheet</span>
+        </div>
+        <div class="pl-body" id="stagegate-body"></div>
+      </div>
+    </div>
+
     <div class="pl-wrap" id="projlist-wrap" style="display:none">
       <div class="pl-card">
         <div class="pl-head">
@@ -1998,6 +2228,17 @@
        demand if BS_VIEW is set back programmatically — nothing about them was
        removed, just the default entry point and the buttons. */
     var BS_VIEW = 'projlist';
+    /* ── COMM PORTFOLIO VIEW STATE (8/27/26) ── */
+    /* COMM_VIEW — which view is active inside the Commercialization tab.
+       Live values: 'util' | 'stagegate'.  'util' is the pre-existing heatmap
+       surface and remains the default, so Comm behaves exactly as before unless
+       a user actively switches.
+       NOTE: like BS_VIEW, the show/hide + render dispatch is duplicated in TWO
+       places (setCommView, renderAll). Adding a third Comm view means touching
+       both or the view will render on click and silently revert on next refresh. */
+    var COMM_VIEW = 'util';
+    var SG_ROWS = [];                                  // Stage Gate Status rows (8/27/26)
+    var SG_FILTER = { status: 'active', bu: 'all' };        // Kristen's two filters
     var PF_EXPANDED = {};            // Portfolio View: expanded project-drill state, keyed by projectId
     var PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; // active Portfolio View + Heatmap slicer filters (shared — BS only)
     var HM_STATUS_COLL = {};  // Heatmap Status-first grouping (BS only): collapse state per status
@@ -3105,6 +3346,10 @@
           var bs = parseSheet(res[1], BFMAP, 'Design (Kickoff) Date',
             ['Estimated Go-Live Date', 'Anticipated End Date', 'Desired Completed Date'], null, 'Ent SteerCo Agenda Date', 'Business Support');
           PROJECTS = comm.concat(bs);
+          /* 8/27/26: Stage Gate Status view reads the SAME payload the utilization
+             parse just consumed (res[0] = Comm master, all 179 columns). Captured
+             here rather than re-fetched — no extra API call, no extra latency. */
+          SG_ROWS = parseStageGate(res[0]);
           MONTHS = mkMonths(); CK = nk();
           rebuildMatrices();
           renderAll();
@@ -3164,7 +3409,13 @@
         ? '<strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days Overlap &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(COMM_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>')
         : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days, except Design = flat complexity-based estimate (High=28/Medium=12/Low=8 hrs/mo, not prorated) &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
       /* View toggle only applies to BS */
-      document.getElementById('view-toggle').className = 'view-toggle' + (TAB === 'bs' ? ' show' : '');
+      /* 8/27/26: toggle now shows on BOTH tabs; the per-tab button sets are
+         shown/hidden individually just below. */
+      document.getElementById('view-toggle').className = 'view-toggle show';
+      ['vt-util', 'vt-stagegate'].forEach(function (id) {
+        document.getElementById(id).style.display = (TAB === 'comm') ? '' : 'none';
+      });
+      document.getElementById('vt-projlist').style.display = (TAB === 'bs') ? '' : 'none';
       /* NOTE (7/27/26): this show/hide + dispatch block is a DUPLICATE of the one in
          setBSView. It exists because renderAll runs on paths setBSView never touches
          (initial load, Refresh, slicer changes, tab switch) and must restore the
@@ -3173,20 +3424,24 @@
          a worthwhile follow-up but is a behavior change to renderAll, not a bug fix.
          If you add a fourth view, BOTH copies need the branch or the view will
          render on click and silently revert to Heatmap on the next refresh. */
-      var showHM = !(TAB === 'bs' && (BS_VIEW === 'gantt' || BS_VIEW === 'projlist'));
+      /* 8/27/26: SG added to the showHM exclusion set and given its own branch. */
+      var isSG = (TAB === 'comm' && COMM_VIEW === 'stagegate');
+      var showHM = !(TAB === 'bs' && (BS_VIEW === 'gantt' || BS_VIEW === 'projlist')) && !isSG;
       document.querySelector('.hm-wrap').style.display = showHM ? 'block' : 'none';
       document.getElementById('gantt-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'gantt') ? 'block' : 'none';
       document.getElementById('projlist-wrap').style.display = (TAB === 'bs' && BS_VIEW === 'projlist') ? 'block' : 'none';
+      document.getElementById('stagegate-wrap').style.display = isSG ? 'block' : 'none';
       /* 7/31/26, per Jerry: KPI tiles are hidden on Project List specifically
          (kept on Heatmap/Gantt) — the tiles' numbers (utilization %, Enterprise
          Review count) don't mean anything in a flat project-list context, and
          removing them closes the gap rather than leaving dead whitespace.
          display:grid restores .kpi-strip's own layout (see .kpi-strip CSS) —
          'block' would silently break its column layout when re-shown. */
-      document.getElementById('kpi-strip').style.display = (TAB === 'bs' && BS_VIEW === 'projlist') ? 'none' : 'grid';
+      document.getElementById('kpi-strip').style.display = ((TAB === 'bs' && BS_VIEW === 'projlist') || isSG) ? 'none' : 'grid';
       renderKPIs(fp, mx);
       if (TAB === 'bs' && BS_VIEW === 'gantt') renderGantt();
       else if (TAB === 'bs' && BS_VIEW === 'projlist') renderProjectList();
+      else if (isSG) renderStageGate();
       else renderHM();
       renderSlicers();
     }
@@ -4359,6 +4614,141 @@
       body.innerHTML = html;
     }
 
+    /* ════════════════════════════════════════════════════════
+       STAGE GATE STATUS (Comm tab) — 8/27/26
+       Kristen review, 8/24/26. Reads the Comm master sheet by COLUMN TITLE (not
+       column ID) so a column reorder on the sheet can't silently shift the view.
+    ════════════════════════════════════════════════════════ */
+    var SG_STAGES = ['1-Scoping', '2-Feasibility', '3-Capability', '4-Launch'];
+
+    function parseStageGate(sheet) {
+      if (!sheet || !sheet.columns || !sheet.rows) return [];
+      var t2id = {}; sheet.columns.forEach(function (c) { t2id[c.title] = c.id; });
+      return sheet.rows.map(function (r) {
+        var byV = {}, byD = {};
+        (r.cells || []).forEach(function (c) {
+          if (c.value != null) byV[c.columnId] = c.value;
+          if (c.displayValue != null) byD[c.columnId] = c.displayValue;
+        });
+        /* displayValue first for CONTACT_LIST/MULTI_CONTACT_LIST — .value on those
+           returns an email or an object, not the person's name. */
+        function g(title) {
+          var id = t2id[title]; if (id == null) return '';
+          return String(byD[id] != null ? byD[id] : (byV[id] != null ? byV[id] : ''));
+        }
+        function num(title) {
+          var id = t2id[title]; if (id == null) return null;
+          var v = byV[id]; return (v == null || v === '') ? null : (isNaN(parseFloat(v)) ? null : parseFloat(v));
+        }
+        return {
+          id: g('Project ID'), name: g('Project Name'), owner: g('Project Owner'),
+          rd: g('R&D Lead'), type: g('SG Project Type'), stage: g('Stage'),
+          status: g('Status'), review: g('EPO Initial Review Status'),
+          bu: g('Business Unit'), timeline: g('Timeline'),
+          dur: num('Active Duration (Months)'), pct: num('% Complete')
+        };
+      }).filter(function (r) { return r.id || r.name; });
+    }
+
+    /* Decision 1 (Kristen, 8/24/26): the BS-side "EPO Initial Review Status =
+       Approved" hard filter is NOT applied on the Comm side. On the Stage Gate
+       master that field is blank on 25 of 81 rows — 23 of them Active, four already
+       at 4-Launch — so filtering on it would hide ~44% of her view. Instead every
+       Active/On Hold row renders and the non-Approved ones carry a visible badge. */
+    function sgNeedsReview(r) { return r.review !== 'Approved'; }
+
+    function sgFiltered() {
+      return SG_ROWS.filter(function (r) {
+        if (SG_FILTER.status === 'active' && !(r.status === 'Active' || isOnHold(r.status))) return false;
+        if (SG_FILTER.bu !== 'all' && r.bu !== SG_FILTER.bu) return false;
+        return true;
+      });
+    }
+
+    function sgStepper(stage) {
+      var i = SG_STAGES.indexOf(stage);
+      if (i < 0) return '<span class="sg-tag">' + esc(stage || '—') + '</span>';
+      return '<div class="sg-stp">' + SG_STAGES.map(function (sname, j) {
+        return '<span class="' + (j === i ? 'at' : (j < i ? 'pre' : '')) + '">' + sname + '</span>';
+      }).join('') + '</div>';
+    }
+
+    function setSGFilter(k, v) { SG_FILTER[k] = v; renderStageGate(); }
+
+    function renderStageGate() {
+      var rows = sgFiltered();
+      var flagged = rows.filter(sgNeedsReview).length;
+      function seg(k, v, label) {
+        return '<button type="button" class="sg-seg' + (SG_FILTER[k] === v ? ' on' : '') +
+          '" data-sgf="' + k + '" data-sgv="' + v + '">' + label + '</button>';
+      }
+      var head = '<div class="sg-ctl">' +
+        '<div class="sg-grp"><label>Status</label><div class="sg-segwrap">' +
+        seg('status', 'active', 'Active / On Hold') + seg('status', 'all', 'All') + '</div></div>' +
+        '<div class="sg-grp"><label>Business Unit</label><div class="sg-segwrap">' +
+        seg('bu', 'all', 'All') + seg('bu', 'MS', 'MS') + seg('bu', 'FE', 'FE') + '</div></div>' +
+        '<div class="sg-cnt"><b>' + rows.length + '</b> projects' +
+        (flagged ? ' &middot; <span class="sg-flagcount">' + flagged + ' need EPO review status</span>' : '') +
+        '</div></div>';
+
+      if (!rows.length) {
+        document.getElementById('stagegate-body').innerHTML = head +
+          '<div style="padding:34px;text-align:center;color:#9CA3AF">No projects match.</div>';
+        sgBind(); return;
+      }
+
+      var body = rows.map(function (r) {
+        var pct = (r.pct == null)
+          ? '<span class="sg-notl" title="No linked timeline sheet, so there is no % complete to read">No timeline</span>'
+          : '<div class="sg-bar"><i style="width:' + Math.round(r.pct * 100) + '%"></i><b>' + Math.round(r.pct * 100) + '%</b></div>';
+        var typ = isOnHold(r.status)
+          ? '<span class="sg-tag hold">ON HOLD</span>'
+          : '<span class="sg-tag">' + esc(r.type || '—') + '</span>';
+        return '<tr>' +
+          '<td class="sg-id">' + esc(r.id) +
+          (sgNeedsReview(r) ? '<span class="sg-rev" title="EPO Initial Review Status is ' +
+            esc(r.review || 'blank') + '. Shown per Decision 1 (8/24/26) but flagged.">!</span>' : '') + '</td>' +
+          '<td class="sg-nm">' + esc(r.name) + '</td>' +
+          '<td class="sg-sm">' + esc(r.owner || '—') + '</td>' +
+          '<td class="sg-sm">' + esc(r.rd && r.rd !== 'N/A' ? r.rd : '—') + '</td>' +
+          '<td>' + typ + '</td>' +
+          '<td>' + sgStepper(r.stage) + '</td>' +
+          '<td class="sg-sm">' + (r.dur != null ? r.dur.toFixed(1) + ' mo' : '—') + '</td>' +
+          '<td>' + pct + '</td></tr>';
+      }).join('');
+
+      document.getElementById('stagegate-body').innerHTML = head +
+        '<table class="sg-tbl"><thead><tr>' +
+        '<th>ID</th><th>Project Name</th><th>Project Owner</th><th>R&amp;D Lead</th>' +
+        '<th>Project Type</th><th>Stage</th><th>Active Dur.</th><th>% Complete</th>' +
+        '</tr></thead><tbody>' + body + '</tbody></table>';
+      sgBind();
+    }
+
+    /* Bound directly rather than via the global document.onclick delegation — that
+       handler is already dense and this keeps the new view self-contained. */
+    function sgBind() {
+      var b = document.getElementById('stagegate-body').querySelectorAll('[data-sgf]');
+      for (var i = 0; i < b.length; i++) {
+        b[i].onclick = function () { setSGFilter(this.getAttribute('data-sgf'), this.getAttribute('data-sgv')); };
+      }
+    }
+
+    /* 8/27/26: Comm-side twin of setBSView. Kept parallel (not factored into a
+       shared helper) so this change stays additive to working code. */
+    function setCommView(v) {
+      COMM_VIEW = v;
+      document.getElementById('vt-util').className = 'vt-btn' + (v === 'util' ? ' active' : '');
+      document.getElementById('vt-stagegate').className = 'vt-btn' + (v === 'stagegate' ? ' active' : '');
+      var sg = (TAB === 'comm' && v === 'stagegate');
+      document.querySelector('.hm-wrap').style.display = sg ? 'none' : 'block';
+      document.getElementById('stagegate-wrap').style.display = sg ? 'block' : 'none';
+      document.getElementById('kpi-strip').style.display = sg ? 'none' : 'grid';
+      renderSlicers();
+      if (sg) renderStageGate();
+      else renderHM();
+    }
+
     function setBSView(v) {
       BS_VIEW = v;
       document.getElementById('vt-heatmap').className = 'vt-btn' + (v === 'heatmap' ? ' active' : '');
@@ -4745,6 +5135,10 @@
       document.getElementById('vt-heatmap').className = 'vt-btn';
       document.getElementById('vt-gantt').className = 'vt-btn';
       document.getElementById('vt-projlist').className = 'vt-btn active';
+      /* 8/27/26: reset Comm sub-view on any tab switch, same as BS_VIEW above. */
+      COMM_VIEW = 'util';
+      document.getElementById('vt-util').className = 'vt-btn active';
+      document.getElementById('vt-stagegate').className = 'vt-btn';
       closeDrill(); renderAll();
     }
 
@@ -4762,6 +5156,8 @@
       document.getElementById('vt-heatmap').onclick = function () { setBSView('heatmap'); };
       document.getElementById('vt-gantt').onclick = function () { setBSView('gantt'); };
       document.getElementById('vt-projlist').onclick = function () { setBSView('projlist'); };
+      document.getElementById('vt-util').onclick = function () { setCommView('util'); };
+      document.getElementById('vt-stagegate').onclick = function () { setCommView('stagegate'); };
 
       /* Event delegation — heatmap cells, group headers, project card toggles */
       document.onclick = function (ev) {
