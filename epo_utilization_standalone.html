@@ -3432,6 +3432,10 @@ function parseStageGate(sheet){
    master that field is blank on 25 of 81 rows — 23 of them Active, four already
    at 4-Launch — so filtering on it would hide ~44% of her view. Instead every
    Active/On Hold row renders and the non-Approved ones carry a visible badge. */
+/* 8/27/26: no longer called — the badge and the header tally it fed were both
+   removed at Kristen's request. Kept, with the note above, because it is the
+   only place Decision 1's rationale is recorded in code. Re-wire it into
+   renderStageGate to restore the callouts. */
 function sgNeedsReview(r){return r.review!=='Approved';}
 
 /* 8/27/26 FIX: the Business Unit picklist stores full labels — "Meal Solutions",
@@ -3470,7 +3474,6 @@ function setSGFilter(k,v){SG_FILTER[k]=v;renderStageGate();}
 
 function renderStageGate(){
   var rows=sgFiltered();
-  var flagged=rows.filter(sgNeedsReview).length;
   function seg(k,v,label){
     return '<button type="button" class="sg-seg'+(SG_FILTER[k]===v?' on':'')+
       '" data-sgf="'+k+'" data-sgv="'+v+'">'+label+'</button>';
@@ -3480,9 +3483,13 @@ function renderStageGate(){
       seg('status','active','Active / On Hold')+seg('status','all','All')+'</div></div>'+
     '<div class="sg-grp"><label>Business Unit</label><div class="sg-segwrap">'+
       seg('bu','all','All')+seg('bu','MS','MS')+seg('bu','FE','FE')+'</div></div>'+
-    '<div class="sg-cnt"><b>'+rows.length+'</b> projects'+
-      (flagged?' &middot; <span class="sg-flagcount">'+flagged+' need EPO review status</span>':'')+
-    '</div></div>';
+    /* 8/27/26 per Kristen: show the project count only. The "N need EPO review
+       status" tally and the per-row "!" badge were both removed at her request
+       — she does not want non-Approved rows called out on this view. NOTE this
+       is a DISPLAY change only: Decision 1 (8/24/26) still stands, so every
+       Active/On Hold row renders regardless of EPO Initial Review Status. The
+       filter was not reinstated. */
+    '<div class="sg-cnt"><b>'+rows.length+'</b> projects</div></div>';
 
   if(!rows.length){
     document.getElementById('stagegate-body').innerHTML=head+
@@ -3499,9 +3506,7 @@ function renderStageGate(){
       : '<span class="sg-tag">'+esc(r.type||'—')+'</span>';
     var open=!!SG_EXPANDED[r.id||r.name];
     return '<tr class="sg-row'+(open?' open':'')+'" data-sgrow="'+esc(r.id||r.name)+'">'+
-      '<td class="sg-id"><i class="sg-cx"></i>'+esc(r.id)+
-        (sgNeedsReview(r)?'<span class="sg-rev" title="EPO Initial Review Status is '+
-          esc(r.review||'blank')+'. Shown per Decision 1 (8/24/26) but flagged.">!</span>':'')+'</td>'+
+      '<td class="sg-id"><i class="sg-cx"></i>'+esc(r.id)+'</td>'+
       '<td class="sg-nm">'+esc(r.name)+'</td>'+
       '<td class="sg-sm">'+esc(r.owner||'—')+'</td>'+
       '<td class="sg-sm">'+esc(r.rd&&r.rd!=='N/A'?r.rd:'—')+'</td>'+
