@@ -271,6 +271,33 @@ html,body{margin:0;padding:0;background:#F7FAF8;font-family:'Barlow',sans-serif;
 .sg-bar i{position:absolute;left:0;top:0;bottom:0;background:#52B788;border-radius:2px}
 .sg-bar b{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#0D2818}
 .sg-notl{font-size:10px;font-weight:700;color:#B7791F;background:#FDF0DC;padding:3px 7px;border-radius:3px;white-space:nowrap;cursor:help}
+/* Inline expand-down detail row (8/27/26, per Jerry: open UNDER the project,
+   not as a right-hand pop-out). Full-width <tr> injected after the clicked row,
+   mirroring the Portfolio View .pf-proj-detail/.pf-det-row pattern already in
+   use on the BS side rather than introducing a second drill idiom. */
+.sg-tbl tbody tr.sg-row{cursor:pointer}
+.sg-tbl tbody tr.sg-row.open{background:#EAF4EE}
+.sg-tbl tbody tr.sg-row.open td{border-bottom:none}
+.sg-cx{display:inline-block;width:0;height:0;border-left:5px solid #6B7280;border-top:4px solid transparent;border-bottom:4px solid transparent;margin-right:7px;transition:transform .12s}
+.sg-row.open .sg-cx{transform:rotate(90deg)}
+.sg-det>td{background:#F7FAF8;border-bottom:2px solid #D8E6DE!important;padding:18px 22px 20px!important}
+.sg-dgrid{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:26px 30px}
+.sg-dgrid.two{grid-template-columns:1fr 1.4fr}
+.sg-blk h4{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#0D2818;margin:0 0 9px;display:flex;align-items:center;gap:7px}
+.sg-dec{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:50%;background:#3B82F6;color:#fff;font-size:10px;font-weight:800}
+.sg-lbl{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#9CA3AF;margin-bottom:2px}
+.sg-val{font-size:13px;color:#1F2937;line-height:1.5;margin-bottom:12px}
+.sg-val.muted{color:#9CA3AF;font-style:italic}
+.sg-kv{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:3px 0;font-size:12px}
+.sg-kv .k{color:#4B5563}
+.sg-kv .v{font-weight:700;color:#0D2818;white-space:nowrap}
+.sg-pass{background:#D9F0E3;color:#166534;font-size:10px;font-weight:800;padding:2px 9px;border-radius:3px}
+.sg-fail{background:#FBDDDD;color:#991B1B;font-size:10px;font-weight:800;padding:2px 9px;border-radius:3px}
+.sg-yes{color:#166534;font-weight:800}
+.sg-no{color:#9CA3AF;font-weight:800}
+.sg-note{border-left:3px solid #3B82F6;background:#EEF4FF;padding:10px 14px;border-radius:0 3px 3px 0}
+.sg-note b{display:block;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#1D4ED8;margin-bottom:4px}
+.sg-note span{font-size:12.5px;color:#1F2937;line-height:1.5}
 </style>
 </head>
 <body>
@@ -789,6 +816,7 @@ var SG_ROWS=[];                                  // Stage Gate Status rows (8/27
 var LOAD_RETRY=0;
 var LOAD_RETRY_MAX=3;
 var SG_FILTER={status:'active',bu:'all'};        // Kristen's two filters
+var SG_EXPANDED={};                              // Stage Gate inline drill: projectId -> true (8/27/26)
 var PF_EXPANDED={};            // Portfolio View: expanded project-drill state, keyed by projectId
 var PF_SLICER={dept:null,itOwner:null,itResource:null,priority:null}; // active Portfolio View + Heatmap slicer filters (shared — BS only)
 var HM_STATUS_COLL={};  // Heatmap Status-first grouping (BS only): collapse state per status
@@ -3303,7 +3331,11 @@ function parseStageGate(sheet){
       rd:g('R&D Lead'), type:g('SG Project Type'), stage:g('Stage'),
       status:g('Status'), review:g('EPO Initial Review Status'),
       bu:g('Business Unit'), timeline:g('Timeline'),
-      dur:num('Active Duration (Months)'), pct:num('% Complete')
+      dur:num('Active Duration (Months)'), pct:num('% Complete'),
+      /* 8/27/26: both are flagged hidden on the Smartsheet grid but return
+         cell values normally over the API (confirmed 8/24). Feeds the inline
+         drill's PROJECT DETAILS block. */
+      objective:g('High Level Objective'), context:g('Project Context')
     };
   }).filter(function(r){return r.id||r.name;});
 }
@@ -3378,8 +3410,9 @@ function renderStageGate(){
     var typ = isOnHold(r.status)
       ? '<span class="sg-tag hold">ON HOLD</span>'
       : '<span class="sg-tag">'+esc(r.type||'—')+'</span>';
-    return '<tr>'+
-      '<td class="sg-id">'+esc(r.id)+
+    var open=!!SG_EXPANDED[r.id||r.name];
+    return '<tr class="sg-row'+(open?' open':'')+'" data-sgrow="'+esc(r.id||r.name)+'">'+
+      '<td class="sg-id"><i class="sg-cx"></i>'+esc(r.id)+
         (sgNeedsReview(r)?'<span class="sg-rev" title="EPO Initial Review Status is '+
           esc(r.review||'blank')+'. Shown per Decision 1 (8/24/26) but flagged.">!</span>':'')+'</td>'+
       '<td class="sg-nm">'+esc(r.name)+'</td>'+
@@ -3388,7 +3421,8 @@ function renderStageGate(){
       '<td>'+typ+'</td>'+
       '<td>'+sgStepper(r.stage)+'</td>'+
       '<td class="sg-sm">'+(r.dur!=null?r.dur.toFixed(1)+' mo':'—')+'</td>'+
-      '<td>'+pct+'</td></tr>';
+      '<td>'+pct+'</td></tr>'+
+      (open?'<tr class="sg-det"><td colspan="8">'+sgDetail(r)+'</td></tr>':'');
   }).join('');
 
   document.getElementById('stagegate-body').innerHTML=head+
@@ -3399,12 +3433,71 @@ function renderStageGate(){
   sgBind();
 }
 
+/* 8/27/26 STEP 1 of 3 — inline drill scaffolding.
+   Renders PROJECT DETAILS from columns parseStageGate already captures. The
+   THRESHOLD REVIEW and FINANCIAL SUMMARY blocks are deliberate placeholders
+   here: their columns are confirmed present on the master sheet but are not
+   yet read by parseStageGate, and wiring 19+ new column lookups in the same
+   change as the expand mechanics would make a failure impossible to isolate.
+   Steps 2 and 3 replace the two placeholder calls below, nothing else. */
+function sgDetail(r){
+  var det=
+    '<div class="sg-blk">'+
+      '<h4>Project Details</h4>'+
+      '<div class="sg-lbl">High Level Objective</div>'+
+      '<div class="sg-val'+(r.objective?'':' muted')+'">'+
+        esc(r.objective||'Not populated on the master sheet.')+'</div>'+
+      '<div class="sg-lbl">Project Context</div>'+
+      '<div class="sg-val'+(r.context?'':' muted')+'">'+
+        esc(r.context||'Not populated on the master sheet.')+'</div>'+
+    '</div>'+
+    sgThresholdBlock(r)+
+    sgFinancialBlock(r);
+
+  var lower=
+    '<div class="sg-dgrid two" style="margin-top:20px">'+
+      '<div class="sg-blk"><h4>Status <span class="sg-dec">2</span></h4>'+
+        '<div class="sg-note"><b>Pending AI enablement &middot; Decision 2</b>'+
+        '<span>Once an Azure OpenAI endpoint is sponsored, this renders a 3 to 5 '+
+        'sentence storyline of tasks completed or in process over the last 30 days, '+
+        'generated from the linked timeline.</span></div></div>'+
+      '<div class="sg-blk"><h4>At-Risk Tasks &amp; RAID</h4>'+
+        '<div class="sg-note"><b>Phase 1</b><span>Reads flagged, incomplete tasks '+
+        'from the linked timeline sheet.</span></div></div>'+
+    '</div>';
+
+  return '<div class="sg-dgrid">'+det+'</div>'+lower;
+}
+
+/* STEP 3 replaces this. */
+function sgThresholdBlock(r){
+  return '<div class="sg-blk"><h4>Threshold Review <span class="sg-dec">3</span></h4>'+
+    '<div class="sg-val muted">Columns confirmed present on the master sheet. '+
+    'Wiring in step 3.</div></div>';
+}
+/* STEP 2 replaces this. */
+function sgFinancialBlock(r){
+  return '<div class="sg-blk"><h4>Financial Summary</h4>'+
+    '<div class="sg-val muted">19 columns confirmed present on the master sheet. '+
+    'Wiring in step 2.</div></div>';
+}
+
+function toggleSGRow(key){
+  if(SG_EXPANDED[key])delete SG_EXPANDED[key];else SG_EXPANDED[key]=true;
+  renderStageGate();
+}
+
 /* Bound directly rather than via the global document.onclick delegation — that
    handler is already dense and this keeps the new view self-contained. */
 function sgBind(){
-  var b=document.getElementById('stagegate-body').querySelectorAll('[data-sgf]');
+  var root=document.getElementById('stagegate-body');
+  var b=root.querySelectorAll('[data-sgf]');
   for(var i=0;i<b.length;i++){
     b[i].onclick=function(){setSGFilter(this.getAttribute('data-sgf'),this.getAttribute('data-sgv'));};
+  }
+  var rows=root.querySelectorAll('[data-sgrow]');
+  for(var j=0;j<rows.length;j++){
+    rows[j].onclick=function(){toggleSGRow(this.getAttribute('data-sgrow'));};
   }
 }
 
