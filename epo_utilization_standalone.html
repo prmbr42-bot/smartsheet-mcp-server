@@ -2731,6 +2731,69 @@
       if (/^undefined$/i.test(n)) return false;
       return true;
     }
+    /* 9/10/26 console helper:  healthReport()
+       Groups every Comm project by why it is or is not scored, so the
+       Commercialization Manager gets an actionable list rather than a screenshot
+       of grey cells. Prints tables and returns a copy-pasteable text block.
+       Not called by anything — console only, on purpose. */
+    function healthReport() {
+      if (!HEALTH_LOADED) { console.warn('[EPO] Health has not finished loading yet.'); return; }
+      var byPid = {};
+      (SG_ROWS || []).forEach(function (r) { if (r.id) byPid[String(r.id).toUpperCase()] = r.name || ''; });
+
+      var g = {
+        scored: [], 'no-baseline': [], 'no-variance': [], 'bad-row1': [],
+        'empty-sheet': [], 'read-error': [], 'no-link': []
+      };
+      Object.keys(byPid).forEach(function (pid) {
+        var h = HEALTH[pid];
+        if (!h) { g['no-link'].push({ Project: pid, Name: byPid[pid].slice(0, 44) }); return; }
+        if (h.state !== 'grey') {
+          g.scored.push({
+            Project: pid, Name: byPid[pid].slice(0, 40),
+            Health: h.state.toUpperCase(), Variance: h.days + 'd', Row1: (h.row1 || '').slice(0, 32)
+          });
+          return;
+        }
+        (g[h.cause || 'read-error'] = g[h.cause || 'read-error'] || []).push({
+          Project: pid, Name: byPid[pid].slice(0, 40),
+          Timeline: (h.sheet || '').slice(0, 34), Row1: (h.row1 || '').slice(0, 32),
+          Variance: h.raw != null ? String(h.raw) : ''
+        });
+      });
+
+      var titles = {
+        scored: 'SCORED - health is trustworthy',
+        'no-baseline': 'ACTION: BASELINE THE TIMELINE - no Variance column exists',
+        'no-variance': 'ACTION: CHECK BASELINE - Variance column present but row 1 is blank',
+        'bad-row1': 'ACTION: FIX ROW 1 - row 1 is an overview/header row, not the project',
+        'empty-sheet': 'Timeline sheet is empty',
+        'read-error': 'Could not read the timeline sheet',
+        'no-link': 'No timeline sheet linked on the master'
+      };
+      var order = ['scored', 'bad-row1', 'no-variance', 'no-baseline', 'empty-sheet', 'read-error', 'no-link'];
+      var txt = [], total = 0;
+      order.forEach(function (k) { total += (g[k] || []).length; });
+      console.log('%c[EPO] PROJECT HEALTH REPORT  \u00b7  ' + total + ' Comm projects',
+        'font-weight:bold;font-size:13px');
+      order.forEach(function (k) {
+        var rows = g[k] || []; if (!rows.length) return;
+        console.log('%c' + titles[k] + '  (' + rows.length + ')', 'font-weight:bold;color:#1B4D35');
+        console.table(rows);
+        txt.push(titles[k] + ' (' + rows.length + ')');
+        rows.forEach(function (r) {
+          txt.push('   ' + r.Project + '  ' + (r.Name || '') +
+            (r.Row1 ? '   [row 1: ' + r.Row1 + ']' : '') +
+            (r.Variance ? '   variance ' + r.Variance : '') +
+            (r.Health ? '   ' + r.Health : ''));
+        });
+        txt.push('');
+      });
+      var out = txt.join('\n');
+      console.log('%cPlain-text version below - copy from here:', 'font-weight:bold');
+      console.log(out);
+      return out;
+    }
     function healthFor(pid) {
       var h = HEALTH[String(pid || '').toUpperCase()];
       if (h) return h;
@@ -5590,7 +5653,12 @@
               var ncol = (sh.columns || []).filter(function (c) { return /task\s*name|primary/i.test(c.title); })[0]
                 || (sh.columns || [])[0];
               var r1 = (sh.rows || [])[0];
-              if (!r1) { HEALTH[t.pid] = { state: 'grey', days: null, why: 'Timeline sheet is empty' }; return; }
+              if (!r1) {
+                HEALTH[t.pid] = {
+                  state: 'grey', days: null, cause: 'empty-sheet',
+                  sheet: sh.name, why: 'Timeline sheet is empty'
+                }; return;
+              }
               var nm = null, vv = null;
               (r1.cells || []).forEach(function (c) {
                 if (ncol && c.columnId === ncol.id) nm = c.displayValue || c.value;
@@ -5598,13 +5666,15 @@
               });
               if (!vcol) {
                 HEALTH[t.pid] = {
-                  state: 'grey', days: null,
+                  state: 'grey', days: null, cause: 'no-baseline',
+                  sheet: sh.name, row1: String(nm || ''),
                   why: 'Timeline is not baselined (no Variance column)'
                 }; return;
               }
               if (!row1IsProject(nm)) {
                 HEALTH[t.pid] = {
-                  state: 'grey', days: null,
+                  state: 'grey', days: null, cause: 'bad-row1',
+                  sheet: sh.name, row1: String(nm || ''), raw: vv,
                   why: 'Row 1 is not the project summary row (reads "' + String(nm || '').slice(0, 40) +
                     '"), so its variance is not the project\u2019s'
                 }; return;
@@ -5612,17 +5682,22 @@
               var days = parseVariance(vv);
               if (days === null) {
                 HEALTH[t.pid] = {
-                  state: 'grey', days: null,
+                  state: 'grey', days: null, cause: 'no-variance',
+                  sheet: sh.name, row1: String(nm || ''),
                   why: 'Baseline set but no variance value on row 1'
                 }; return;
               }
               HEALTH[t.pid] = {
                 state: healthState(days), days: Math.round(days * 10) / 10,
-                why: 'Row 1 "' + String(nm || '').slice(0, 40) + '" \u00b7 variance ' + vv
+                why: 'Row 1 "' + String(nm || '').slice(0, 40) + '" \u00b7 variance ' + vv,
+                sheet: sh.name, row1: String(nm || ''), raw: vv
               };
             })
             .catch(function (e) {
-              HEALTH[t.pid] = { state: 'grey', days: null, why: 'Timeline could not be read: ' + e.message };
+              HEALTH[t.pid] = {
+                state: 'grey', days: null, cause: 'read-error',
+                why: 'Timeline could not be read: ' + e.message
+              };
             })
             .then(function () {
               return new Promise(function (r) { setTimeout(r, 120); }).then(next);
@@ -5633,7 +5708,8 @@
         HEALTH_LOADED = true;
         var scored = Object.keys(HEALTH).filter(function (k) { return HEALTH[k].state !== 'grey'; }).length;
         console.log('[EPO] Health: ' + scored + ' projects scored, ' +
-          (Object.keys(HEALTH).length - scored) + ' linked-but-grey');
+          (Object.keys(HEALTH).length - scored) + ' linked-but-grey' +
+          '  \u2014 run healthReport() for the remediation list');
         if (TAB === 'comm' && COMM_VIEW === 'stagegate') renderStageGate();
       }).catch(function (e) {
         HEALTH_LOADED = true;
