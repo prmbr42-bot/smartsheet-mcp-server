@@ -2665,7 +2665,49 @@
        automatically instead. Capped at 2 retries; a manual Refresh always resets. */
     var LOAD_RETRY = 0;
     var LOAD_RETRY_MAX = 3;
-    var SG_FILTER = { status: 'active', bu: 'all' };        // Kristen's two filters
+    var SG_FILTER = { status: 'active', bu: 'all', ptype: 'all' };  // Kristen's filters (+ ptype 9/11/26)
+
+    /* 9/11/26 per Jerry. Project Type filter, two roll-ups plus All.
+       Groups supplied verbatim; nothing inferred. Matching is case-insensitive and
+       trims whitespace, but is otherwise EXACT against the Project Type value on
+       the master sheet — no fuzzy matching, so a renamed or newly added type will
+       simply not belong to a group rather than being guessed into one.
+       NOT LISTED IN EITHER GROUP: "Research" (seen on P-0064 Owensboro In Line
+       Mixing and P-0089 Project Shine). Any type that is not in a group is
+       reachable only from "All". See sgUngroupedTypes() to list them. */
+    var SG_PTYPES = {
+      growth: {
+        label: 'Growth &amp; Commercial Strategy',
+        types: ['ppa', 'renovation', 'innovation', 'extension', 'graphics', 'copy like']
+      },
+      continuity: {
+        label: 'Continuity &amp; Ops',
+        types: ['continuity', 'cost savings']
+      }
+    };
+    function sgPTypeMatch(type, key) {
+      if (key === 'all') return true;
+      var g = SG_PTYPES[key];
+      if (!g) return true;
+      return g.types.indexOf(String(type || '').trim().toLowerCase()) > -1;
+    }
+    /* Console helper: which Project Type values on the sheet belong to no group. */
+    function sgUngroupedTypes() {
+      var known = {}, out = {};
+      Object.keys(SG_PTYPES).forEach(function (k) {
+        SG_PTYPES[k].types.forEach(function (t) { known[t] = 1; });
+      });
+      (SG_ROWS || []).forEach(function (r) {
+        var t = String(r.type || '').trim();
+        if (!t) return;
+        if (!known[t.toLowerCase()]) out[t] = (out[t] || 0) + 1;
+      });
+      var keys = Object.keys(out);
+      if (!keys.length) { console.log('[EPO] Every Project Type belongs to a group.'); return out; }
+      console.warn('[EPO] Project Types in NO group (visible only under "All"):');
+      keys.forEach(function (k) { console.log('   ' + k + '  \u00d7' + out[k]); });
+      return out;
+    }
     var SG_EXPANDED = {};                              // Stage Gate inline drill: projectId -> true (8/27/26)
     /* ════════════════════════════════════════════════════════
        PROJECT HEALTH  (9/10/26)
@@ -5416,6 +5458,7 @@
       return SG_ROWS.filter(function (r) {
         if (SG_FILTER.status === 'active' && !(r.status === 'Active' || isOnHold(r.status))) return false;
         if (!sgBUMatch(r.bu, SG_FILTER.bu)) return false;
+        if (!sgPTypeMatch(r.type, SG_FILTER.ptype)) return false;
         return true;
       });
     }
@@ -5449,6 +5492,10 @@
         seg('status', 'active', 'Active / On Hold') + seg('status', 'all', 'All') + '</div></div>' +
         '<div class="sg-grp"><label>Business Unit</label><div class="sg-segwrap">' +
         seg('bu', 'all', 'All') + seg('bu', 'MS', 'MS') + seg('bu', 'FE', 'FE') + '</div></div>' +
+        '<div class="sg-grp"><label>Project Type</label><div class="sg-segwrap">' +
+        seg('ptype', 'all', 'All') +
+        seg('ptype', 'growth', SG_PTYPES.growth.label) +
+        seg('ptype', 'continuity', SG_PTYPES.continuity.label) + '</div></div>' +
         /* 8/27/26 per Kristen: show the project count only. The "N need EPO review
            status" tally and the per-row "!" badge were both removed at her request
            — she does not want non-Approved rows called out on this view. NOTE this
