@@ -2721,16 +2721,18 @@
       if (days <= -5) return 'yellow';
       return 'green';
     }
-    /* Patterns observed in the 9/10/26 scan. Kept deliberately narrow: only rows
-       that are demonstrably not a project rollup are rejected. */
-    function row1IsProject(name) {
-      var n = String(name || '').trim();
-      if (!n) return false;
-      if (/^project\s*overview$/i.test(n)) return false;
-      if (/^overview\s*:/i.test(n)) return false;
-      if (/^undefined$/i.test(n)) return false;
-      return true;
-    }
+    /* 9/11/26 RETIRED at Kristen's direction, and she was right.
+       This used to grey out any row 1 whose NAME did not look like a project, on
+       the theory that "PROJECT OVERVIEW" or "Overview: ..." meant we were reading
+       a header rather than the rollup. That was an inference from a label, and the
+       label does not carry that meaning: the original Commercialization timeline
+       TEMPLATE shipped with row 1 titled "Project Overview", so most timelines
+       legitimately do not have the project name on the top row. Rejecting them
+       suppressed real data.
+       Row 1 is now read whatever it is called, per the original rule. The row 1
+       text is still recorded in the tooltip so anyone can see what was measured.
+       Left here, unused, so the reasoning is not rediscovered from scratch. */
+    function row1IsProject(name) { return true; }
     /* 9/10/26 console helper:  healthReport()
        Groups every Comm project by why it is or is not scored, so the
        Commercialization Manager gets an actionable list rather than a screenshot
@@ -2742,7 +2744,7 @@
       (SG_ROWS || []).forEach(function (r) { if (r.id) byPid[String(r.id).toUpperCase()] = r.name || ''; });
 
       var g = {
-        scored: [], 'no-baseline': [], 'no-variance': [], 'bad-row1': [],
+        scored: [], 'no-baseline': [], 'no-variance': [],
         'empty-sheet': [], 'read-error': [], 'no-link': []
       };
       Object.keys(byPid).forEach(function (pid) {
@@ -2766,12 +2768,11 @@
         scored: 'SCORED - health is trustworthy',
         'no-baseline': 'ACTION: BASELINE THE TIMELINE - no Variance column exists',
         'no-variance': 'ACTION: CHECK BASELINE - Variance column present but row 1 is blank',
-        'bad-row1': 'ACTION: FIX ROW 1 - row 1 is an overview/header row, not the project',
         'empty-sheet': 'Timeline sheet is empty',
         'read-error': 'Could not read the timeline sheet',
         'no-link': 'No timeline sheet linked on the master'
       };
-      var order = ['scored', 'bad-row1', 'no-variance', 'no-baseline', 'empty-sheet', 'read-error', 'no-link'];
+      var order = ['scored', 'no-variance', 'no-baseline', 'empty-sheet', 'read-error', 'no-link'];
       var txt = [], total = 0;
       order.forEach(function (k) { total += (g[k] || []).length; });
       console.log('%c[EPO] PROJECT HEALTH REPORT  \u00b7  ' + total + ' Comm projects',
@@ -5671,20 +5672,13 @@
                   why: 'Timeline is not baselined (no Variance column)'
                 }; return;
               }
-              if (!row1IsProject(nm)) {
-                HEALTH[t.pid] = {
-                  state: 'grey', days: null, cause: 'bad-row1',
-                  sheet: sh.name, row1: String(nm || ''), raw: vv,
-                  why: 'Row 1 is not the project summary row (reads "' + String(nm || '').slice(0, 40) +
-                    '"), so its variance is not the project\u2019s'
-                }; return;
-              }
               var days = parseVariance(vv);
               if (days === null) {
                 HEALTH[t.pid] = {
                   state: 'grey', days: null, cause: 'no-variance',
                   sheet: sh.name, row1: String(nm || ''),
-                  why: 'Baseline set but no variance value on row 1'
+                  why: 'Baseline set but no variance value on row 1 (reads "' +
+                    String(nm || '(blank)').slice(0, 40) + '")'
                 }; return;
               }
               HEALTH[t.pid] = {
