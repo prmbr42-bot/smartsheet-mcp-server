@@ -1924,6 +1924,153 @@
       color: #0D2818
     }
 
+    /* ── AT-RISK TASKS & RAID (9/11/26) ── */
+    .tk {
+      border: 1px solid #E3E8E5;
+      border-left: 3px solid #D64545;
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 9px;
+      background: #fff
+    }
+
+    .tk.cp {
+      border-left-color: #B7791F
+    }
+
+    .tk-h {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 5px
+    }
+
+    .tk-t {
+      font-weight: 700;
+      font-size: 12.5px;
+      color: #0D2818;
+      line-height: 1.35;
+      flex: 1
+    }
+
+    .tk-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 6px
+    }
+
+    .tk-p {
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: #EDEFED;
+      color: #4B5563;
+      white-space: nowrap
+    }
+
+    .tk-p.prog {
+      background: #DCE9FB;
+      color: #1D4ED8
+    }
+
+    .tk-p.queue {
+      background: #EDEFED;
+      color: #6B7280
+    }
+
+    .tk-p.late {
+      background: #FBDDDD;
+      color: #991B1B
+    }
+
+    .tk-p.cpf {
+      background: #FDF0DC;
+      color: #8A5A12
+    }
+
+    .tk-sub {
+      margin: 4px 0 6px;
+      padding-left: 13px;
+      font-size: 11.5px;
+      color: #4B5563;
+      line-height: 1.5
+    }
+
+    .tk-sub li {
+      margin-bottom: 2px
+    }
+
+    .tk-note {
+      border-top: 1px dashed #E3E8E5;
+      padding-top: 6px;
+      margin-top: 6px;
+      font-size: 11.5px;
+      color: #374151;
+      line-height: 1.5
+    }
+
+    .tk-note b {
+      color: #1B4D35;
+      font-weight: 800
+    }
+
+    .rd {
+      border: 1px solid #E3E8E5;
+      border-radius: 4px;
+      padding: 9px 11px;
+      margin-bottom: 8px;
+      background: #fff
+    }
+
+    .rd-h {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      margin-bottom: 4px
+    }
+
+    .rd-c {
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: #E7EEF9;
+      color: #1D4ED8
+    }
+
+    .rd-d {
+      font-size: 12px;
+      color: #1F2937;
+      line-height: 1.45
+    }
+
+    .rd-m {
+      font-size: 11px;
+      color: #6B7280;
+      margin-top: 4px
+    }
+
+    .blk-load {
+      font-size: 12px;
+      color: #9CA3AF;
+      font-style: italic
+    }
+
+    .blk-empty {
+      font-size: 12.5px;
+      color: #4B5563
+    }
+
+    .blk-scroll {
+      max-height: 340px;
+      overflow-y: auto;
+      padding-right: 4px
+    }
+
     /* ── ENTERPRISE ROADMAP (8/27/26) ── */
     .ent-wrap {
       padding: 0
@@ -2735,6 +2882,9 @@
     var TIMELINE_COL = 2240296289783684;   /* "Timeline" on the Comm master  */
     var PROJ_ID_COL = 551446429519748;    /* "Project ID" on the Comm master */
     var HEALTH = {};                       /* projectId -> {state, days, why}  */
+    var TL_SHEET = {};                     /* projectId -> timeline sheetId (9/11/26) */
+    var TL_CACHE = {};                     /* projectId -> {loading,error,tasks[]}   */
+    var RAID_CACHE = {};                   /* projectId -> {loading,error,entries[]} */
     var HEALTH_LOADED = false;
 
     /* Smartsheet returns Variance as a DURATION STRING ("5d", "-41.5d"), not a
@@ -5563,14 +5713,8 @@
 
       var lower =
         '<div class="sg-dgrid two" style="margin-top:20px">' +
-        '<div class="sg-blk"><h4>Status <span class="sg-dec">2</span></h4>' +
-        '<div class="sg-note"><b>Pending AI enablement &middot; Decision 2</b>' +
-        '<span>Once an Azure OpenAI endpoint is sponsored, this renders a 3 to 5 ' +
-        'sentence storyline of tasks completed or in process over the last 30 days, ' +
-        'generated from the linked timeline.</span></div></div>' +
-        '<div class="sg-blk"><h4>At-Risk Tasks &amp; RAID</h4>' +
-        '<div class="sg-note"><b>Phase 1</b><span>Reads flagged, incomplete tasks ' +
-        'from the linked timeline sheet.</span></div></div>' +
+        sgRaidBlock(r) +
+        sgTasksBlock(r) +
         '</div>';
 
       return '<div class="sg-dgrid">' + det + '</div>' + lower;
@@ -5653,8 +5797,159 @@
         callouts + '</div>';
     }
 
+    /* ════════════════════════════════════════════════════════
+       AT-RISK TASKS & RAID  (9/11/26)
+       ────────────────────────────────────────────────────────
+       Fetched LAZILY, per project, when a drawer is opened. loadTimelineHealth()
+       deliberately reads only row 1 of each timeline (?pageSize=1) to keep page
+       load to a single pass; the Bertolli timeline alone is 107 rows, so pulling
+       every row of all 36 timelines up front would undo the load work done in
+       August. One or two calls per drawer open instead, cached thereafter.
+    
+       Timeline structure confirmed 9/11/26 against P-0050:
+         At Risk        CHECKBOX   (true = flagged)
+         CP             CHECKBOX   (critical path)
+         Status         PICKLIST   ("In Progress", "In Queue", ...)
+         % Complete     0..1 fraction
+         Task Name      may embed sub-items after "\n>" markers
+         Notes/Updates  a running log, entries prefixed "(XX M/D)"
+       RAID comes from the existing /project-info index and parseRaidEntries(),
+       both already in this file — nothing new is built for that half. */
+
+    /* Task Name carries an embedded checklist: "Trial Ingredients Ordered:\n> a\n> b" */
+    function splitTaskName(v) {
+      var parts = String(v || '').split(/\n\s*>\s*/);
+      return {
+        title: (parts.shift() || '').replace(/:\s*$/, '').trim(),
+        subs: parts.map(function (x) { return x.trim(); }).filter(Boolean)
+      };
+    }
+    /* Notes/Updates is chronological; the last "(XX M/D)" entry is the newest. */
+    function latestNote(v) {
+      var str = String(v || '').trim();
+      if (!str) return null;
+      var re = /\(([A-Za-z]{1,3})\s*(\d{1,2}\/\d{1,2})\)/g, last = null, m;
+      while ((m = re.exec(str)) !== null) last = m;
+      if (!last) return { who: null, when: null, text: str };
+      return {
+        who: last[1], when: last[2],
+        text: str.slice(last.index + last[0].length).trim()
+      };
+    }
+    function loadDrawerData(pid) {
+      pid = String(pid || '').toUpperCase();
+      /* --- timeline tasks --- */
+      if (!TL_CACHE[pid]) {
+        var sid = TL_SHEET[pid];
+        if (!sid) { TL_CACHE[pid] = { loading: false, tasks: [], error: 'no-timeline' }; }
+        else {
+          TL_CACHE[pid] = { loading: true, tasks: [] };
+          ssGet('/sheets/' + sid).then(function (sh) {
+            var t2 = {}; (sh.columns || []).forEach(function (c) { t2[c.id] = c.title; });
+            var tasks = [];
+            (sh.rows || []).forEach(function (row) {
+              var o = {}; (row.cells || []).forEach(function (c) {
+                if (c.value != null) o[t2[c.columnId]] = c.value;
+                else if (c.displayValue != null) o[t2[c.columnId]] = c.displayValue;
+              });
+              if (o['At Risk'] !== true) return;
+              var pctv = (typeof o['% Complete'] === 'number') ? o['% Complete'] : null;
+              if (pctv != null && pctv >= 1) return;          /* flagged but finished */
+              var nm = splitTaskName(o['Task Name']);
+              tasks.push({
+                title: nm.title || '(untitled task)', subs: nm.subs,
+                status: o['Status'] || '', cp: o['CP'] === true,
+                who: o['Assigned To'] || '', end: o['End Date'] || '',
+                pct: pctv, variance: o['Variance'] || '', note: latestNote(o['Notes/Updates'])
+              });
+            });
+            TL_CACHE[pid] = { loading: false, tasks: tasks };
+            if (SG_EXPANDED[pid]) renderStageGate();
+          }).catch(function (e) {
+            TL_CACHE[pid] = { loading: false, tasks: [], error: e.message };
+            if (SG_EXPANDED[pid]) renderStageGate();
+          });
+        }
+      }
+      /* --- RAID --- */
+      if (!RAID_CACHE[pid]) {
+        var ent = raidEntry('Commercialization', pid);
+        var rid = ent && ent.raidSheetId;
+        if (!rid) { RAID_CACHE[pid] = { loading: false, entries: [], error: 'no-raid' }; }
+        else {
+          RAID_CACHE[pid] = { loading: true, entries: [] };
+          ssGet('/sheets/' + rid).then(function (sh) {
+            RAID_CACHE[pid] = { loading: false, entries: parseRaidEntries(sh) };
+            if (SG_EXPANDED[pid]) renderStageGate();
+          }).catch(function (e) {
+            RAID_CACHE[pid] = { loading: false, entries: [], error: e.message };
+            if (SG_EXPANDED[pid]) renderStageGate();
+          });
+        }
+      }
+    }
+    function statusPill(st) {
+      var t = String(st || '').toLowerCase(), cls = 'queue';
+      if (/progress/.test(t)) cls = 'prog';
+      else if (/late|risk|block/.test(t)) cls = 'late';
+      return st ? '<span class="tk-p ' + cls + '">' + esc(st) + '</span>' : '';
+    }
+    function fmtDay(v) {
+      if (!v) return '';
+      var d = new Date(v);
+      return isNaN(d) ? String(v).slice(0, 10)
+        : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+    function sgTasksBlock(r) {
+      var c = TL_CACHE[String(r.id || '').toUpperCase()];
+      var inner;
+      if (!c || c.loading) inner = '<div class="blk-load">Reading the timeline&hellip;</div>';
+      else if (c.error === 'no-timeline') inner = '<div class="blk-empty">No timeline sheet is linked for this project.</div>';
+      else if (c.error) inner = '<div class="blk-empty">Timeline could not be read: ' + esc(c.error) + '</div>';
+      else if (!c.tasks.length) inner = '<div class="blk-empty">No open tasks are flagged At Risk.</div>';
+      else inner = '<div class="blk-scroll">' + c.tasks.map(function (t) {
+        var subs = t.subs.length
+          ? '<ul class="tk-sub">' + t.subs.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '';
+        var note = t.note
+          ? '<div class="tk-note">' + (t.note.who ? '<b>' + esc(t.note.who) + ' ' + esc(t.note.when) + '</b> ' : '') +
+          esc(String(t.note.text).slice(0, 260)) + (String(t.note.text).length > 260 ? '&hellip;' : '') + '</div>' : '';
+        return '<div class="tk' + (t.cp ? ' cp' : '') + '">' +
+          '<div class="tk-h"><span class="tk-t">' + esc(t.title) + '</span></div>' +
+          '<div class="tk-meta">' + statusPill(t.status) +
+          (t.cp ? '<span class="tk-p cpf">CRITICAL PATH</span>' : '') +
+          (t.pct != null ? '<span class="tk-p">' + Math.round(t.pct * 100) + '% done</span>' : '') +
+          (t.end ? '<span class="tk-p">due ' + esc(fmtDay(t.end)) + '</span>' : '') +
+          (t.variance ? '<span class="tk-p">var ' + esc(t.variance) + '</span>' : '') +
+          (t.who ? '<span class="tk-p">' + esc(String(t.who).split(',')[0]) + '</span>' : '') +
+          '</div>' + subs + note + '</div>';
+      }).join('') + '</div>';
+      var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + c.tasks.length + '</span>' : '';
+      return '<div class="sg-blk"><h4>At-Risk Tasks' + n + '</h4>' + inner + '</div>';
+    }
+    function sgRaidBlock(r) {
+      var c = RAID_CACHE[String(r.id || '').toUpperCase()];
+      var inner;
+      if (!c || c.loading) inner = '<div class="blk-load">Reading the RAID log&hellip;</div>';
+      else if (c.error === 'no-raid') inner = '<div class="blk-empty">No RAID sheet is indexed for this project.</div>';
+      else if (c.error) inner = '<div class="blk-empty">RAID could not be read: ' + esc(c.error) + '</div>';
+      else if (!c.entries.length) inner = '<div class="blk-empty">No RAID entries logged.</div>';
+      else inner = '<div class="blk-scroll">' + c.entries.map(function (e) {
+        return '<div class="rd">' +
+          '<div class="rd-h">' + (e.category ? '<span class="rd-c">' + esc(e.category) + '</span>' : '') +
+          statusPill(e.status) + '</div>' +
+          '<div class="rd-d">' + esc(String(e.description).slice(0, 240)) +
+          (String(e.description).length > 240 ? '&hellip;' : '') + '</div>' +
+          '<div class="rd-m">' + [e.assignedTo, e.dueDate ? 'due ' + fmtDay(e.dueDate) : '',
+          e.impact ? 'impact ' + e.impact : '', e.probability ? 'prob ' + e.probability : '']
+            .filter(Boolean).map(esc).join(' &middot; ') + '</div></div>';
+      }).join('') + '</div>';
+      var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + c.entries.length + '</span>' : '';
+      return '<div class="sg-blk"><h4>RAID' + n + '</h4>' + inner + '</div>';
+    }
+
     function toggleSGRow(key) {
-      if (SG_EXPANDED[key]) delete SG_EXPANDED[key]; else SG_EXPANDED[key] = true;
+      if (SG_EXPANDED[key]) delete SG_EXPANDED[key];
+      else { SG_EXPANDED[key] = true; loadDrawerData(key); }
       renderStageGate();
     }
 
@@ -5688,7 +5983,7 @@
              structure — filtering on it dropped 15 real projects on 9/10/26. */
           if (!link || !pid) return;
           var sid = map[norm(link)];
-          if (sid) targets.push({ pid: pid.toUpperCase(), sheetId: sid });
+          if (sid) { targets.push({ pid: pid.toUpperCase(), sheetId: sid }); TL_SHEET[pid.toUpperCase()] = sid; }
         });
         console.log('[EPO] Health: ' + targets.length + ' linked timelines resolved');
         var i = 0;
