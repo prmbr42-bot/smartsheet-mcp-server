@@ -3575,7 +3575,36 @@
     var RAID_INDEX = { comm: {}, bs: {} }; // keyed by source → projectId — prevents ID collisions between Comm/BS
 
     function raidKey(src) { return src === 'Commercialization' ? 'comm' : 'bs'; }
-    function raidEntry(src, pid) { var k = raidKey(src); return (RAID_INDEX[k] && RAID_INDEX[k][pid]) || null; }
+
+    /* 9/14/26. Project IDs are not written consistently across the two systems.
+       The Comm master sheet uses zero-padded "P-0107"; /project-info returned
+       "P-107" for that same project, so the exact-key lookup silently missed it.
+       Normalising the numeric part fixes that class of mismatch for good.
+       Measured on 9/14/26 against 89 master projects: 38 matched on the raw key,
+       39 after normalising. One project recovered — small, but it was failing
+       silently, which is the worst way to fail.
+       NOT fixed here, because it cannot be: 50 of the 89 have no /project-info
+       entry at all, and 10 index keys use an unrelated "COM-#####" scheme that
+       matches no project on the master. Both are server-side, in the folder walk
+       behind /project-info. */
+    function normPid(k) {
+      var m = /^P-?(\d+)$/i.exec(String(k || '').trim());
+      return m ? ('P-' + m[1].replace(/^0+/, '').padStart(4, '0')) : String(k || '').trim().toUpperCase();
+    }
+    var RAID_NORM = { comm: null, bs: null };
+    function raidNormMap(k) {
+      if (RAID_NORM[k]) return RAID_NORM[k];
+      var out = {}, src = RAID_INDEX[k] || {};
+      Object.keys(src).forEach(function (key) { out[normPid(key)] = src[key]; });
+      RAID_NORM[k] = out;
+      return out;
+    }
+    function raidEntry(src, pid) {
+      var k = raidKey(src);
+      var direct = RAID_INDEX[k] && RAID_INDEX[k][pid];
+      if (direct) return direct;
+      return raidNormMap(k)[normPid(pid)] || null;
+    }
 
     /* ════════════════════════════════════════════════════════
        BS CAPACITY SHEET
@@ -4056,6 +4085,7 @@
         })
         .then(function (data) {
           RAID_INDEX = { comm: {}, bs: {} };
+          RAID_NORM = { comm: null, bs: null };   /* 9/14/26: rebuild invalidates the normalised lookup */
           Object.keys(data.comm || {}).forEach(function (pid) { RAID_INDEX.comm[pid] = data.comm[pid]; });
           Object.keys(data.bs || {}).forEach(function (pid) { RAID_INDEX.bs[pid] = data.bs[pid]; });
           /* BS name-indexed folder map (keyed by normalized folder name) */
@@ -5875,7 +5905,16 @@
       if (!RAID_CACHE[pid]) {
         var ent = raidEntry('Commercialization', pid);
         var rid = ent && ent.raidSheetId;
-        if (!rid) { RAID_CACHE[pid] = { loading: false, entries: [], error: 'no-raid' }; }
+        /* Two different failures that used to read identically in the drawer:
+           the project has no /project-info entry at all (server-side folder walk
+           never found it), versus it was indexed but no RAID sheet was found in
+           its folder. Different owners, different fixes — so say which. */
+        if (!rid) {
+          RAID_CACHE[pid] = {
+            loading: false, entries: [],
+            error: ent ? 'no-raid-sheet' : 'not-indexed'
+          };
+        }
         else {
           RAID_CACHE[pid] = { loading: true, entries: [] };
           ssGet('/sheets/' + rid).then(function (sh) {
@@ -5930,7 +5969,10 @@
       var c = RAID_CACHE[String(r.id || '').toUpperCase()];
       var inner;
       if (!c || c.loading) inner = '<div class="blk-load">Reading the RAID log&hellip;</div>';
-      else if (c.error === 'no-raid') inner = '<div class="blk-empty">No RAID sheet is indexed for this project.</div>';
+      else if (c.error === 'not-indexed') inner = '<div class="blk-empty">This project has no entry in the project index, ' +
+        'so its folder was never located. Nothing can be read for it until that is resolved.</div>';
+      else if (c.error === 'no-raid-sheet') inner = '<div class="blk-empty">The project folder was found, ' +
+        'but it contains no RAID sheet.</div>';
       else if (c.error) inner = '<div class="blk-empty">RAID could not be read: ' + esc(c.error) + '</div>';
       else if (!c.entries.length) inner = '<div class="blk-empty">No RAID entries logged.</div>';
       else inner = '<div class="blk-scroll">' + c.entries.map(function (e) {
