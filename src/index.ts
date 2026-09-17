@@ -85,6 +85,10 @@ async function runHTTP(): Promise<void> {
             if (!r.ok) return;
 
             const folder = (await r.json()) as SmartsheetFolder;
+            // 9/17/26: archive folders hold removed or completed projects (Jerry). Verified against
+            // the master: every ID folder under one was CANCELED or COMPLETE. Skip the folder AND its
+            // whole subtree. Catches "z. ARCHIVE", "ARCHIVE", "X ARCHIVE FORMULA/ING".
+            if (/archive/i.test(folder.name ?? "")) return;
             const sheets: SmartsheetSheet[] = folder.sheets ?? [];
 
             // Project folder = name starts with a project ID like P-0077 or COM-00086
