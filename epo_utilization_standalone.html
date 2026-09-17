@@ -1621,6 +1621,66 @@
       white-space: nowrap
     }
 
+    .sg-scroll {
+      overflow: auto;
+      max-height: 70vh
+    }
+
+    /* 9/17/26 S1 */
+    .sg-sortable {
+      cursor: pointer;
+      user-select: none
+    }
+
+    .sg-sortable:hover {
+      background: #245F43
+    }
+
+    /* 9/17/26 S2 */
+    .sg-sortidle {
+      opacity: .45;
+      font-size: 10px
+    }
+
+    .sg-sel {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 4px 6px;
+      border: 1px solid #D1D5DB;
+      border-radius: 4px;
+      background: #fff;
+      color: #374151;
+      max-width: 190px
+    }
+
+    .sg-sel.on {
+      border-color: #0D2818;
+      background: #EAF4EE;
+      font-weight: 700
+    }
+
+    .sg-clear {
+      border: none;
+      background: none;
+      color: #2563EB;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 5px 2px
+    }
+
+    .sg-star {
+      text-align: center
+    }
+
+    .sg-agstar {
+      color: #F5B829;
+      font-size: 17px;
+      line-height: 1;
+      cursor: help
+    }
+
+    /* 9/17/26 S8 */
     .sg-sm.wrap {
       white-space: normal;
       max-width: 170px;
@@ -2860,7 +2920,8 @@
        automatically instead. Capped at 2 retries; a manual Refresh always resets. */
     var LOAD_RETRY = 0;
     var LOAD_RETRY_MAX = 3;
-    var SG_FILTER = { status: 'active', bu: 'all', ptype: 'all' };  // Kristen's filters (+ ptype 9/11/26)
+    var SG_FILTER = { status: 'active', bu: 'all', ptype: 'all', stage: '', owner: '', rd: '' };  /* 9/17/26 S2: + stage/owner/rd dropdowns */
+    var SG_SORT = { key: null, dir: 1 };   /* 9/17/26 S2: header sort; key null = sheet order */  // Kristen's filters (+ ptype 9/11/26)
 
     /* 9/11/26 per Jerry. Project Type filter, two roll-ups plus All.
        Groups supplied verbatim; nothing inferred. Matching is case-insensitive and
@@ -5685,7 +5746,9 @@
           costRiskSav: num('Cost/Risk Savings $K'),
           salesFTE: g('Sales FTE'), salesComplexity: g('Sales Complexity'),
           salesCallOuts: g('Sales Call Outs'),
-          financeCallOuts: g('Finance Call Outs')   /* 9/17/26 DR9: TEXT, 14 populated */
+          financeCallOuts: g('Finance Call Outs'),  /* 9/17/26 DR9: TEXT, 14 populated */
+          /* 9/17/26 S8: DATE column; read the raw YYYY-MM-DD value, not the display string. */
+          sgAgenda: (t2id['Anticipated SG Agenda Date'] != null ? (byV[t2id['Anticipated SG Agenda Date']] || null) : null)
         };
       }).filter(function (r) { return r.id || r.name; });
     }
@@ -5722,9 +5785,80 @@
         if (SG_FILTER.status === 'active' && !(r.status === 'Active' || isOnHold(r.status))) return false;
         if (!sgBUMatch(r.bu, SG_FILTER.bu)) return false;
         if (!sgPTypeMatch(r, SG_FILTER.ptype)) return false;
+        /* 9/17/26 (S2): dropdown filters. R&D Lead matches any one name in a multi-name cell. */
+        if (SG_FILTER.stage && r.stage !== SG_FILTER.stage) return false;
+        if (SG_FILTER.owner && r.owner !== SG_FILTER.owner) return false;
+        if (SG_FILTER.rd && sgRdNames(r.rd).indexOf(SG_FILTER.rd) < 0) return false;
         return true;
       });
     }
+    /* ── 9/17/26 (S2) per Kristen: sort or filter by Stage, Project Type, Owner, R&D Lead ──
+       Header click cycles ascending, descending, off (back to sheet order). Blanks always sort last.
+       Filters are dropdowns for Stage, Owner and R&D Lead; Project Type already has its toggle. */
+    function sgRdNames(v) { var t = String(v || '').trim(); if (!t || t === 'N/A') return []; return t.split(/\s*[,;]\s*/).filter(Boolean); }
+    function sgSortVal(r, k) {
+      if (k === 'stage') return String(r.stage || '');
+      if (k === 'type') return String(r.type || '');
+      if (k === 'owner') return String(r.owner || '');
+      if (k === 'rd') return sgRdNames(r.rd).join(', ');
+      return '';
+    }
+    function sgSortRows(rows) {
+      if (!SG_SORT.key) return rows;
+      var k = SG_SORT.key, d = SG_SORT.dir;
+      return rows.slice().sort(function (a, b) {
+        var x = sgSortVal(a, k), y = sgSortVal(b, k);
+        if (!x && !y) return 0; if (!x) return 1; if (!y) return -1;
+        return d * x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' });
+      });
+    }
+    function sgCycleSort(k) {
+      if (SG_SORT.key !== k) SG_SORT = { key: k, dir: 1 };
+      else if (SG_SORT.dir === 1) SG_SORT.dir = -1;
+      else SG_SORT = { key: null, dir: 1 };
+      renderStageGate();
+    }
+    function sgTh(label, k) {
+      if (!k) return '<th>' + label + '</th>';
+      var on = SG_SORT.key === k;
+      var arrow = on ? (SG_SORT.dir === 1 ? ' &#9650;' : ' &#9660;') : ' <span class="sg-sortidle">&#8693;</span>';
+      return '<th class="sg-sortable' + (on ? ' on' : '') + '" data-sgsort="' + k + '" title="Click to sort">' + label + arrow + '</th>';
+    }
+    function sgDropdowns() {
+      var stages = {}, owners = {}, rds = {};
+      SG_ROWS.forEach(function (r) {
+        if (r.stage) stages[r.stage] = 1;
+        if (r.owner) owners[r.owner] = 1;
+        sgRdNames(r.rd).forEach(function (n) { rds[n] = 1; });
+      });
+      function sel(k, label, map) {
+        var keys = Object.keys(map).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }); });
+        return '<div class="sg-grp"><label>' + label + '</label><select class="sg-sel' + (SG_FILTER[k] ? ' on' : '') + '" data-sgsel="' + k + '">' +
+          '<option value="">All</option>' +
+          keys.map(function (v) { return '<option value="' + esc(v) + '"' + (SG_FILTER[k] === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') +
+          '</select></div>';
+      }
+      var any = SG_FILTER.stage || SG_FILTER.owner || SG_FILTER.rd;
+      return sel('stage', 'Stage', stages) + sel('owner', 'Project Owner', owners) + sel('rd', 'R&amp;D Lead', rds) +
+        (any ? '<div class="sg-grp"><label>&nbsp;</label><button type="button" class="sg-clear" data-sgclear="1">Clear</button></div>' : '');
+    }
+    /* 9/17/26 (S8) per Kristen: star when Anticipated SG Agenda Date is today through 28 days out. */
+    function sgAgendaStar(r) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(r.sgAgenda || '')); if (!m) return '';
+      var d = new Date(+m[1], +m[2] - 1, +m[3]), n = new Date(), t = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+      var days = Math.round((d - t) / 86400000);
+      if (days < 0 || days > 28) return '';
+      return '<span class="sg-agstar" title="Anticipated SG Agenda Date: ' + esc(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })) + '">&#9733;</span>';
+    }
+    /* 9/17/26 (S1) per Kristen: freeze the top pane. The table scrolls inside its own box
+       (the card's overflow:hidden stops page-level sticky), so filters stay put and the
+       existing sticky header row works. Box height fits the window; kept on resize. */
+    function sgSizeScroll() {
+      var el = document.getElementById('sg-scroll'); if (!el) return;
+      var top = el.getBoundingClientRect().top + window.pageYOffset;
+      el.style.maxHeight = Math.max(320, window.innerHeight - top - 40) + 'px';
+    }
+    window.addEventListener('resize', function () { if (TAB === 'comm' && COMM_VIEW === 'stagegate') sgSizeScroll(); });
 
     function sgStepper(stage) {
       var i = SG_STAGES.indexOf(stage);
@@ -5745,7 +5879,8 @@
       return ' &middot; <span class="sg-hcount">Health: <b>' + n + '</b> of ' + rows.length + ' scored</span>';
     }
     function renderStageGate() {
-      var rows = sgFiltered();
+      var rows = sgSortRows(sgFiltered());   /* 9/17/26 S2 */
+      var _prevSc = document.getElementById('sg-scroll'), _scTop = _prevSc ? _prevSc.scrollTop : 0;   /* 9/17/26 S1: keep scroll across re-renders */
       function seg(k, v, label) {
         return '<button type="button" class="sg-seg' + (SG_FILTER[k] === v ? ' on' : '') +
           '" data-sgf="' + k + '" data-sgv="' + v + '">' + label + '</button>';
@@ -5760,6 +5895,7 @@
         seg('ptype', 'key', SG_PTYPES.key.label) +
         seg('ptype', 'growth', SG_PTYPES.growth.label) +
         seg('ptype', 'continuity', SG_PTYPES.continuity.label) + '</div></div>' +
+        sgDropdowns() +   /* 9/17/26 S2 */
         /* 8/27/26 per Kristen: show the project count only. The "N need EPO review
            status" tally and the per-row "!" badge were both removed at her request
            — she does not want non-Approved rows called out on this view. NOTE this
@@ -5796,16 +5932,18 @@
           '<td>' + typ + '</td>' +
           '<td><span class="sg-stage">' + esc(r.stage || '—') + '</span></td>' +
           '<td>' + pct + '</td>' +
-          '<td>' + sgHealthCell(r) + '</td></tr>' +
-          (open ? '<tr class="sg-det"><td colspan="8">' + sgDetail(r) + '</td></tr>' : '');
+          '<td>' + sgHealthCell(r) + '</td>' +
+          '<td class="sg-star">' + sgAgendaStar(r) + '</td></tr>' +   /* 9/17/26 S8 */
+          (open ? '<tr class="sg-det"><td colspan="9">' + sgDetail(r) + '</td></tr>' : '');
       }).join('');
 
       document.getElementById('stagegate-body').innerHTML = head +
-        '<table class="sg-tbl"><thead><tr>' +
-        '<th>ID</th><th>Project Name</th><th>Project Owner</th><th>R&amp;D Lead</th>' +
-        '<th>Project Type</th><th>Stage</th><th>% Complete</th>' +
-        '<th>Health</th>' +
-        '</tr></thead><tbody>' + body + '</tbody></table>';
+        '<div class="sg-scroll" id="sg-scroll"><table class="sg-tbl"><thead><tr>' +
+        sgTh('ID') + sgTh('Project Name') + sgTh('Project Owner', 'owner') + sgTh('R&amp;D Lead', 'rd') +
+        sgTh('Project Type', 'type') + sgTh('Stage', 'stage') + sgTh('% Complete') +
+        sgTh('Health') + sgTh('SG Agenda') +
+        '</tr></thead><tbody>' + body + '</tbody></table></div>';
+      var _sc = document.getElementById('sg-scroll'); if (_sc) { sgSizeScroll(); _sc.scrollTop = _scTop; }
       sgBind();
     }
 
@@ -6225,6 +6363,13 @@
       for (var i = 0; i < b.length; i++) {
         b[i].onclick = function () { setSGFilter(this.getAttribute('data-sgf'), this.getAttribute('data-sgv')); };
       }
+      /* 9/17/26 S2: sort headers, dropdown filters, clear */
+      var th = root.querySelectorAll('[data-sgsort]');
+      for (var t = 0; t < th.length; t++) { th[t].onclick = function () { sgCycleSort(this.getAttribute('data-sgsort')); }; }
+      var sels = root.querySelectorAll('[data-sgsel]');
+      for (var q = 0; q < sels.length; q++) { sels[q].onchange = function () { SG_FILTER[this.getAttribute('data-sgsel')] = this.value; renderStageGate(); }; }
+      var clr = root.querySelector('[data-sgclear]');
+      if (clr) clr.onclick = function () { SG_FILTER.stage = ''; SG_FILTER.owner = ''; SG_FILTER.rd = ''; renderStageGate(); };
       var rows = root.querySelectorAll('[data-sgrow]');
       for (var j = 0; j < rows.length; j++) {
         rows[j].onclick = function () { toggleSGRow(this.getAttribute('data-sgrow')); };
