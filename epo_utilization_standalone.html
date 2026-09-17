@@ -2823,6 +2823,9 @@
        Mixing and P-0089 Project Shine). Any type that is not in a group is
        reachable only from "All". See sgUngroupedTypes() to list them. */
     var SG_PTYPES = {
+      /* 9/17/26 per Kristen: Key Initiative is driven by the master checkbox, not by type.
+         Checked projects appear ONLY here and are removed from the two type roll-ups. */
+      key: { label: 'Key Initiative', types: [] },
       growth: {
         label: 'Growth &amp; Commercial Strategy',
         types: ['ppa', 'renovation', 'innovation', 'extension', 'graphics', 'copy like']
@@ -2832,11 +2835,13 @@
         types: ['continuity', 'cost savings']
       }
     };
-    function sgPTypeMatch(type, key) {
+    function sgPTypeMatch(r, key) {
       if (key === 'all') return true;
+      if (key === 'key') return !!r.keyInit;
       var g = SG_PTYPES[key];
       if (!g) return true;
-      return g.types.indexOf(String(type || '').trim().toLowerCase()) > -1;
+      if (r.keyInit) return false;
+      return g.types.indexOf(String(r.type || '').trim().toLowerCase()) > -1;
     }
     /* Console helper: which Project Type values on the sheet belong to no group. */
     function sgUngroupedTypes() {
@@ -5583,6 +5588,8 @@
         return {
           id: g('Project ID'), name: g('Project Name'), owner: g('Project Owner'),
           rd: g('R&D Lead'), type: g('SG Project Type'), stage: g('Stage'),
+          /* 9/17/26 per Kristen: "Key Initiative" is a CHECKBOX on the master (7 checked). */
+          keyInit: (t2id['Key Initiative'] != null && byV[t2id['Key Initiative']] === true),
           status: g('Status'), review: g('EPO Initial Review Status'),
           bu: g('Business Unit'), timeline: g('Timeline'),
           dur: num('Active Duration (Months)'), pct: num('% Complete'),
@@ -5646,7 +5653,7 @@
       return SG_ROWS.filter(function (r) {
         if (SG_FILTER.status === 'active' && !(r.status === 'Active' || isOnHold(r.status))) return false;
         if (!sgBUMatch(r.bu, SG_FILTER.bu)) return false;
-        if (!sgPTypeMatch(r.type, SG_FILTER.ptype)) return false;
+        if (!sgPTypeMatch(r, SG_FILTER.ptype)) return false;
         return true;
       });
     }
@@ -5682,6 +5689,7 @@
         seg('bu', 'all', 'All') + seg('bu', 'MS', 'MS') + seg('bu', 'FE', 'FE') + '</div></div>' +
         '<div class="sg-grp"><label>Project Type</label><div class="sg-segwrap">' +
         seg('ptype', 'all', 'All') +
+        seg('ptype', 'key', SG_PTYPES.key.label) +
         seg('ptype', 'growth', SG_PTYPES.growth.label) +
         seg('ptype', 'continuity', SG_PTYPES.continuity.label) + '</div></div>' +
         /* 8/27/26 per Kristen: show the project count only. The "N need EPO review
