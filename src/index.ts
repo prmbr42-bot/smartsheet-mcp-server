@@ -83,6 +83,25 @@ async function runHTTP(): Promise<void> {
     let _projBuild: Promise<ProjIndex> | null = null;      // in-flight walk, shared by concurrent callers
     let _projRetryAfter = 0;                               // after a failed rebuild, wait before trying again
 
+    // 9/17/26: every index read goes through this. Node's fetch has no practical timeout (a hung
+    // connection can wait ~5 minutes), which is the likely cause of the empty index built on
+    // 9/17. Headers AND body are covered by one 30s abort. Non-OK bodies are drained, not parsed.
+    const SS_FETCH_TIMEOUT_MS = 30 * 1000;
+    async function ssGetWithTimeout(url: string, token: string): Promise<{ status: number; body: unknown }> {
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), SS_FETCH_TIMEOUT_MS);
+        try {
+            const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, signal: ac.signal });
+            if (!r.ok) { await r.text(); return { status: r.status, body: null }; }
+            return { status: r.status, body: await r.json() };
+        } catch (e) {
+            if (ac.signal.aborted) throw new Error(`timed out after ${SS_FETCH_TIMEOUT_MS / 1000}s: ${url}`);
+            throw e;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
     async function walkFolder(
         token: string,
         folderId: number,
@@ -90,13 +109,16 @@ async function runHTTP(): Promise<void> {
         outByName?: Record<string, ProjectInfo>   // BS: name-keyed index (folder name → project info)
     ): Promise<void> {
         try {
-            const r = await fetch(
-                `https://api.smartsheet.com/2.0/folders/${folderId}`,
-                { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
-            );
-            if (!r.ok) return;
+            const r = await ssGetWithTimeout(`https://api.smartsheet.com/2.0/folders/${folderId}`, token);
+            // 9/17/26: 403/404 = folder not visible to this token (or deleted mid-walk): skip, but say so.
+            // Anything else (429, 5xx, timeout, network) fails the WHOLE walk so a partial index is never cached.
+            if (r.status === 403 || r.status === 404) {
+                console.warn(`[EPO] index: skipping folder ${folderId} (HTTP ${r.status})`);
+                return;
+            }
+            if (r.status !== 200) throw new Error(`folder ${folderId} fetch failed: HTTP ${r.status}`);
 
-            const folder = (await r.json()) as SmartsheetFolder;
+            const folder = r.body as SmartsheetFolder;
             // 9/17/26: archive folders hold removed or completed projects (Jerry). Verified against
             // the master: every ID folder under one was CANCELED or COMPLETE. Skip the folder AND its
             // whole subtree. Catches "z. ARCHIVE", "ARCHIVE", "X ARCHIVE FORMULA/ING".
@@ -158,8 +180,10 @@ async function runHTTP(): Promise<void> {
             if (folder.folders?.length) {
                 await Promise.all(folder.folders.map(sf => walkFolder(token, sf.id, out, outByName)));
             }
-        } catch {
-            // Skip inaccessible folders silently
+        } catch (e) {
+            // 9/17/26: was "skip silently", which let a failed top-level folder erase a whole tree
+            // and still count as a successful walk. Now the failure propagates to buildProjectIndex.
+            throw e;
         }
     }
 
@@ -185,15 +209,12 @@ async function runHTTP(): Promise<void> {
             ];
 
         await Promise.all(workspaces.map(async ({ wsId, out, byName, label }) => {
-            const r = await fetch(
-                `https://api.smartsheet.com/2.0/workspaces/${wsId}`,
-                { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
-            );
-            if (!r.ok) {
+            const r = await ssGetWithTimeout(`https://api.smartsheet.com/2.0/workspaces/${wsId}`, token);
+            if (r.status !== 200) {
                 console.error(`[EPO] ${label} workspace fetch failed:`, wsId, r.status);
-                throw new Error(`${label} workspace fetch failed: ${r.status}`);
+                throw new Error(`${label} workspace fetch failed: HTTP ${r.status}`);
             }
-            const ws = (await r.json()) as SmartsheetWorkspace;
+            const ws = r.body as SmartsheetWorkspace;
             console.log(`[EPO] Traversing ${label} workspace:`, ws.name, "— top folders:", ws.folders?.length ?? 0);
             if (ws.folders?.length) {
                 await Promise.all(ws.folders.map(f => walkFolder(token, f.id, out, byName)));
