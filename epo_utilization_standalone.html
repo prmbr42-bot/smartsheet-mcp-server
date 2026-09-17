@@ -2894,6 +2894,7 @@
     var PROJ_ID_COL = 551446429519748;    /* "Project ID" on the Comm master */
     var HEALTH = {};                       /* projectId -> {state, days, why}  */
     var TL_SHEET = {};                     /* projectId -> timeline sheetId (9/11/26) */
+    var TL_LINK = {};                      /* projectId -> master Timeline hyperlink (9/17/26, DR1) */
     var TL_CACHE = {};                     /* projectId -> {loading,error,tasks[]}   */
     var RAID_CACHE = {};                   /* projectId -> {loading,error,entries[]} */
     var HEALTH_LOADED = false;
@@ -5777,6 +5778,7 @@
         '<div class="sg-lbl">Project Context</div>' +
         '<div class="sg-val' + (r.context ? '' : ' muted') + '">' +
         esc(r.context || 'Not populated on the master sheet.') + '</div>' +
+        sgSheetLink(r) +
         '</div>' +
         sgThresholdBlock(r) +
         sgFinancialBlock(r);
@@ -6005,6 +6007,18 @@
       var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + c.tasks.length + '</span>' : '';
       return '<div class="sg-blk"><h4>At-Risk Tasks' + n + '</h4>' + inner + '</div>';
     }
+    /* 9/17/26 (DR1) per Kristen: link to the Smartsheet timeline, styled like the RU
+       sidebar button. Source order: the master Timeline link (what Health reads, only
+       known once timelines resolve), then the project sheet from the folder index.
+       No link at all when neither exists, rather than a dead button. */
+    function sgSheetLink(r) {
+      var pid = String(r.id || '').toUpperCase();
+      var tl = TL_LINK[pid];
+      if (tl) return '<a class="ss-link" href="' + esc(tl) + '" target="_blank" rel="noopener">&#11041; Open Timeline &#8599;</a>';
+      var ent = raidEntry('Commercialization', pid);
+      if (ent && ent.projectSheetPermalink) return '<a class="ss-link" href="' + esc(ent.projectSheetPermalink) + '" target="_blank" rel="noopener">&#11041; Open Project Sheet &#8599;</a>';
+      return '';
+    }
     function sgRaidBlock(r) {
       var c = RAID_CACHE[String(r.id || '').toUpperCase()];
       var inner;
@@ -6026,7 +6040,11 @@
             .filter(Boolean).map(esc).join(' &middot; ') + '</div></div>';
       }).join('') + '</div>';
       var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + c.entries.length + '</span>' : '';
-      return '<div class="sg-blk"><h4>RAID' + n + '</h4>' + inner + '</div>';
+      /* 9/17/26 (DR2) per Kristen: link to the full RAID log, same as the RU sidebar had.
+         Shown whenever the index knows the RAID sheet, even if it is empty or still loading. */
+      var re = raidEntry('Commercialization', String(r.id || '').toUpperCase());
+      var link = (re && re.raidSheetPermalink) ? '<a class="raid-link" href="' + esc(re.raidSheetPermalink) + '" target="_blank" rel="noopener">&#128203; View Full RAID Log &#8599;</a>' : '';
+      return '<div class="sg-blk"><h4>RAID' + n + '</h4>' + inner + link + '</div>';
     }
 
     function toggleSGRow(key) {
@@ -6065,7 +6083,7 @@
              structure — filtering on it dropped 15 real projects on 9/10/26. */
           if (!link || !pid) return;
           var sid = map[norm(link)];
-          if (sid) { targets.push({ pid: pid.toUpperCase(), sheetId: sid }); TL_SHEET[pid.toUpperCase()] = sid; }
+          if (sid) { targets.push({ pid: pid.toUpperCase(), sheetId: sid }); TL_SHEET[pid.toUpperCase()] = sid; TL_LINK[pid.toUpperCase()] = link; }
         });
         console.log('[EPO] Health: ' + targets.length + ' linked timelines resolved');
         var i = 0;
@@ -6319,7 +6337,8 @@
           }
           h += '<a class="ss-link" href="' + ssLink + '" target="_blank" rel="noopener">' + (projSheetLink ? '⬡ Open Project Sheet ↗' : '⬡ View in Master Sheet ↗') + '</a>';
           /* ── RAID section ── */
-          h += renderRaidSection(p.projectId, p.source, i, ex, p.bsFolder);
+          /* 9/17/26 (RU5) per Kristen: Comm RAID now lives in the Stage Gate drawer only. */
+          if (p.source !== 'Commercialization') h += renderRaidSection(p.projectId, p.source, i, ex, p.bsFolder);
           h += '</div>';
         }
         h += '</div>';
@@ -6487,7 +6506,8 @@
         var cKey = isBSFolder
           ? 'bs-folder:' + p.bsFolder.toLowerCase().trim()
           : raidKey(p.source) + ':' + p.projectId;
-        var canLoad = isBSFolder || !!p.projectId;
+        /* 9/17/26 (RU5): Comm no longer shows RAID here, so don't fetch it on expand. */
+        var canLoad = (isBSFolder || !!p.projectId) && p.source !== 'Commercialization';
         if (canLoad && RAID_CACHE[cKey] === undefined) {
           EXPANDED[idx] = 'loading';
           renderDrillProjs();
