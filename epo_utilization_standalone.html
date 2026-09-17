@@ -4322,6 +4322,18 @@
     /* ════════════════════════════════════════════════════════
        RENDER
     ════════════════════════════════════════════════════════ */
+    /* 9/17/26 per Kristen (G2, G3): header chrome depends on the Comm sub-view.
+       On Stage Gate: no "Hours-Based" in the subtitle (G3), and no Resource
+       Utilization count text or Grid button on the right (G2). Called from
+       renderAll (both branches) AND setCommView, because setCommView does not go
+       through renderAll. Always restores display on other tabs/views so nothing
+       stays hidden after leaving Stage Gate. */
+    function applyViewHeader() {
+      var sg = (TAB === 'comm' && COMM_VIEW === 'stagegate');
+      if (TAB === 'comm') document.getElementById('h-sub').textContent = 'Commercialization · ' + (sg ? '' : 'Hours-Based · ') + 'Live Smartsheet';
+      document.getElementById('tab-count').style.display = sg ? 'none' : '';
+      document.getElementById('btn-gridmode').style.display = sg ? 'none' : '';
+    }
     function renderAll() {
       /* 8/27/26: Enterprise is a standalone surface — no heatmap, no KPI strip, no
          view toggle, and no dependency on PROJECTS/MX. Branch out before any of
@@ -4336,6 +4348,7 @@
         document.getElementById('stagegate-wrap').style.display = 'none';
         document.getElementById('projlist-wrap').style.display = 'none';
         document.getElementById('ent-wrap').style.display = 'block';
+        applyViewHeader();   /* 9/17/26: un-hide header items if arriving from Stage Gate */
         renderEnterprise();
         return;
       }
@@ -4352,6 +4365,7 @@
       /* 9/17/26: the On Hold toggle has no effect on Comm hours any more, so hide it on Comm. */
       document.getElementById('btn-hold').style.display = TAB === 'comm' ? 'none' : '';
       document.getElementById('tab-count').textContent = countTxt;
+      applyViewHeader();   /* 9/17/26 (G2, G3) */
       /* Swap methodology bar */
       document.getElementById('mbar').innerHTML = TAB === 'comm'
         ? '<strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days Overlap &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(COMM_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>')
@@ -6138,6 +6152,7 @@
       document.querySelector('.hm-wrap').style.display = sg ? 'none' : 'block';
       document.getElementById('stagegate-wrap').style.display = sg ? 'block' : 'none';
       document.getElementById('kpi-strip').style.display = sg ? 'none' : 'grid';
+      applyViewHeader();   /* 9/17/26 (G2, G3) */
       renderSlicers();
       if (sg) renderStageGate();
       else renderHM();
