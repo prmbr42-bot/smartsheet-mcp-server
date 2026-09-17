@@ -1819,6 +1819,21 @@
       white-space: nowrap
     }
 
+    .sg-dot {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      vertical-align: middle;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .12)
+    }
+
+    /* 9/17/26 DR8 */
+    .sg-val.pre {
+      white-space: pre-line
+    }
+
+    /* 9/17/26 DR9: Finance Call Outs keep their line breaks */
     .sg-pass {
       background: #D9F0E3;
       color: #166534;
@@ -5642,7 +5657,8 @@
           marginVsTgt: g('Gross Profit Margin vs Target'),
           costRiskSav: num('Cost/Risk Savings $K'),
           salesFTE: g('Sales FTE'), salesComplexity: g('Sales Complexity'),
-          salesCallOuts: g('Sales Call Outs')
+          salesCallOuts: g('Sales Call Outs'),
+          financeCallOuts: g('Finance Call Outs')   /* 9/17/26 DR9: TEXT, 14 populated */
         };
       }).filter(function (r) { return r.id || r.name; });
     }
@@ -5732,8 +5748,12 @@
       }
 
       var body = rows.map(function (r) {
+        /* 9/17/26: the badge only means "no timeline" when there is no timeline link.
+           A linked timeline with a blank master % Complete (P-0076) gets its own label. */
         var pct = (r.pct == null)
-          ? '<span class="sg-notl" title="No linked timeline sheet, so there is no % complete to read">No timeline</span>'
+          ? (TL_LINK[String(r.id || '').toUpperCase()]
+            ? '<span class="sg-notl" title="Timeline is linked, but the % Complete cell on the master sheet is blank">No % on master</span>'
+            : '<span class="sg-notl" title="No linked timeline sheet, so there is no % complete to read">No timeline</span>')
           : '<div class="sg-bar"><i style="width:' + Math.round(r.pct * 100) + '%"></i><b>' + Math.round(r.pct * 100) + '%</b></div>';
         var typ = isOnHold(r.status)
           ? '<span class="sg-tag hold">ON HOLD</span>'
@@ -5810,6 +5830,14 @@
       if (/^fail/i.test(t)) return '<span class="sg-fail">' + esc(t) + '</span>';
       return esc(t);
     }
+    /* 9/17/26 (DR8) per Kristen: Margin vs Target as a coloured circle. The master column
+       is already a Red / Yellow / Green / Gray picklist, so the circle just renders it.
+       The word stays in the tooltip; any other value falls back to plain text. */
+    function sgMarginDot(v) {
+      var t = String(v || '').trim(); if (!t) return null;
+      var c = { red: '#EF4444', yellow: '#F5B829', green: '#22C55E', gray: '#9CA3AF', grey: '#9CA3AF' }[t.toLowerCase()];
+      return c ? '<span class="sg-dot" style="background:' + c + '" title="' + esc(t) + '"></span>' : esc(t);
+    }
     function sgFlag(v) {
       var t = String(v || '').trim();
       if (/^(y|yes|true|1)$/i.test(t)) return '<span class="sg-yes">&#10003;</span>';
@@ -5856,17 +5884,20 @@
         sgKV('Cost / Risk Savings', sgMoney(r.costRiskSav)) +
         sgKV('Y1 Expected GP Margin', sgPct(r.y1ExpMargin)) +
         sgKV('Y1 Target GP Margin', sgPct(r.y1TgtMargin)) +
-        sgKV('Margin vs Target', r.marginVsTgt ? sgVerdict(r.marginVsTgt) : null) +
+        sgKV('Margin vs Target', sgMarginDot(r.marginVsTgt)) +
         sgKV('Sales Channel', r.salesChannel ? esc(r.salesChannel) : null) +
         sgKV('Sales Complexity', r.salesComplexity ? esc(r.salesComplexity) : null) +
-        sgKV('Sales FTE', r.salesFTE ? esc(r.salesFTE) : null) +
-        sgKV('Financials Owner', r.finOwner ? esc(r.finOwner) : null);
+        sgKV('Sales FTE', r.salesFTE ? esc(r.salesFTE) : null);
+      /* 9/17/26 (DR9) per Kristen: Financials Owner replaced by Finance Call Outs. */
+      var finCallouts = r.financeCallOuts
+        ? '<div class="sg-lbl" style="margin-top:10px">Finance Call Outs</div>' +
+        '<div class="sg-val pre">' + esc(r.financeCallOuts) + '</div>' : '';
       var callouts = r.salesCallOuts
         ? '<div class="sg-lbl" style="margin-top:10px">Sales Call Outs</div>' +
         '<div class="sg-val">' + esc(r.salesCallOuts) + '</div>' : '';
       return '<div class="sg-blk"><h4>Financial Summary</h4>' +
         (rows || '<div class="sg-val muted">No financial data on this row.</div>') +
-        callouts + '</div>';
+        finCallouts + callouts + '</div>';
     }
 
     /* ════════════════════════════════════════════════════════
