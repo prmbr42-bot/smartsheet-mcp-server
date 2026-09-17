@@ -13,28 +13,28 @@ import { initSmartsheetClient } from "./services/smartsheet.js";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ProjectInfo {
-    projectSheetId:        string | null;
+    projectSheetId: string | null;
     projectSheetPermalink: string | null;
-    raidSheetId:           string | null;
-    raidSheetPermalink:    string | null;
+    raidSheetId: string | null;
+    raidSheetPermalink: string | null;
 }
 
 interface SmartsheetSheet {
-    id:        number;
-    name:      string;
+    id: number;
+    name: string;
     permalink: string;
 }
 
 interface SmartsheetFolder {
-    id:      number;
-    name:    string;
+    id: number;
+    name: string;
     sheets?: SmartsheetSheet[];
     folders?: SmartsheetFolder[];
 }
 
 interface SmartsheetWorkspace {
-    id:      number;
-    name:    string;
+    id: number;
+    name: string;
     folders?: SmartsheetFolder[];
 }
 
@@ -72,9 +72,9 @@ async function runHTTP(): Promise<void> {
     let _projCache: { comm: Record<string, ProjectInfo>; bs: Record<string, ProjectInfo>; bsByName: Record<string, ProjectInfo> } | null = null;
 
     async function walkFolder(
-        token:      string,
-        folderId:   number,
-        out:        Record<string, ProjectInfo>,
+        token: string,
+        folderId: number,
+        out: Record<string, ProjectInfo>,
         outByName?: Record<string, ProjectInfo>   // BS: name-keyed index (folder name → project info)
     ): Promise<void> {
         try {
@@ -88,12 +88,15 @@ async function runHTTP(): Promise<void> {
             const sheets: SmartsheetSheet[] = folder.sheets ?? [];
 
             // Project folder = name starts with a project ID like P-0077 or COM-00086
+            // 9/17/26: compound folders ("P-107/108 Better ACV & RWV") index under EVERY id;
+            // the lookahead rejects placeholders ("P-0xxx Leprino...") that produced a junk "P-0" key.
             const folderName = (folder.name ?? "").replace(/^_+/, "");
-            const pidMatch   = folderName.match(/^([A-Z]+-\d+)/i);
+            const pidMatch = folderName.match(/^([A-Z]+)-(\d+(?:\/\d+)*)(?![A-Za-z0-9])/i);
 
             if (pidMatch && sheets.length) {
                 // ── Comm-style: P-XXXX folder — index by project ID ──────────────
-                const pid = pidMatch[1].toUpperCase();
+                const prefix = pidMatch[1].toUpperCase();
+                const pids = pidMatch[2].split("/").map(n => `${prefix}-${n}`);
 
                 // Prefer sheets whose name starts with "_" as the project sheet
                 // (e.g. _P-0077 Nakano Drinking Concentrates), fall back to
@@ -103,12 +106,13 @@ async function runHTTP(): Promise<void> {
                     sheets.find(s => /^_/.test(s.name ?? "")) ??
                     sheets.find(s => !/raid/i.test(s.name ?? ""));
 
-                out[pid] = {
-                    projectSheetId:        projSheet ? String(projSheet.id)        : null,
-                    projectSheetPermalink: projSheet ? projSheet.permalink         : null,
-                    raidSheetId:           raidSheet ? String(raidSheet.id)        : null,
-                    raidSheetPermalink:    raidSheet ? raidSheet.permalink         : null,
+                const info: ProjectInfo = {
+                    projectSheetId: projSheet ? String(projSheet.id) : null,
+                    projectSheetPermalink: projSheet ? projSheet.permalink : null,
+                    raidSheetId: raidSheet ? String(raidSheet.id) : null,
+                    raidSheetPermalink: raidSheet ? raidSheet.permalink : null,
                 };
+                for (const pid of pids) out[pid] = info;
 
             } else if (outByName) {
                 // ── BS-style: name-indexed folder ─────────────────────────────────
@@ -126,10 +130,10 @@ async function runHTTP(): Promise<void> {
 
                     const key = folderName.toLowerCase().trim();
                     outByName[key] = {
-                        projectSheetId:        projSheet ? String(projSheet.id)        : null,
-                        projectSheetPermalink: projSheet ? projSheet.permalink         : null,
-                        raidSheetId:           raidSheet ? String(raidSheet.id)        : null,
-                        raidSheetPermalink:    raidSheet ? raidSheet.permalink         : null,
+                        projectSheetId: projSheet ? String(projSheet.id) : null,
+                        projectSheetPermalink: projSheet ? projSheet.permalink : null,
+                        raidSheetId: raidSheet ? String(raidSheet.id) : null,
+                        raidSheetPermalink: raidSheet ? raidSheet.permalink : null,
                     };
                 }
             }
@@ -152,19 +156,19 @@ async function runHTTP(): Promise<void> {
         try {
             // Traverse each workspace into its OWN map — prevents ID collisions.
             // Both Comm and BS use independent P-XXXX sequences that overlap.
-            const commOut:   Record<string, ProjectInfo> = {};
-            const bsOut:     Record<string, ProjectInfo> = {};
-            const bsByName:  Record<string, ProjectInfo> = {};   // BS name-indexed (folder name → info)
+            const commOut: Record<string, ProjectInfo> = {};
+            const bsOut: Record<string, ProjectInfo> = {};
+            const bsByName: Record<string, ProjectInfo> = {};   // BS name-indexed (folder name → info)
 
             const workspaces: Array<{
                 wsId: string;
-                out:    Record<string, ProjectInfo>;
+                out: Record<string, ProjectInfo>;
                 byName?: Record<string, ProjectInfo>;
-                label:  string;
+                label: string;
             }> = [
-                { wsId: "8580344233387908", out: commOut,            label: "Comm" },
-                { wsId: "8144071119136644", out: bsOut,  byName: bsByName, label: "BS"   },
-            ];
+                    { wsId: "8580344233387908", out: commOut, label: "Comm" },
+                    { wsId: "8144071119136644", out: bsOut, byName: bsByName, label: "BS" },
+                ];
 
             await Promise.all(workspaces.map(async ({ wsId, out, byName, label }) => {
                 const r = await fetch(
@@ -236,9 +240,9 @@ async function runHTTP(): Promise<void> {
     // ── Health check ──────────────────────────────────────────────────────────
     app.get("/health", (_req: Request, res: Response) => {
         res.json({
-            status:         "ok",
-            server:         "smartsheet-mcp-server",
-            version:        "1.0.0",
+            status: "ok",
+            server: "smartsheet-mcp-server",
+            version: "1.0.0",
             activeSessions: sessions.size,
         });
     });
@@ -256,7 +260,7 @@ async function runHTTP(): Promise<void> {
                 res.status(400).json({
                     jsonrpc: "2.0",
                     error: {
-                        code:    -32600,
+                        code: -32600,
                         message: "Bad Request: expected initialize request to start a session",
                     },
                     id: req.body?.id ?? null,
@@ -264,7 +268,7 @@ async function runHTTP(): Promise<void> {
                 return;
             }
             const newSessionId = randomUUID();
-            const transport    = new StreamableHTTPServerTransport({
+            const transport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: () => newSessionId,
                 enableJsonResponse: true,
                 onsessioninitialized: (sid: string) => {
@@ -285,7 +289,7 @@ async function runHTTP(): Promise<void> {
             res.status(404).json({
                 jsonrpc: "2.0",
                 error: {
-                    code:    -32001,
+                    code: -32001,
                     message: `Session not found: ${sessionId}. Start a new session by sending an initialize request without Mcp-Session-Id.`,
                 },
                 id: req.body?.id ?? null,
@@ -315,7 +319,7 @@ async function runHTTP(): Promise<void> {
 
 // ── Transport: stdio ──────────────────────────────────────────────────────────
 async function runStdio(): Promise<void> {
-    const server    = createServer();
+    const server = createServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
     process.stderr.write("Smartsheet MCP Server (stdio) running\n");
