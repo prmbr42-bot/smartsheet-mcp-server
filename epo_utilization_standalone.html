@@ -2290,8 +2290,8 @@
          above and Comm buttons below are shown/hidden by tab in setCommView /
          setBSView / renderAll. Mirrors the BS_VIEW pattern deliberately rather
          than refactoring to a generic CURRENT_VIEW — see COMM_VIEW note. -->
-      <button class="vt-btn active" id="vt-util" type="button" style="display:none">Resource Utilization</button>
-      <button class="vt-btn" id="vt-stagegate" type="button" style="display:none">Stage Gate Status</button>
+      <button class="vt-btn" id="vt-util" type="button" style="display:none">Resource Utilization</button>
+      <button class="vt-btn active" id="vt-stagegate" type="button" style="display:none">Stage Gate Status</button>
     </div>
     <span id="tab-count"></span>
     <button class="btn-toggle-hold on" id="btn-hold" type="button"
@@ -2800,7 +2800,10 @@
        NOTE: like BS_VIEW, the show/hide + render dispatch is duplicated in TWO
        places (setCommView, renderAll). Adding a third Comm view means touching
        both or the view will render on click and silently revert on next refresh. */
-    var COMM_VIEW = 'util';
+    /* 9/17/26 per Kristen (G1): Stage Gate Status is now the default Comm view.
+       Default set in THREE places: here (first load), the vt-* button classes in
+       the HTML, and the reset in switchTab. */
+    var COMM_VIEW = 'stagegate';
     var SG_ROWS = [];                                  // Stage Gate Status rows (8/27/26)
     /* 8/27/26 — COLD START GUARD.
        mizkan-epo-smartsheet-mcp is on an App Service plan that idles out. The first
@@ -6806,9 +6809,9 @@
       document.getElementById('vt-gantt').className = 'vt-btn';
       document.getElementById('vt-projlist').className = 'vt-btn active';
       /* 8/27/26: reset Comm sub-view on any tab switch, same as BS_VIEW above. */
-      COMM_VIEW = 'util';
-      document.getElementById('vt-util').className = 'vt-btn active';
-      document.getElementById('vt-stagegate').className = 'vt-btn';
+      COMM_VIEW = 'stagegate';   /* 9/17/26 (G1): Stage Gate is the Comm default */
+      document.getElementById('vt-util').className = 'vt-btn';
+      document.getElementById('vt-stagegate').className = 'vt-btn active';
       closeDrill(); renderAll();
     }
 
