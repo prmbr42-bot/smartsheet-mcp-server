@@ -32,6 +32,9 @@ interface SmartsheetFolder {
     folders?: SmartsheetFolder[];
 }
 
+// 9/17/26: shape of the /project-info index (unchanged; now named so the cache helpers can use it).
+type ProjIndex = { comm: Record<string, ProjectInfo>; bs: Record<string, ProjectInfo>; bsByName: Record<string, ProjectInfo> };
+
 interface SmartsheetWorkspace {
     id: number;
     name: string;
@@ -69,7 +72,16 @@ async function runHTTP(): Promise<void> {
     // Walks both EPO workspaces recursively. Finds every project folder by name
     // (P-0077, COM-00086 etc.) and collects the project sheet + RAID log inside.
     // Cache resets on server restart → new projects are auto-discovered.
-    let _projCache: { comm: Record<string, ProjectInfo>; bs: Record<string, ProjectInfo>; bsByName: Record<string, ProjectInfo> } | null = null;
+    let _projCache: ProjIndex | null = null;
+    // 9/17/26: the index used to be cached until restart (or POST /refresh), so project folders
+    // created after a restart stayed invisible (e.g. P-0121). Now it goes stale after
+    // PROJ_CACHE_TTL_MS: the next request still gets the cached index instantly, and a rebuild
+    // runs in the background for the request after. Only one walk runs at a time, and a failed
+    // walk never replaces a good index.
+    const PROJ_CACHE_TTL_MS = 15 * 60 * 1000;
+    let _projCacheAt = 0;                                  // epoch ms when _projCache was built
+    let _projBuild: Promise<ProjIndex> | null = null;      // in-flight walk, shared by concurrent callers
+    let _projRetryAfter = 0;                               // after a failed rebuild, wait before trying again
 
     async function walkFolder(
         token: string,
@@ -153,51 +165,81 @@ async function runHTTP(): Promise<void> {
 
     // Returns project sheet + RAID log info for every project in both EPO
     // workspaces. Result is cached in memory; resets on server restart.
+    // 9/17/26: walk body moved out of the route unchanged, except that a failed workspace fetch
+    // now THROWS instead of returning a partial index (a partial index must never be cached).
+    async function buildProjectIndex(token: string): Promise<ProjIndex> {
+        // Traverse each workspace into its OWN map — prevents ID collisions.
+        // Both Comm and BS use independent P-XXXX sequences that overlap.
+        const commOut: Record<string, ProjectInfo> = {};
+        const bsOut: Record<string, ProjectInfo> = {};
+        const bsByName: Record<string, ProjectInfo> = {};   // BS name-indexed (folder name → info)
+
+        const workspaces: Array<{
+            wsId: string;
+            out: Record<string, ProjectInfo>;
+            byName?: Record<string, ProjectInfo>;
+            label: string;
+        }> = [
+                { wsId: "8580344233387908", out: commOut, label: "Comm" },
+                { wsId: "8144071119136644", out: bsOut, byName: bsByName, label: "BS" },
+            ];
+
+        await Promise.all(workspaces.map(async ({ wsId, out, byName, label }) => {
+            const r = await fetch(
+                `https://api.smartsheet.com/2.0/workspaces/${wsId}`,
+                { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
+            );
+            if (!r.ok) {
+                console.error(`[EPO] ${label} workspace fetch failed:`, wsId, r.status);
+                throw new Error(`${label} workspace fetch failed: ${r.status}`);
+            }
+            const ws = (await r.json()) as SmartsheetWorkspace;
+            console.log(`[EPO] Traversing ${label} workspace:`, ws.name, "— top folders:", ws.folders?.length ?? 0);
+            if (ws.folders?.length) {
+                await Promise.all(ws.folders.map(f => walkFolder(token, f.id, out, byName)));
+            }
+            const byNameCount = byName ? Object.keys(byName).length : 0;
+            console.log(`[EPO] ${label} index:`, Object.keys(out).length, "P-XXXX",
+                byNameCount ? `| ${byNameCount} by-name` : "");
+        }));
+
+        console.log("[EPO] /project-info index built — Comm:", Object.keys(commOut).length,
+            "| BS P-XXXX:", Object.keys(bsOut).length,
+            "| BS by-name:", Object.keys(bsByName).length);
+        return { comm: commOut, bs: bsOut, bsByName };
+    }
+
+    // Starts a walk, or joins the one already running. Success replaces the cache; failure leaves it alone.
+    function startProjectIndexBuild(token: string): Promise<ProjIndex> {
+        if (_projBuild) return _projBuild;
+        _projBuild = buildProjectIndex(token).then(
+            (idx) => { _projCache = idx; _projCacheAt = Date.now(); _projBuild = null; return idx; },
+            (err) => { _projBuild = null; _projRetryAfter = Date.now() + 60 * 1000; throw err; }
+        );
+        return _projBuild;
+    }
+
+    // Returns project sheet + RAID log info for every project in both EPO workspaces.
+    // X-Index-Built-At / X-Index-Age-Sec headers show how fresh the served index is.
     app.get("/project-info", async (_req: Request, res: Response) => {
         const token = process.env.SMARTSHEET_API_TOKEN;
         if (!token) { res.status(500).json({ error: "SMARTSHEET_API_TOKEN not set" }); return; }
-        if (_projCache) { res.json(_projCache); return; }
+        const send = (idx: ProjIndex) => {
+            res.setHeader("X-Index-Built-At", new Date(_projCacheAt).toISOString());
+            res.setHeader("X-Index-Age-Sec", String(Math.round((Date.now() - _projCacheAt) / 1000)));
+            res.json(idx);
+        };
+        if (_projCache) {
+            if (Date.now() - _projCacheAt > PROJ_CACHE_TTL_MS && Date.now() > _projRetryAfter) {
+                startProjectIndexBuild(token).catch((e) =>
+                    console.error("[EPO] background index rebuild failed, keeping previous index:",
+                        e instanceof Error ? e.message : String(e)));
+            }
+            send(_projCache);
+            return;
+        }
         try {
-            // Traverse each workspace into its OWN map — prevents ID collisions.
-            // Both Comm and BS use independent P-XXXX sequences that overlap.
-            const commOut: Record<string, ProjectInfo> = {};
-            const bsOut: Record<string, ProjectInfo> = {};
-            const bsByName: Record<string, ProjectInfo> = {};   // BS name-indexed (folder name → info)
-
-            const workspaces: Array<{
-                wsId: string;
-                out: Record<string, ProjectInfo>;
-                byName?: Record<string, ProjectInfo>;
-                label: string;
-            }> = [
-                    { wsId: "8580344233387908", out: commOut, label: "Comm" },
-                    { wsId: "8144071119136644", out: bsOut, byName: bsByName, label: "BS" },
-                ];
-
-            await Promise.all(workspaces.map(async ({ wsId, out, byName, label }) => {
-                const r = await fetch(
-                    `https://api.smartsheet.com/2.0/workspaces/${wsId}`,
-                    { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }
-                );
-                if (!r.ok) {
-                    console.error(`[EPO] ${label} workspace fetch failed:`, wsId, r.status);
-                    return;
-                }
-                const ws = (await r.json()) as SmartsheetWorkspace;
-                console.log(`[EPO] Traversing ${label} workspace:`, ws.name, "— top folders:", ws.folders?.length ?? 0);
-                if (ws.folders?.length) {
-                    await Promise.all(ws.folders.map(f => walkFolder(token, f.id, out, byName)));
-                }
-                const byNameCount = byName ? Object.keys(byName).length : 0;
-                console.log(`[EPO] ${label} index:`, Object.keys(out).length, "P-XXXX",
-                    byNameCount ? `| ${byNameCount} by-name` : "");
-            }));
-
-            _projCache = { comm: commOut, bs: bsOut, bsByName };
-            console.log("[EPO] /project-info cache built — Comm:", Object.keys(commOut).length,
-                "| BS P-XXXX:", Object.keys(bsOut).length,
-                "| BS by-name:", Object.keys(bsByName).length);
-            res.json(_projCache);
+            send(await startProjectIndexBuild(token));
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             console.error("[EPO] /project-info error:", msg);
@@ -211,6 +253,7 @@ async function runHTTP(): Promise<void> {
     //   fetch('/project-info/refresh', {method:'POST'}).then(r=>r.json()).then(console.log)
     app.post("/project-info/refresh", (_req: Request, res: Response) => {
         _projCache = null;
+        _projCacheAt = 0;   // 9/17/26
         res.json({ ok: true, message: "Cache cleared — next GET /project-info will re-scan" });
     });
 
