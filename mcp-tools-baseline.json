@@ -1,0 +1,110 @@
+[
+  {
+    "name": "smartsheet_get_sheet",
+    "description": "Retrieve sheet data from Smartsheet including columns, rows, and cell values.\nSupports optional filtering by column IDs, row IDs, and pagination via rowsModifiedSince.\nUse this to read project data, task lists, resource grids, or any tabular data stored in a sheet.\n\nArgs:\n  - sheet_id (number): The numeric Smartsheet sheet ID\n  - column_ids (number[], optional): Limit response to specific column IDs\n  - row_ids (number[], optional): Limit response to specific row IDs\n  - rows_modified_since (string, optional): ISO 8601 date; return only rows modified after this date\n  - page_size (number, optional): Rows per page (default 100, max 500)\n  - page (number, optional): Page number (default 1)\n  - include_filters (boolean, optional): Include filter definitions in response\n\nReturns: Sheet metadata, columns array, and rows array with cell values."
+  },
+  {
+    "name": "smartsheet_list_sheets",
+    "description": "List all sheets the authenticated user has access to, with pagination support.\nReturns sheet name, ID, permalink, access level, and modification timestamps.\nUse this to discover available sheets before reading data from a specific one.\n\nArgs:\n  - page_size (number, optional): Results per page (default 100, max 100)\n  - page (number, optional): Page number (default 1)\n  - modified_since (string, optional): ISO 8601 date filter\n\nReturns: Array of sheet summaries with IDs and metadata."
+  },
+  {
+    "name": "smartsheet_add_rows",
+    "description": "Add one or more rows to a Smartsheet sheet.\nEach row specifies cells as columnId/value pairs. Rows can be positioned at top, bottom, \nor relative to a parent/sibling row for hierarchical (indent) structures.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - rows (array): Array of row objects, each containing:\n    - cells (array): Array of {columnId, value} objects\n    - to_top (boolean, optional): Insert at top of sheet\n    - to_bottom (boolean, optional): Insert at bottom (default)\n    - parent_id (number, optional): Make this a child of this row ID\n    - sibling_id (number, optional): Insert as sibling below this row ID\n    - expanded (boolean, optional): Whether row is expanded (default true)\n\nReturns: Newly created row IDs and updated sheet version."
+  },
+  {
+    "name": "smartsheet_update_rows",
+    "description": "Update one or more existing rows in a Smartsheet sheet.\nEach row update specifies the row ID and cells to change. Only provided cells are updated;\nunspecified cells are left unchanged. Can also lock/unlock rows or change hierarchy.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - rows (array): Array of row update objects, each containing:\n    - row_id (number): ID of the row to update\n    - cells (array): Array of {column_id, value} cells to update\n    - locked (boolean, optional): Lock or unlock the row\n    - expanded (boolean, optional): Expand or collapse row\n\nReturns: Updated row data and new sheet version."
+  },
+  {
+    "name": "smartsheet_delete_rows",
+    "description": "Permanently delete one or more rows from a Smartsheet sheet.\nThis operation is IRREVERSIBLE. Deleted rows and their cell data are permanently removed.\nConfirm row IDs before calling. Child rows are also deleted when parent rows are removed.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - row_ids (number[]): Array of row IDs to delete (max 450 per request)\n  - ignore_rows_not_found (boolean, optional): If true, silently skip non-existent row IDs\n\nReturns: Confirmation message and updated sheet version."
+  },
+  {
+    "name": "smartsheet_get_columns",
+    "description": "Retrieve all column definitions for a Smartsheet sheet.\nReturns column IDs, titles, types (TEXT_NUMBER, DATE, PICKLIST, CHECKBOX, CONTACT_LIST, etc.),\noptions for dropdown columns, and whether each column is primary.\nUse this to get column IDs needed before adding or updating rows.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n\nReturns: Array of column definitions with IDs, types, and options."
+  },
+  {
+    "name": "smartsheet_add_columns",
+    "description": "Add one or more new columns to a Smartsheet sheet.\nSupported column types: TEXT_NUMBER, DATE, DATETIME, PICKLIST, CHECKBOX, CONTACT_LIST,\nDURATION, PREDECESSOR, AUTO_NUMBER, ABSTRACT_DATETIME.\nPicklist/dropdown columns require an 'options' array.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - columns (array): Column definitions, each with:\n    - title (string): Column header text\n    - type (string): Column type (TEXT_NUMBER, DATE, PICKLIST, CHECKBOX, CONTACT_LIST, etc.)\n    - index (number, optional): 0-based position; appends if omitted\n    - options (string[], optional): Dropdown options for PICKLIST columns\n    - width (number, optional): Column width in pixels\n\nReturns: Created column definitions with assigned IDs."
+  },
+  {
+    "name": "smartsheet_get_report",
+    "description": "Retrieve data from a Smartsheet report by ID.\nReports aggregate rows from multiple sheets. Returns columns, rows, and cell values\njust like a sheet, but the rows may originate from different source sheets.\nSupports pagination since reports can have very large row counts.\n\nArgs:\n  - report_id (number): The numeric Smartsheet report ID\n  - page_size (number, optional): Rows per page (default 100, max 500)\n  - page (number, optional): Page number (default 1)\n  - level (number, optional): Hierarchy level (0 = all, 1 = summary only)\n\nReturns: Report metadata, columns, and rows with source sheet context."
+  },
+  {
+    "name": "smartsheet_list_reports",
+    "description": "List all reports the authenticated user has access to.\nReturns report name, ID, permalink, access level, and modification timestamps.\n\nArgs:\n  - page_size (number, optional): Results per page (default 100, max 100)\n  - page (number, optional): Page number (default 1)\n  - modified_since (string, optional): ISO 8601 date — only reports modified after this date\n\nReturns: Array of report summaries with IDs."
+  },
+  {
+    "name": "smartsheet_list_workspaces",
+    "description": "List all Smartsheet workspaces the authenticated user has access to.\nReturns workspace name, ID, access level, and child resource counts.\n\nArgs:\n  - page_size (number, optional): Results per page (default 100)\n  - page (number, optional): Page number (default 1)\n\nReturns: Array of workspace summaries with IDs."
+  },
+  {
+    "name": "smartsheet_browse_workspace",
+    "description": "Get the full contents of a workspace: all sheets, reports, folders, and dashboards.\nUse this to discover what resources exist in a workspace before accessing them.\n\nArgs:\n  - workspace_id (number): Smartsheet workspace ID\n  - load_all (boolean, optional): If true, include nested folder contents\n\nReturns: Workspace contents tree with IDs for all sheets, reports, folders, dashboards."
+  },
+  {
+    "name": "smartsheet_browse_folder",
+    "description": "Get the contents of a Smartsheet folder: sheets, reports, sub-folders, and dashboards.\n\nArgs:\n  - folder_id (number): Smartsheet folder ID\n  - load_all (boolean, optional): Include nested sub-folder contents\n\nReturns: Folder contents with IDs for all child resources."
+  },
+  {
+    "name": "smartsheet_list_dashboards",
+    "description": "List all Smartsheet dashboards (Sights) the authenticated user has access to.\n\nArgs:\n  - page_size (number, optional): Results per page (default 100)\n  - page (number, optional): Page number (default 1)\n\nReturns: Array of dashboard summaries with IDs and metadata."
+  },
+  {
+    "name": "smartsheet_list_sheet_discussions",
+    "description": "Retrieve all discussions on a sheet (both sheet-level and row-level discussions).\nReturns discussion titles, comment counts, last activity, and comment text.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - include_comments (boolean, optional): Include comment text in response (default true)\n  - page_size (number, optional): Results per page (default 100)\n  - page (number, optional): Page number (default 1)\n\nReturns: Array of discussions with comments."
+  },
+  {
+    "name": "smartsheet_list_row_discussions",
+    "description": "Retrieve all discussions attached to a specific row in a sheet.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - row_id (number): Target row ID\n  - include_comments (boolean, optional): Include comment text (default true)\n\nReturns: Discussions and comments on the specified row."
+  },
+  {
+    "name": "smartsheet_create_sheet_discussion",
+    "description": "Create a new discussion (with initial comment) at the sheet level in Smartsheet.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - comment_text (string): Initial comment text for the discussion\n\nReturns: New discussion ID and comment ID."
+  },
+  {
+    "name": "smartsheet_create_row_discussion",
+    "description": "Create a new discussion (with initial comment) on a specific row in a sheet.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - row_id (number): Target row ID\n  - comment_text (string): Initial comment text\n\nReturns: New discussion ID and comment ID."
+  },
+  {
+    "name": "smartsheet_add_comment",
+    "description": "Add a reply comment to an existing discussion on a sheet.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - discussion_id (number): Target discussion ID\n  - comment_text (string): Text of the comment to add\n\nReturns: New comment ID and creation timestamp."
+  },
+  {
+    "name": "smartsheet_delete_comment",
+    "description": "Permanently delete a comment from a discussion on a sheet.\nOnly the comment author can delete their own comments. This action is IRREVERSIBLE.\n\nArgs:\n  - sheet_id (number): Sheet ID containing the comment\n  - comment_id (number): Comment ID to delete\n\nReturns: Deletion confirmation."
+  },
+  {
+    "name": "smartsheet_list_attachments",
+    "description": "List all attachments on a Smartsheet sheet (both sheet-level and row-level).\nReturns attachment name, type, size, and temporary download URL.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - page_size (number, optional): Results per page (default 100)\n  - page (number, optional): Page number (default 1)\n\nReturns: Array of attachment metadata with download URLs (URLs expire after a short period)."
+  },
+  {
+    "name": "smartsheet_list_row_attachments",
+    "description": "List all attachments on a specific row in a Smartsheet sheet.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - row_id (number): Target row ID\n\nReturns: Array of attachment metadata for the row."
+  },
+  {
+    "name": "smartsheet_attach_url_to_row",
+    "description": "Attach a URL link to a specific row in a Smartsheet sheet.\nCreates a hyperlink attachment that appears in the row's attachment panel.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - row_id (number): Target row ID\n  - url (string): URL to attach\n  - name (string): Display name for the attachment\n  - description (string, optional): Description text\n\nReturns: New attachment ID and metadata."
+  },
+  {
+    "name": "smartsheet_delete_attachment",
+    "description": "Permanently delete an attachment from a Smartsheet sheet.\nThis action is IRREVERSIBLE. Verify the attachment ID before proceeding.\n\nArgs:\n  - sheet_id (number): Sheet ID containing the attachment\n  - attachment_id (number): Attachment ID to delete\n\nReturns: Deletion confirmation."
+  },
+  {
+    "name": "smartsheet_search",
+    "description": "Search across all accessible Smartsheet assets (sheets, reports, dashboards, rows, cells, discussions).\nReturns matching objects with their type, ID, and parent context.\nUse this to find sheets by name, locate rows containing specific text, or discover resources.\n\nArgs:\n  - query (string): Search text (minimum 2 characters)\n  - scope (string[], optional): Limit to specific object types: \n    \"cellData\", \"comments\", \"folderNames\", \"reportNames\", \"sheetNames\", \"sightNames\", \"summaryFields\", \"workspaceNames\"\n  - include_favorites (boolean, optional): Include favorite resources in results\n  - page_size (number, optional): Max results (default 100)\n\nReturns: Matching objects with IDs, types, and parent context."
+  },
+  {
+    "name": "smartsheet_search_sheet",
+    "description": "Search for text within a specific Smartsheet sheet.\nSearches cell values, formulas, comments, and summary fields within one sheet.\n\nArgs:\n  - sheet_id (number): Sheet ID to search within\n  - query (string): Text to search for\n\nReturns: Matching rows and cells within the sheet."
+  },
+  {
+    "name": "smartsheet_get_cell_history",
+    "description": "Retrieve the full modification history for a specific cell in a Smartsheet sheet.\nShows all previous values, who changed the value, and when each change occurred.\nUseful for audit trails and tracking project status changes over time.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n  - row_id (number): Target row ID\n  - column_id (number): Target column ID\n  - page_size (number, optional): History entries per page (default 100)\n  - page (number, optional): Page number (default 1)\n\nReturns: Chronological list of cell value changes with timestamps and user info."
+  },
+  {
+    "name": "smartsheet_get_sheet_version",
+    "description": "Get the current version number of a sheet without loading all row data.\nUse this to efficiently detect whether a sheet has been modified since last read,\nwithout pulling the full sheet payload.\n\nArgs:\n  - sheet_id (number): Target sheet ID\n\nReturns: Current version number and last modification timestamp."
+  }
+]

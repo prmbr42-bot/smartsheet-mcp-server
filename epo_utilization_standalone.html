@@ -3107,9 +3107,14 @@
         function g(t) { var id = t2id[t]; return (id != null && by[id] != null) ? by[id] : null; }
         var st = String(g('Status') || '');
         var canonicalStatus = (src === 'Business Support') ? pfNormalizeStatus(st) : null;
+        /* 9/17/26 per Kristen: Comm hours for Active projects only. The old EX regex
+           matched "cancelled" but the master spells it CANCELED, and never excluded
+           Pending, so 11 Canceled + 8 Pending projects carried hours. Explicit rule:
+           only Active and On Hold stay in the Comm set (On Hold is counted but gets
+           no hours, see rebuildMatrices). BS branch untouched. */
         var capacityExcluded = (src === 'Business Support')
           ? (canonicalStatus === 'Cancelled' || canonicalStatus === 'Complete')
-          : EX.test(st);
+          : !(/^\s*active\s*$/i.test(st) || isOnHold(st));
         /* Utilization only starts at Build per the field-set rules — Enterprise
            Review and Design don't carry hours at all at that stage. Gates the
            Status-first Heatmap's hours math (see buildMX) without hiding these
@@ -4170,7 +4175,8 @@
       /* Capacity math (heatmap) still excludes Complete/Cancelled — only
          Portfolio View (curPortfolioProjects) sees the full set. */
       function capOk(p) { return !p.capacityExcluded; }
-      var commUse = commAll.filter(function (p) { return capOk(p) && (SHOW_ON_HOLD || !isOnHold(p.status)); });
+      /* 9/17/26: Comm On Hold projects never carry hours (Active only). BS still honours the toggle. */
+      var commUse = commAll.filter(function (p) { return capOk(p) && !isOnHold(p.status); });
       var bsUse = bsAll.filter(function (p) { return capOk(p) && (SHOW_ON_HOLD || !isOnHold(p.status)); });
       MX_COMM = buildMX(commUse);
       MX_BS_GRANULAR = buildMX(bsUse);
@@ -4334,7 +4340,9 @@
       document.getElementById('h-sub').textContent = label + ' · Hours-Based · Live Smartsheet';
       document.getElementById('hm-title').textContent = label.toUpperCase() + ' — RESOURCE UTILIZATION BY FUNCTION × MONTH';
       var countTxt = fp.length + ' projects · ' + Object.keys(mx).length + ' active depts';
-      if (holdCount) countTxt += ' · ' + holdCount + ' on hold ' + (SHOW_ON_HOLD ? '(included, dimmed)' : '(excluded)');
+      if (holdCount) countTxt += ' · ' + holdCount + ' on hold ' + (TAB === 'comm' ? '(no hours)' : (SHOW_ON_HOLD ? '(included, dimmed)' : '(excluded)'));
+      /* 9/17/26: the On Hold toggle has no effect on Comm hours any more, so hide it on Comm. */
+      document.getElementById('btn-hold').style.display = TAB === 'comm' ? 'none' : '';
       document.getElementById('tab-count').textContent = countTxt;
       /* Swap methodology bar */
       document.getElementById('mbar').innerHTML = TAB === 'comm'
@@ -4417,7 +4425,7 @@
         { v: fp.length, l: 'Total Projects', s: fp.filter(function (p) { return ia(p.status); }).length + ' active · ' + fp.filter(function (p) { return ip(p.status); }).length + ' pending', acc: '#52B788', clickable: false },
         { v: Math.round(dem) + ' h', l: 'Current Month Hour Demand', s: 'Est. hours prorated by working-day overlap', acc: '#2563EB', clickable: false },
         { v: nr, l: 'Depts Near Capacity', s: '≥ 90% hours utilized this month', acc: '#F97316', clickable: false },
-        { v: holdKpi, l: 'Projects On Hold', s: SHOW_ON_HOLD ? 'Included in hrs (dimmed)' : 'Currently excluded from hrs', acc: ov > 0 ? '#EF4444' : '#22C55E', clickable: false }
+        { v: holdKpi, l: 'Projects On Hold', s: 'Not included in hrs', acc: ov > 0 ? '#EF4444' : '#22C55E', clickable: false }
       ];
       document.getElementById('kpi-strip').innerHTML = ks.map(function (k, i) {
         return '<div class="kpi-card' + (k.clickable ? ' kpi-clickable' : '') + (k === ks[0] && priorityActive ? ' kpi-active' : '') + '" style="border-top:3px solid ' + k.acc + '"'
