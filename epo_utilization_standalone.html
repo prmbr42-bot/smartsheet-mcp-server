@@ -1621,6 +1621,33 @@
       white-space: nowrap
     }
 
+    .sg-sm.wrap {
+      white-space: normal;
+      max-width: 170px;
+      line-height: 1.35
+    }
+
+    /* 9/17/26 S4: R&D Lead wraps */
+    .sg-stage {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1B4D35;
+      white-space: nowrap
+    }
+
+    /* 9/17/26 S5: stage as text */
+    .sg-dgrid.stack2 {
+      grid-template-columns: 1.25fr 1fr
+    }
+
+    /* 9/17/26 DR6 */
+    .sg-stackcol {
+      display: flex;
+      flex-direction: column;
+      gap: 18px
+    }
+
+    /* 9/17/26 DR6 */
     .sg-tag {
       display: inline-block;
       padding: 2px 7px;
@@ -5763,19 +5790,20 @@
           '<td class="sg-id"><i class="sg-cx"></i>' + esc(r.id) + '</td>' +
           '<td class="sg-nm">' + esc(r.name) + '</td>' +
           '<td class="sg-sm">' + esc(r.owner || '—') + '</td>' +
-          '<td class="sg-sm">' + esc(r.rd && r.rd !== 'N/A' ? r.rd : '—') + '</td>' +
+          /* 9/17/26 per Kristen: R&D Lead wraps (S4); Stage is plain text, its progress
+             visual moved to the drawer (S5); Active Duration moved to the drawer (S3). */
+          '<td class="sg-sm wrap">' + esc(r.rd && r.rd !== 'N/A' ? r.rd : '—') + '</td>' +
           '<td>' + typ + '</td>' +
-          '<td>' + sgStepper(r.stage) + '</td>' +
-          '<td class="sg-sm">' + (r.dur != null ? r.dur.toFixed(1) + ' mo' : '—') + '</td>' +
+          '<td><span class="sg-stage">' + esc(r.stage || '—') + '</span></td>' +
           '<td>' + pct + '</td>' +
           '<td>' + sgHealthCell(r) + '</td></tr>' +
-          (open ? '<tr class="sg-det"><td colspan="9">' + sgDetail(r) + '</td></tr>' : '');
+          (open ? '<tr class="sg-det"><td colspan="8">' + sgDetail(r) + '</td></tr>' : '');
       }).join('');
 
       document.getElementById('stagegate-body').innerHTML = head +
         '<table class="sg-tbl"><thead><tr>' +
         '<th>ID</th><th>Project Name</th><th>Project Owner</th><th>R&amp;D Lead</th>' +
-        '<th>Project Type</th><th>Stage</th><th>Active Dur.</th><th>% Complete</th>' +
+        '<th>Project Type</th><th>Stage</th><th>% Complete</th>' +
         '<th>Health</th>' +
         '</tr></thead><tbody>' + body + '</tbody></table>';
       sgBind();
@@ -5792,6 +5820,11 @@
       var det =
         '<div class="sg-blk">' +
         '<h4>Project Details</h4>' +
+        /* 9/17/26 (S5, S3): stage progress and Active Duration moved here from the table. */
+        '<div class="sg-lbl">Stage</div>' +
+        '<div class="sg-val">' + sgStepper(r.stage) + '</div>' +
+        '<div class="sg-lbl">Active Duration</div>' +
+        '<div class="sg-val">' + (r.dur != null ? r.dur.toFixed(1) + ' months' : '&mdash;') + '</div>' +
         '<div class="sg-lbl">High Level Objective</div>' +
         '<div class="sg-val' + (r.objective ? '' : ' muted') + '">' +
         esc(r.objective || 'Not populated on the master sheet.') + '</div>' +
@@ -5800,8 +5833,8 @@
         esc(r.context || 'Not populated on the master sheet.') + '</div>' +
         sgSheetLink(r) +
         '</div>' +
-        sgThresholdBlock(r) +
-        sgFinancialBlock(r);
+        /* 9/17/26 (DR6) per Kristen: Financial Summary stacked on top of Threshold Review. */
+        '<div class="sg-stackcol">' + sgFinancialBlock(r) + sgThresholdBlock(r) + '</div>';
 
       var lower =
         '<div class="sg-dgrid two" style="margin-top:20px">' +
@@ -5809,7 +5842,7 @@
         sgTasksBlock(r) +
         '</div>';
 
-      return '<div class="sg-dgrid">' + det + '</div>' + lower;
+      return '<div class="sg-dgrid stack2">' + det + '</div>' + lower;
     }
 
     /* ── Inline drill formatters (8/27/26) ──────────────────────────────────
