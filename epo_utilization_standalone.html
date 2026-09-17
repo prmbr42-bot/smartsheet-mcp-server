@@ -2591,22 +2591,25 @@
        since renderHMGroupsHTML already iterates groups→depts generically and
        showGroupHeader is now false for Comm too (see below), so no header row
        ever prints — this array just becomes the flat ordered list of dept rows. */
+    /* 9/17/26 (RU4) per Kristen: rows 1-10 in her ranked order. Departments she did
+       not rank keep their previous relative order and go last (they have no hours today,
+       and rows with no hours are hidden anyway). */
     var COMM_GROUPS = [
-      { label: 'Sales', color: '#0D2818', depts: ['Sales'] },
-      { label: 'Marketing', color: '#0D2818', depts: ['Marketing'] },
-      { label: 'Quality/Regulatory', color: '#0D2818', depts: ['Quality/Regulatory'] },
-      { label: 'Supply Chain', color: '#0D2818', depts: ['Supply Chain'] },
-      { label: 'Finance', color: '#0D2818', depts: ['Finance'] },
-      { label: 'Legal', color: '#0D2818', depts: ['Legal'] },
-      { label: 'EHS&S', color: '#0D2818', depts: ['EHS&S'] },
-      { label: 'PCM', color: '#0D2818', depts: ['PCM'] },
       { label: 'R&D - Product/Process', color: '#1B4D35', depts: ['R&D - Product/Process'] },
       { label: 'R&D - Packaging', color: '#1B4D35', depts: ['R&D - Packaging'] },
-      { label: 'Ops/Engineering MS', color: '#1B4D35', depts: ['Ops/Engineering MS'] },
-      { label: 'Ops/Engineering FE', color: '#1B4D35', depts: ['Ops/Engineering FE'] },
-      { label: 'Procurement Co-man', color: '#1B4D35', depts: ['Procurement Co-man'] },
+      { label: 'Quality/Regulatory', color: '#0D2818', depts: ['Quality/Regulatory'] },
       { label: 'Procurement PKG/Repack', color: '#1B4D35', depts: ['Procurement PKG/Repack'] },
       { label: 'Procurement ING', color: '#1B4D35', depts: ['Procurement ING'] },
+      { label: 'Procurement Co-man', color: '#1B4D35', depts: ['Procurement Co-man'] },
+      { label: 'Ops/Engineering MS', color: '#1B4D35', depts: ['Ops/Engineering MS'] },
+      { label: 'Ops/Engineering FE', color: '#1B4D35', depts: ['Ops/Engineering FE'] },
+      { label: 'Finance', color: '#0D2818', depts: ['Finance'] },
+      { label: 'PCM', color: '#0D2818', depts: ['PCM'] },
+      { label: 'Sales', color: '#0D2818', depts: ['Sales'] },
+      { label: 'Marketing', color: '#0D2818', depts: ['Marketing'] },
+      { label: 'Supply Chain', color: '#0D2818', depts: ['Supply Chain'] },
+      { label: 'Legal', color: '#0D2818', depts: ['Legal'] },
+      { label: 'EHS&S', color: '#0D2818', depts: ['EHS&S'] },
       { label: 'IT', color: '#1B4D35', depts: ['IT'] }
     ];
     /* Per the 7/1 meeting: non-IT functions are excluded from BS entirely (Sales,
@@ -4583,6 +4586,10 @@
       return BS_CAP;
     }
 
+    /* 9/17/26 (RU3) per Kristen: Comm heatmap window = 1 month prior, current, 5 ahead
+       ("the data just isn't good 12mo out"). Display-only: MONTHS keeps its 14 months so
+       hours math, BS heatmap and BS Gantt are untouched. MONTHS[0] is last month. */
+    function hmMonths() { return TAB === 'comm' ? MONTHS.slice(0, 7) : MONTHS; }
     function renderHMGroupsHTML(mx, groups, collPrefix, status) {
       var h = '';
       /* BS has only one BS_GROUPS entry ("IT & Digital") since the non-IT dept
@@ -4611,7 +4618,7 @@
         });
         var cntLabel = visibleDepts.length > 1 ? ' <span style="font-weight:400;margin-left:8px;opacity:0.6;font-size:11px">(' + visibleDepts.length + ' depts)</span>' : '';
         if (showGroupHeader) {
-          h += '<tr class="grp-hdr" data-grp="' + esc(collKey) + '"><td colspan="' + (MONTHS.length + 1) + '" style="background:' + g.color + '">' + (ic ? '▶' : '▼') + '&nbsp;&nbsp;' + esc(g.label).toUpperCase() + cntLabel + '</td></tr>';
+          h += '<tr class="grp-hdr" data-grp="' + esc(collKey) + '"><td colspan="' + (hmMonths().length + 1) + '" style="background:' + g.color + '">' + (ic ? '▶' : '▼') + '&nbsp;&nbsp;' + esc(g.label).toUpperCase() + cntLabel + '</td></tr>';
         }
         if (ic) return;
         g.depts.forEach(function (dept, di) {
@@ -4632,7 +4639,7 @@
           if (TAB === 'comm') { var cHrsComm = COMM_CAP[dept]; hasCapacity = !!cHrsComm; capDisp = cHrsComm ? cHrsComm + ' h/mo' : '—'; }
           else { var cHrs = effectiveBSCap()[dept]; hasCapacity = !!cHrs; capDisp = cHrs ? cHrs + ' h/mo' : '—'; }
           h += '<td class="dtd" style="background:' + rb + '"><div class="dinn"><span class="dnm" title="' + esc(dept) + '">' + esc(dept) + '</span><span style="font-size:10px;color:' + (hasCapacity ? 'var(--muted)' : '#E5E7EB') + '">' + esc(capDisp) + '</span></div></td>';
-          MONTHS.forEach(function (mo) {
+          hmMonths().forEach(function (mo) {
             var cell = dm[mo.key], hrs = cell ? cell.totalHours : 0;
             /* Tab-aware capH: both tabs now read a flat monthly capacity figure
                straight from their respective live capacity sheet — no more
@@ -4716,7 +4723,7 @@
         }
         return '<span style="font-weight:600">' + esc(p.name) + '</span> — ' + reason;
       });
-      return '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:6px 14px;background:#FFFBEB;border-top:1px solid #FDE68A;border-bottom:1px solid #FDE68A;font-size:11px;color:#92400E;line-height:1.6">'
+      return '<tr><td colspan="' + (hmMonths().length + 1) + '" style="padding:6px 14px;background:#FFFBEB;border-top:1px solid #FDE68A;border-bottom:1px solid #FDE68A;font-size:11px;color:#92400E;line-height:1.6">'
         + '⚠ ' + missing.length + ' project' + (missing.length === 1 ? '' : 's') + ' counted above but not shown in the grid below: ' + lines.join(' · ')
         + '</td></tr>';
     }
@@ -4770,7 +4777,7 @@
       deptKeys.forEach(function (dept) {
         var list = byDept[dept];
         list.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-        h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:6px 14px 3px 20px;font-weight:700;font-size:11px;color:var(--dark);background:#FAFEF9;border-top:1px solid var(--border)">' + esc(dept) + ' <span style="font-weight:400;color:var(--muted)">(' + list.length + ')</span></td></tr>';
+        h += '<tr><td colspan="' + (hmMonths().length + 1) + '" style="padding:6px 14px 3px 20px;font-weight:700;font-size:11px;color:var(--dark);background:#FAFEF9;border-top:1px solid var(--border)">' + esc(dept) + ' <span style="font-weight:400;color:var(--muted)">(' + list.length + ')</span></td></tr>';
         list.forEach(function (p, i) {
           var rowKey = 'hmexempt|status:' + status + '|dept:' + dept + '|proj:' + (p.projectId || p.name || i);
           var expanded = !!PF_EXPANDED[rowKey];
@@ -4789,11 +4796,11 @@
               p.entSteerCoDate ? ('SteerCo: ' + esc(fmtDate(p.entSteerCoDate) || p.entSteerCoDate)) : null
             ].filter(Boolean).join(' · ');
           }
-          h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:5px 14px 5px 34px;font-size:12px;background:#fff;border-bottom:1px solid #F6F6F4;cursor:pointer" data-hmexemptrow="' + esc(rowKey) + '">'
+          h += '<tr><td colspan="' + (hmMonths().length + 1) + '" style="padding:5px 14px 5px 34px;font-size:12px;background:#fff;border-bottom:1px solid #F6F6F4;cursor:pointer" data-hmexemptrow="' + esc(rowKey) + '">'
             + '<div style="font-weight:600;color:var(--text)">' + esc(p.name) + '</div>'
             + (meta ? '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + meta + '</div>' : '')
             + '</td></tr>';
-          if (expanded) h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:0">' + renderHMExemptRowDetailHTML(status, p) + '</td></tr>';
+          if (expanded) h += '<tr><td colspan="' + (hmMonths().length + 1) + '" style="padding:0">' + renderHMExemptRowDetailHTML(status, p) + '</td></tr>';
         });
       });
       return h;
@@ -4802,7 +4809,7 @@
     function renderHM() {
       var groups = curGroups();
       var h = '<thead><tr><th class="th-d">' + (TAB === 'bs' ? 'STATUS / DEPARTMENT' : 'DEPARTMENT') + '</th>';
-      MONTHS.forEach(function (mo) { var ic = mo.key === CK; h += '<th class="th-m' + (ic ? ' now' : '') + '">' + mo.label + (ic ? '<div class="now-tag">▲ NOW</div>' : '') + '</th>'; });
+      hmMonths().forEach(function (mo) { var ic = mo.key === CK; h += '<th class="th-m' + (ic ? ' now' : '') + '">' + mo.label + (ic ? '<div class="now-tag">▲ NOW</div>' : '') + '</th>'; });
       h += '</tr></thead><tbody>';
       if (TAB === 'bs') {
         /* Status-first grouping (BS only — Comm's status taxonomy is unverified, so
@@ -4834,7 +4841,7 @@
             var collapsedX = HM_STATUS_COLL.hasOwnProperty(status) ? HM_STATUS_COLL[status] : false;
             var badgeX = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
             var cntX = projs.length;
-            h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (MONTHS.length + 1) + '">'
+            h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (hmMonths().length + 1) + '">'
               + '<span class="hm-status-car">' + (collapsedX ? '▶' : '▼') + '</span>'
               + '<span class="hm-status-name">' + esc(status).toUpperCase() + '</span>'
               + '<span class="hm-status-badge" style="background:' + badgeX.bg + ';color:' + badgeX.tx + '">' + cntX + ' project' + (cntX === 1 ? '' : 's') + '</span>'
@@ -4881,7 +4888,7 @@
           var collapsed = HM_STATUS_COLL.hasOwnProperty(status) ? HM_STATUS_COLL[status] : false;
           var badge = PF_STATUS_BADGE[status] || { bg: '#F3F4F6', tx: '#6B7280' };
           var cnt = projs.length;
-          h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (MONTHS.length + 1) + '">'
+          h += '<tr class="hm-status-hdr" data-hmstatushdr="' + esc(status) + '"><td colspan="' + (hmMonths().length + 1) + '">'
             + '<span class="hm-status-car">' + (collapsed ? '▶' : '▼') + '</span>'
             + '<span class="hm-status-name">' + esc(status).toUpperCase() + '</span>'
             + '<span class="hm-status-badge" style="background:' + badge.bg + ';color:' + badge.tx + '">' + cnt + ' project' + (cnt === 1 ? '' : 's') + '</span>'
@@ -4893,7 +4900,7 @@
           if (statusHasData) h += renderHMGroupsHTML(mxStatus, groups, status + '::', status);
         });
         if (!renderedAny) {
-          h += '<tr><td colspan="' + (MONTHS.length + 1) + '" style="padding:40px 20px;text-align:center;color:var(--muted)">No projects match the current filters.</td></tr>';
+          h += '<tr><td colspan="' + (hmMonths().length + 1) + '" style="padding:40px 20px;text-align:center;color:var(--muted)">No projects match the current filters.</td></tr>';
         }
       } else {
         /* 7/16/26: Comm now supports the High Priority Projects KPI filter —
@@ -6153,6 +6160,7 @@
       document.getElementById('stagegate-wrap').style.display = sg ? 'block' : 'none';
       document.getElementById('kpi-strip').style.display = sg ? 'none' : 'grid';
       applyViewHeader();   /* 9/17/26 (G2, G3) */
+      if (sg) closeDrill();  /* 9/17/26 (RU8): RU drill sidebar must not stay open over Stage Gate */
       renderSlicers();
       if (sg) renderStageGate();
       else renderHM();
@@ -6303,7 +6311,9 @@
               + '<div style="font-size:11px;color:var(--text);font-style:italic;margin:-3px 0 7px">"' + esc(p.statusUpdate.length > 220 ? p.statusUpdate.slice(0, 220) + '…' : p.statusUpdate) + '"</div>';
           }
           if (p.percentComplete != null) {
-            var pct = Math.round(p.percentComplete);
+            /* 9/17/26 (RU6): Comm master stores % Complete as a fraction (0.5 = 50%),
+               same as Stage Gate reads it; showing it raw rendered 50% as "1%". BS unchanged. */
+            var pct = p.source === 'Commercialization' ? Math.round(p.percentComplete * 100) : Math.round(p.percentComplete);
             h += '<div class="prog-wrap"><div class="prog-lbl"><span>% COMPLETE</span><span>' + pct + '%</span></div>';
             h += '<div class="prog-bar"><div class="prog-fill" style="width:' + pct + '%"></div></div></div>';
           }
