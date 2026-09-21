@@ -2920,7 +2920,7 @@
        automatically instead. Capped at 2 retries; a manual Refresh always resets. */
     var LOAD_RETRY = 0;
     var LOAD_RETRY_MAX = 3;
-    var SG_FILTER = { status: 'active', bu: 'all', ptype: 'all', stage: '', owner: '', rd: '' };  /* 9/17/26 S2: + stage/owner/rd dropdowns */
+    var SG_FILTER = { status: 'active', bu: 'all', ptype: 'all', stage: '', owner: '', rd: '', sgrel: 'all' };  /* 9/21/26: + sgrel (All / Stage Gate Relevant) */  /* 9/17/26 S2: + stage/owner/rd dropdowns */
     var SG_SORT = { key: null, dir: 1 };   /* 9/17/26 S2: header sort; key null = sheet order */  // Kristen's filters (+ ptype 9/11/26)
 
     /* 9/11/26 per Jerry. Project Type filter, two roll-ups plus All.
@@ -5789,6 +5789,8 @@
         if (SG_FILTER.stage && r.stage !== SG_FILTER.stage) return false;
         if (SG_FILTER.owner && r.owner !== SG_FILTER.owner) return false;
         if (SG_FILTER.rd && sgRdNames(r.rd).indexOf(SG_FILTER.rd) < 0) return false;
+        /* 9/21/26 per Kristen: Stage Gate Relevant = starred projects only. */
+        if (SG_FILTER.sgrel === 'rel' && !sgAgendaDate(r)) return false;
         return true;
       });
     }
@@ -5843,11 +5845,16 @@
         (any ? '<div class="sg-grp"><label>&nbsp;</label><button type="button" class="sg-clear" data-sgclear="1">Clear</button></div>' : '');
     }
     /* 9/17/26 (S8) per Kristen: star when Anticipated SG Agenda Date is today through 28 days out. */
-    function sgAgendaStar(r) {
-      var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(r.sgAgenda || '')); if (!m) return '';
+    /* 9/21/26: agenda test split out so the star (S8) and the Stage Gate Relevant filter
+       can never disagree. Returns the agenda Date when it is today through 28 days out, else null. */
+    function sgAgendaDate(r) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(r.sgAgenda || '')); if (!m) return null;
       var d = new Date(+m[1], +m[2] - 1, +m[3]), n = new Date(), t = new Date(n.getFullYear(), n.getMonth(), n.getDate());
       var days = Math.round((d - t) / 86400000);
-      if (days < 0 || days > 28) return '';
+      return (days < 0 || days > 28) ? null : d;
+    }
+    function sgAgendaStar(r) {
+      var d = sgAgendaDate(r); if (!d) return '';
       return '<span class="sg-agstar" title="Anticipated SG Agenda Date: ' + esc(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })) + '">&#9733;</span>';
     }
     /* 9/17/26 (S1) per Kristen: freeze the top pane. The table scrolls inside its own box
@@ -5890,6 +5897,9 @@
         seg('status', 'active', 'Active / On Hold') + seg('status', 'all', 'All') + '</div></div>' +
         '<div class="sg-grp"><label>Business Unit</label><div class="sg-segwrap">' +
         seg('bu', 'all', 'All') + seg('bu', 'MS', 'MS') + seg('bu', 'FE', 'FE') + '</div></div>' +
+        /* 9/21/26 per Kristen: All / Stage Gate Relevant, default All */
+        '<div class="sg-grp"><label>SG Agenda</label><div class="sg-segwrap">' +
+        seg('sgrel', 'all', 'All') + seg('sgrel', 'rel', 'Stage Gate Relevant') + '</div></div>' +
         '<div class="sg-grp"><label>Project Type</label><div class="sg-segwrap">' +
         seg('ptype', 'all', 'All') +
         seg('ptype', 'key', SG_PTYPES.key.label) +
@@ -6050,8 +6060,9 @@
         sgKV('Anticipated Project Cost', sgMoney(r.projCost)) +
         sgKV('R&amp;D Estimate', sgMoney(r.rdCost)) +
         sgKV('Y1 Gross Sales', sgMoney(r.y1GrossSales)) +
-        sgKV('Y1 Incremental Gross Profit', sgMoney(r.y1IncGP)) +
+        /* 9/21/26 per Finance (Jodi Spiekermann): Net Sales above Gross Profit. */
         sgKV('Y1 Incremental Net Sales', sgMoney(r.y1IncNetSales)) +
+        sgKV('Y1 Incremental Gross Profit', sgMoney(r.y1IncGP)) +
         sgKV('Cost / Risk Savings', sgMoney(r.costRiskSav)) +
         sgKV('Y1 Expected GP Margin', sgPct(r.y1ExpMargin)) +
         sgKV('Y1 Target GP Margin', sgPct(r.y1TgtMargin)) +
