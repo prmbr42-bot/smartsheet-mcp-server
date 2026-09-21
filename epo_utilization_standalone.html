@@ -5897,14 +5897,14 @@
         seg('status', 'active', 'Active / On Hold') + seg('status', 'all', 'All') + '</div></div>' +
         '<div class="sg-grp"><label>Business Unit</label><div class="sg-segwrap">' +
         seg('bu', 'all', 'All') + seg('bu', 'MS', 'MS') + seg('bu', 'FE', 'FE') + '</div></div>' +
-        /* 9/21/26 per Kristen: All / Stage Gate Relevant, default All */
-        '<div class="sg-grp"><label>SG Agenda</label><div class="sg-segwrap">' +
-        seg('sgrel', 'all', 'All') + seg('sgrel', 'rel', 'Stage Gate Relevant') + '</div></div>' +
         '<div class="sg-grp"><label>Project Type</label><div class="sg-segwrap">' +
         seg('ptype', 'all', 'All') +
         seg('ptype', 'key', SG_PTYPES.key.label) +
         seg('ptype', 'growth', SG_PTYPES.growth.label) +
         seg('ptype', 'continuity', SG_PTYPES.continuity.label) + '</div></div>' +
+        /* 9/21/26 per Kristen: All / Stage Gate Relevant, default All; after Project Type, before Stage */
+        '<div class="sg-grp"><label>SG Agenda</label><div class="sg-segwrap">' +
+        seg('sgrel', 'all', 'All') + seg('sgrel', 'rel', 'Stage Gate Relevant') + '</div></div>' +
         sgDropdowns() +   /* 9/17/26 S2 */
         /* 8/27/26 per Kristen: show the project count only. The "N need EPO review
            status" tally and the per-row "!" badge were both removed at her request
