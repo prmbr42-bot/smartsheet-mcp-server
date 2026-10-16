@@ -2592,6 +2592,101 @@
     }
 
     /* keep label and value together on wide screens */
+    /* 10/16/26 Rev 3 per Kristen: pages 1-3 of the pop-out at roughly 2x type
+   ("enlarge overall font x2 or x3"). Page 4 (RAID / tasks / milestones) is left
+   at its normal size because it is dense. Scoped to .sgp-big so nothing else moves. */
+    .sgp-cols.c13 {
+      grid-template-columns: 1fr 2fr
+    }
+
+    .sgp-facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 48px;
+      margin-bottom: 6px
+    }
+
+    .sgp-sub {
+      font-size: 11.5px;
+      color: #6B7280;
+      margin-top: 2px
+    }
+
+    .sgp-big .sg-blk h4 {
+      font-size: 28px;
+      margin-bottom: 14px
+    }
+
+    .sgp-big .sg-lbl {
+      font-size: 15px;
+      margin-bottom: 4px
+    }
+
+    .sgp-big .sg-val {
+      font-size: 24px;
+      line-height: 1.45;
+      margin-bottom: 20px
+    }
+
+    .sgp-big .sg-kv {
+      font-size: 22px;
+      max-width: 780px;
+      padding: 6px 0
+    }
+
+    .sgp-big .sg-pass,
+    .sgp-big .sg-fail {
+      font-size: 16px;
+      padding: 3px 12px
+    }
+
+    .sgp-big .sg-st {
+      font-size: 16px;
+      padding: 3px 12px
+    }
+
+    .sgp-big .sg-dec {
+      font-size: 14px;
+      min-width: 24px;
+      height: 24px
+    }
+
+    .sgp-big .sg-dot {
+      width: 20px;
+      height: 20px
+    }
+
+    .sgp-big .sg-yes,
+    .sgp-big .sg-no {
+      font-size: 22px
+    }
+
+    .sgp-big .sgp-sub {
+      font-size: 18px
+    }
+
+    .sgp-big .ss-link {
+      font-size: 17px;
+      padding: 9px 16px
+    }
+
+    .sgp-big .sg-gstp .g {
+      min-width: 200px
+    }
+
+    .sgp-big .sg-gstp .g span {
+      font-size: 16px;
+      padding: 7px 10px
+    }
+
+    .sgp-big .sg-gstp .g small {
+      font-size: 16px
+    }
+
+    .sgp-big .sg-gstp .g small b {
+      font-size: 12px
+    }
+
     .sg-gstp .g {
       min-width: 140px
     }
@@ -3346,7 +3441,10 @@
        automatically instead. Capped at 2 retries; a manual Refresh always resets. */
     var LOAD_RETRY = 0;
     var LOAD_RETRY_MAX = 3;
-    var SG_FILTER = { status: 'active', bu: 'all', ptype: 'all', stage: '', owner: '', rd: '', sgrel: 'all', sgprio: 'all' };  /* 9/21/26: + sgrel (All / Stage Gate Relevant) */  /* 9/17/26 S2: + stage/owner/rd dropdowns */
+    var SG_FILTER = {
+      status: 'Active',   /* 10/16/26 Rev 3: default Active only */
+      bu: 'all', ptype: 'all', stage: '', owner: '', rd: '', sgrel: 'all', sgprio: 'all'
+    };  /* 9/21/26: + sgrel (All / Stage Gate Relevant) */  /* 9/17/26 S2: + stage/owner/rd dropdowns */
     /* 10/16/26: status is now a dropdown. 'active' (Active + On Hold, the default) and
        'all' are the two virtual options; any other value is an exact Status value from
        the master. sgprio: 'all' | 'top' (Stage Gate Prioritization List, rank 1-20).
@@ -3687,9 +3785,12 @@
          Status-first Heatmap being BS-only). */
       var EX = /cancelled|rejected|8\s*-|complete/i; // Comm only — see note above
       return (data.rows || []).reduce(function (acc, row) {
-        var by = {};
-        (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; });
+        var by = {}, byD = {};
+        (row.cells || []).forEach(function (c) { by[c.columnId] = c.value != null ? c.value : null; if (c.displayValue != null) byD[c.columnId] = c.displayValue; });
         function g(t) { var id = t2id[t]; return (id != null && by[id] != null) ? by[id] : null; }
+        /* 10/16/26 Rev 3: display text for CONTACT cells, whose .value is the email
+           address (the RU sidebar showed "shiva.balagopal@mizkan.com" as OWNER). */
+        function gd(t) { var id = t2id[t]; return (id != null && byD[id] != null) ? byD[id] : g(t); }
         var st = String(g('Status') || '');
         var canonicalStatus = (src === 'Business Support') ? pfNormalizeStatus(st) : null;
         /* 9/17/26 per Kristen: Comm hours for Active projects only. The old EX regex
@@ -3973,7 +4074,8 @@
           rowId: row.id, rowPermalink: row.permalink || null,
           projectId: projectId,
           percentComplete: isNaN(pct) ? null : pct,
-          owner: owner,
+          owner: (src === 'Commercialization') ? (gd('Project Owner') || owner) : owner,   /* 10/16/26 Rev 3: name, not email (Comm) */
+          rdLead: (src === 'Commercialization') ? (gd('R&D Lead') || null) : null,       /* 10/16/26 Rev 3: RU sidebar */
           bsFolder: bsFolder,
           epoLead: epoLead,
           itOwnerName: itOwnerName,
@@ -4149,6 +4251,7 @@
                 itEstHrs: p.itEstHrs || null,
                 statusUpdate: p.statusUpdate || null,
                 spanStartBasis: p.spanStartBasis || null,   /* 10/16/26: shown in the RU sidebar Span */
+                rdLead: p.rdLead || null,   /* 10/16/26 Rev 3: RU sidebar R&D Lead */
                 spanEndBasis: p.spanEndBasis || null
               });
             });
@@ -6286,6 +6389,7 @@
           y1TgtMargin: num('Y1 Target Gross Profit Margin %'),
           marginVsTgt: g('Gross Profit Margin vs Target'),
           costRiskSav: (num('Cost Savings $K') != null ? num('Cost Savings $K') : num('Cost/Risk Savings $K')),
+          sizeBizImpacted: num('Size of Business Impacted $K'),   /* 10/16/26 Rev 3: Continuity / Cost Savings threshold */
           salesFTE: g('Sales FTE'), salesComplexity: g('Sales Complexity'),
           salesCallOuts: g('Sales Call Outs'),
           financeCallOuts: g('Finance Call Outs'),  /* 9/17/26 DR9: TEXT, 14 populated */
@@ -6443,9 +6547,9 @@
       var ORDER = ['Active', 'On Hold - Business', 'Pending', 'COMPLETE', 'CANCELED', 'REJECTED'];
       var stKeys = ORDER.filter(function (s) { return sts[s]; })
         .concat(Object.keys(sts).filter(function (s) { return ORDER.indexOf(s) < 0; }).sort());
-      var stSel = '<div class="sg-grp"><label>Status</label><select class="sg-sel' + (SG_FILTER.status !== 'active' ? ' on' : '') + '" data-sgsel="status">' +
-        '<option value="active"' + (SG_FILTER.status === 'active' ? ' selected' : '') + '>Active + On Hold</option>' +
-        '<option value="all"' + (SG_FILTER.status === 'all' ? ' selected' : '') + '>All</option>' +
+      /* 10/16/26 (Rev 3 KR update): default is Active, and the "Active + On Hold" and
+         "All" options are removed. One status at a time; On Hold is picked on its own. */
+      var stSel = '<div class="sg-grp"><label>Status</label><select class="sg-sel' + (SG_FILTER.status !== 'Active' ? ' on' : '') + '" data-sgsel="status">' +
         stKeys.map(function (v) { return '<option value="' + esc(v) + '"' + (SG_FILTER.status === v ? ' selected' : '') + '>' + esc(sgStatusLabel(v)) + '</option>'; }).join('') +
         '</select></div>';
       var any = SG_FILTER.stage || SG_FILTER.owner || SG_FILTER.rd;
@@ -6518,7 +6622,7 @@
         seg('sgrel', 'all', 'All') + seg('sgrel', 'rel', 'Stage Gate Relevant') + '</div></div>' +
         /* 10/16/26 per Kristen: Stage Gate Prioritization List (rank 1-20 from "Stage Gate Priority") */
         '<div class="sg-grp"><label>Prioritization</label><div class="sg-segwrap">' +
-        seg('sgprio', 'all', 'All') + seg('sgprio', 'top', 'Stage Gate Prioritization List') + '</div></div>' +
+        seg('sgprio', 'all', 'All') + seg('sgprio', 'top', 'Stage Gate Top 20')   /* 10/16/26 Rev 3 label */ + '</div></div>' +
         dd.rest +   /* 9/17/26 S2 */
         /* 8/27/26 per Kristen: show the project count only. The "N need EPO review
            status" tally and the per-row "!" badge were both removed at her request
@@ -6552,10 +6656,9 @@
           '<td class="sg-sm">' + esc(r.owner || '—') + '</td>' +
           /* 9/17/26 per Kristen: R&D Lead wraps (S4); Stage is plain text, its progress
              visual moved to the drawer (S5); Active Duration moved to the drawer (S3). */
-          '<td class="sg-sm wrap">' + esc(r.rd && r.rd !== 'N/A' ? r.rd : '—') + '</td>' +
+          /* 10/16/26 Rev 3 per Kristen: R&D Lead, Status and Stage columns removed to declutter
+             the table. Their dropdown filters stay; the values moved to pop-out Project Details. */
           '<td>' + typ + '</td>' +
-          '<td>' + sgStatusPill(r.status) + '</td>' +   /* 10/16/26 Status column */
-          '<td><span class="sg-stage">' + esc(r.stage || '—') + '</span></td>' +
           '<td>' + sgDeadlineCell(r) + '</td>' +        /* 10/16/26 Deadline column (D2) */
           '<td>' + pct + '</td>' +
           '<td>' + sgHealthCell(r) + '</td>' +
@@ -6572,8 +6675,8 @@
          hover. Status and Deadline columns added. */
       document.getElementById('stagegate-body').innerHTML = head +
         '<div class="sg-scroll" id="sg-scroll"><table class="sg-tbl"><thead><tr>' +
-        sgTh('ID') + sgTh('Project Name') + sgTh('Project Owner') + sgTh('R&amp;D Lead') +
-        sgTh('Project Type') + sgTh('Status') + sgTh('Stage') +
+        sgTh('ID') + sgTh('Project Name') + sgTh('Project Owner') +
+        sgTh('Project Type') +
         sgTh('Deadline', 'Timeline row 1 End Date (1st ship, or production transition). Before a timeline exists: Desired 1st Production Date. Otherwise TBD.') +
         sgTh('Progress to Deadline') +
         sgTh('Health', 'Based on project timeline, anticipated days +/- to achieving Deadline') +
@@ -6619,9 +6722,15 @@
         (i < 0 ? '<div class="sg-val muted" style="margin-top:6px">Current stage: ' + esc(r.stage || 'not set') + '</div>' : '');
     }
     function sgPageDetails(r) {
-      return '<div class="sgp-cols c2"><div class="sg-blk">' +
+      /* 10/16/26 Rev 3: Status, Stage and R&D Lead moved here from the table and pop header. */
+      return '<div class="sgp-cols"><div class="sg-blk">' +   /* single column: 2x type needs the width */
         '<h4>Project Details</h4>' +
-        '<div class="sg-lbl">Stage</div>' +
+        '<div class="sgp-facts">' +
+        '<div><div class="sg-lbl">Status</div><div class="sg-val">' + sgStatusPill(r.status) + '</div></div>' +
+        '<div><div class="sg-lbl">Stage</div><div class="sg-val">' + esc(r.stage || '—') + '</div></div>' +
+        '<div><div class="sg-lbl">R&amp;D Lead</div><div class="sg-val">' + esc(r.rd && r.rd !== 'N/A' ? r.rd : '—') + '</div></div>' +
+        '</div>' +
+        '<div class="sg-lbl">Stage Gates</div>' +
         '<div class="sg-val">' + sgGateStepper(r) + '</div>' +
         '<div class="sg-lbl">Active Duration</div>' +
         '<div class="sg-val">' + (r.dur != null ? r.dur.toFixed(1) + ' months' : '&mdash;') + '</div>' +
@@ -6633,7 +6742,7 @@
         '<div class="sg-val' + (r.context ? '' : ' muted') + '">' +
         esc(r.context || 'Not populated on the master sheet.') + '</div>' +
         sgSheetLink(r) +
-        '</div><div></div></div>';
+        '</div></div>';
     }
     /* 10/16/26 per Kristen (#18, D1): Resource Span = Idea Gate to End Date, the same
        window Resource Utilization spreads hours over (commResourceSpan). Deadline is
@@ -6653,21 +6762,25 @@
       return '<div class="sg-lbl">Resource Span (Idea Gate &rarr; End Date)</div>' +
         '<div class="sg-val">' + txt +
         (dl.date ? '<span style="color:#6B7280;margin-left:12px">Deadline ' + esc(sgFmtDate(dl.date)) + '</span>' : '') +
-        (notes.length ? '<div style="font-size:11.5px;color:#6B7280;margin-top:2px">' + notes.map(esc).join('<br>') + '</div>' : '') +
+        (notes.length ? '<div class="sgp-sub">' + notes.map(esc).join('<br>') + '</div>' : '') +
         '</div>';
     }
     function sgPageFinance(r) {
       return '<div class="sgp-cols c2">' + sgFinancialBlock(r) + sgThresholdBlock(r) + '</div>';
     }
     /* 10/16/26 per Kristen (#24, D7): visible at every stage, not only Scoping. */
+    /* 10/16/26 Rev 3 per Kristen: each value sits BELOW its label (the formula values are
+       long, e.g. "High Awaiting: R&D - Product/Process, ...", and side-by-side they ran
+       into the label), and Scoping Inputs takes 1/3 of the width so Function Call Outs gets 2/3. */
     function sgPageScoping(r) {
-      function v(x) { return x ? esc(x) : null; }
-      var rows =
-        sgKV('Cross-Functional Complexity Rating', v(r.complexity)) +
-        sgKV('Total Est Resource Hours', v(r.totalEstHrs)) +
-        sgKV('Project Costs &ndash; R&amp;D Estimate', sgMoney(r.rdCost));
-      return '<div class="sgp-cols c2"><div class="sg-blk"><h4>Scoping Inputs</h4>' +
-        (rows || '<div class="sg-val muted">No scoping inputs on this row.</div>') +
+      function stack(k, v) {
+        return '<div class="sg-lbl">' + k + '</div>' +
+          '<div class="sg-val' + (v ? '' : ' muted') + '">' + (v || 'Not populated on the master sheet.') + '</div>';
+      }
+      return '<div class="sgp-cols c13"><div class="sg-blk"><h4>Scoping Inputs</h4>' +
+        stack('Cross-Functional Complexity Rating', r.complexity ? esc(r.complexity) : null) +
+        stack('Total Est Resource Hours', r.totalEstHrs ? esc(r.totalEstHrs) : null) +
+        stack('Project Costs &ndash; R&amp;D Estimate', sgMoney(r.rdCost)) +
         '</div><div class="sg-blk"><h4>Function Call Outs</h4>' +
         '<div class="sg-val pre' + (r.fnCallOuts ? '' : ' muted') + '">' + esc(r.fnCallOuts || 'Not populated on the master sheet.') + '</div>' +
         '</div></div>';
@@ -6732,7 +6845,22 @@
       return '<div class="sg-kv"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
     }
 
+    /* 10/16/26 Rev 3 per Kristen: Continuity and Cost Savings projects are not judged on
+       margin or net sales, so their Threshold Review shows only SG Filter Result, Cost
+       Impact Score, Cost Savings $K and/or Size of Business Impacted $K (each only when
+       populated) and CXO Waiver (when populated). Every other type is unchanged. */
+    function sgIsContinuityType(r) { return /^\s*(continuity|cost\s*savings)\s*$/i.test(String(r.type || '')); }
     function sgThresholdBlock(r) {
+      if (sgIsContinuityType(r)) {
+        var crows =
+          sgKV('SG Filter Result', r.sgFilter ? sgVerdict(r.sgFilter) : null) +
+          sgKV('Cost Impact Score', r.scCost ? sgVerdict(r.scCost) : null) +
+          sgKV('Cost Savings', sgMoney(r.costRiskSav)) +
+          sgKV('Size of Business Impacted', sgMoney(r.sizeBizImpacted)) +
+          sgKV('CXO Waiver', r.cxoWaiver ? esc(r.cxoWaiver) : null);
+        return '<div class="sg-blk"><h4>Threshold Review <span class="sg-dec">3</span></h4>' +
+          (crows || '<div class="sg-val muted">No threshold data on this row.</div>') + '</div>';
+      }
       var rows =
         sgKV('Criteria Met Count', r.critMet ? esc(r.critMet) : null) +
         sgKV('SG Filter Result', r.sgFilter ? sgVerdict(r.sgFilter) : null) +
@@ -6964,8 +7092,16 @@
        Resolved Date); closed risks / assumptions / issues / actions are hidden. */
     function sgRaidIsClosed(e) { return /^\s*closed\s*$/i.test(e.status || ''); }
     function sgRaidOpen(entries) { return (entries || []).filter(function (e) { return !sgRaidIsClosed(e); }); }
+    /* 10/16/26 Rev 3 per Kristen: closed decisions listed after all open items. */
     function sgRaidShown(entries) {
-      return (entries || []).filter(function (e) { return !sgRaidIsClosed(e) || /decision/i.test(e.category || ''); });
+      var open = (entries || []).filter(function (e) { return !sgRaidIsClosed(e); });
+      var closedDec = (entries || []).filter(function (e) { return sgRaidIsClosed(e) && /decision/i.test(e.category || ''); });
+      return open.concat(closedDec);
+    }
+    function sgMilestonesShown(ms) {
+      var d = new Date(); d.setDate(d.getDate() - 30);
+      var cutoff = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      return (ms || []).filter(function (m) { return !m.done || (m.end && m.end >= cutoff); });
     }
     function statusPill(st) {
       var t = String(st || '').toLowerCase(), cls = 'queue';
@@ -7016,8 +7152,13 @@
       if (!c || c.loading) inner = '<div class="blk-load">Reading the timeline&hellip;</div>';
       else if (c.error === 'no-timeline') inner = '<div class="blk-empty">No timeline sheet is linked for this project.</div>';
       else if (c.error) inner = '<div class="blk-empty">Timeline could not be read: ' + esc(c.error) + '</div>';
-      else if (!c.milestones.length) inner = '<div class="blk-empty">No milestones on this timeline (no Task Name containing MILESTONE and no Milestone checkbox ticked).</div>';
-      else inner = '<div class="blk-scroll">' + c.milestones.map(function (m) {
+      /* 10/16/26 Rev 3 per Kristen: completed (DONE) milestones show only when their End
+         Date is within the past 30 days. Future and overdue milestones always show. */
+      var msShown = (c && !c.loading && !c.error) ? sgMilestonesShown(c.milestones) : [];
+      var msHidden = (c && !c.loading && !c.error) ? c.milestones.length - msShown.length : 0;
+      if (c && !c.loading && !c.error && !c.milestones.length) inner = '<div class="blk-empty">No milestones on this timeline (no Task Name containing MILESTONE and no Milestone checkbox ticked).</div>';
+      else if (c && !c.loading && !c.error && !msShown.length) inner = '<div class="blk-empty">No open or recently completed milestones.</div>';
+      else if (c && !c.loading && !c.error) inner = '<div class="blk-scroll">' + msShown.map(function (m) {
         return '<div class="ms' + (m.late ? ' late' : (m.done ? ' done' : '')) + '">' +
           '<div class="ms-t">' + esc(m.title) + '</div>' +
           '<div class="tk-meta">' +
@@ -7027,8 +7168,9 @@
           (m.who ? '<span class="tk-p">' + esc(String(m.who).split(',')[0]) + '</span>' : '') +
           '</div></div>';
       }).join('') + '</div>';
+      if (msHidden) inner += '<div class="blk-load" style="margin-top:6px">' + msHidden + ' milestone' + (msHidden === 1 ? '' : 's') + ' completed more than 30 days ago hidden.</div>';
       var late = (c && !c.loading && !c.error) ? c.milestones.filter(function (m) { return m.late; }).length : 0;
-      var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + c.milestones.length + '</span>' +
+      var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + msShown.length + '</span>' +
         (late ? ' <span class="tk-p late">' + late + ' OVERDUE</span>' : '') : '';
       return '<div class="sg-blk"><h4>Milestones' + n + '</h4>' + inner + '</div>';
     }
@@ -7125,10 +7267,8 @@
         '<button type="button" class="sgp-x" data-sgpclose="1" title="Close (Esc)">&#10005;</button></div>' +
         '<div class="sgp-meta">' +
         m('Project Owner', esc(r.owner || '—')) +
-        m('R&amp;D Lead', esc(r.rd && r.rd !== 'N/A' ? r.rd : '—')) +
         m('Project Type', esc(r.type || '—')) +
-        m('Status', sgStatusPill(r.status)) +
-        m('Stage', esc(r.stage || '—')) +
+        /* 10/16/26 Rev 3: header mirrors the table columns; R&D Lead, Status, Stage are on Project Details */
         m('Deadline', sgDeadlineCell(r)) +
         m('Progress to Deadline', pctTxt) +
         m('Health', sgHealthCell(r)) +
@@ -7138,7 +7278,7 @@
           return '<button type="button" class="sgp-tab' + (p.k === page ? ' on' : '') + '" data-sgpage="' + p.k + '">' + p.label +
             (p.k === 4 && hot ? '<span class="n" title="Open RAID + at-risk tasks + overdue milestones">' + hot + '</span>' : '') + '</button>';
         }).join('') + '</div>' +
-        '<div class="sgp-body">' + bodyHtml + '</div></div>';
+        '<div class="sgp-body' + (page < 4 ? ' sgp-big' : '') + '">' + bodyHtml + '</div></div>';
       el.className = 'show';
       el.setAttribute('data-page', String(page)); el.setAttribute('data-key', String(SG_POP.key));
       if (samePage) { var nb = el.querySelector('.sgp-body'); if (nb) nb.scrollTop = st; }
@@ -7252,6 +7392,7 @@
           (Object.keys(HEALTH).length - scored) + ' linked-but-grey' +
           '  \u2014 run healthReport() for the remediation list');
         if (TAB === 'comm' && COMM_VIEW === 'stagegate') renderStageGate();
+        if (TAB === 'ent') renderEnterprise();   /* 10/16/26 D11: flag rows show Health */
       }).catch(function (e) {
         HEALTH_LOADED = true;
         /* 10/16/26: let the flags/pop-out settle (as "no timeline") instead of loading forever. */
@@ -7399,6 +7540,8 @@
             if (p.itResources && p.itResources.length) h += '<div class="det-row"><span class="det-lbl">RESOURCES</span><span class="det-val">' + esc(p.itResources.join(', ')) + '</span></div>';
             if (p.itEstHrs) h += '<div class="det-row"><span class="det-lbl">IT EST. HOURS' + (p.isDesignEstimate ? ' (Build→Post Support, not yet started)' : '') + '</span><span class="det-val">' + fmtHrs(p.itEstHrs) + '</span></div>';
           } else if (p.owner) h += '<div class="det-row"><span class="det-lbl">OWNER</span><span class="det-val">' + esc(p.owner) + '</span></div>';
+          /* 10/16/26 Rev 3 per Kristen: R&D Lead under OWNER (Comm). */
+          if (p.source === 'Commercialization') h += '<div class="det-row"><span class="det-lbl">R&amp;D LEAD</span><span class="det-val">' + esc(p.rdLead && p.rdLead !== 'N/A' ? p.rdLead : '—') + '</span></div>';
           if (p.epoLead) h += '<div class="det-row"><span class="det-lbl">EPO LEAD</span><span class="det-val">' + esc(p.epoLead) + '</span></div>';
           var sd = fmtDate(p.startDate), ed = fmtDate(p.endDate);
           if (p.isDesignEstimate) {
@@ -7844,6 +7987,46 @@
         console.log(i.n, '->', m.length ? m.map(function (h) { return h.src + ':' + (h.id || '?') + ' ' + h.name; }) : '(no match)');
       });
     }
+    /* ── 10/16/26 D11: KEY INITIATIVE DRIVES THE COMM SIDE OF THE ENTERPRISE TAB ──
+       Kristen (Rev 3, 16 Oct): "Proceed with Key Initiative Check = Enterprise Tab".
+       Comm first, additive:
+         - every Comm project with Key Initiative ticked appears on this tab;
+         - rows already on Patty's list that map to a Comm project (sg = P-ID, or the
+           Protein roll-up) keep their hand-entered status, lead and milestones and are
+           NOT duplicated;
+         - a flagged project with no row on the list gets its own live row (lead =
+           Project Owner, Health from the timeline, Deadline placed in its month);
+         - a hand-mapped Comm project whose Key Initiative box is NOT ticked is called
+           out on its row instead of silently disappearing.
+       Non-Comm initiatives (Workday, Coupa, ZZ...) still come from ENT_INITIATIVES until
+       the BS master carries the same flag. */
+    function entProteinRows() {
+      return (SG_ROWS || []).filter(function (r) { return r.keyInit && /protein/i.test(r.name || ''); });
+    }
+    function entClaimedIds() {
+      var c = {};
+      ENT_INITIATIVES.forEach(function (i) {
+        if (i.sg && /^P-\d+$/i.test(i.sg)) c[i.sg.toUpperCase()] = 1;
+        if (i.sg === 'protein') entProteinRows().forEach(function (r) { c[String(r.id || '').toUpperCase()] = 1; });
+        (i.ids || []).forEach(function (x) { c[String(x).toUpperCase()] = 1; });
+      });
+      return c;
+    }
+    function entKeyInitRows() {
+      var claimed = entClaimedIds();
+      return (SG_ROWS || []).filter(function (r) { return r.keyInit && r.id && !claimed[String(r.id).toUpperCase()]; })
+        .map(function (r) {
+          var ms = {}, dl = sgDeadline(r);
+          if (dl.date) { ms[String(dl.date).slice(0, 7)] = 'Deadline · ' + sgFmtDate(dl.date); }
+          return { n: r.name, s: '', l: r.owner || '', f: '', sg: String(r.id).toUpperCase(), ids: [], ms: ms, keyRow: r };
+        });
+    }
+    function entKeyFlagWarning(i) {
+      if (!i.sg || !/^P-\d+$/i.test(i.sg) || !SG_ROWS || !SG_ROWS.length) return '';
+      var r = sgRowByPid(i.sg.toUpperCase());
+      if (!r || r.keyInit) return '';
+      return '<div class="ent-live" style="color:#B7791F">Key Initiative is not ticked on the master for ' + esc(r.id) + '</div>';
+    }
     function entResolve(key) {
       if (!key) return null;
       if (!SG_ROWS || !SG_ROWS.length) return { pending: true };
@@ -7866,9 +8049,11 @@
       if (key === 'imagine') return agg(SG_ROWS.filter(function (r) {
         return /^(y|yes|true|1)$/i.test(String(r.imagine || '').trim());
       }), 'flagged');
-      if (key === 'protein') return agg(SG_ROWS.filter(function (r) {
-        return /protein\s*sauce/i.test(r.name || '');
-      }), 'projects');
+      /* 10/16/26 (D11, Kristen: Key Initiative = Enterprise flag). The old matcher looked
+         for "protein sauce" in the name and matched nothing (the projects are named
+         "Bertolli Protein Alfredo", "RAGU Protein Red", ...), so this row read SOURCE NOT
+         READ. It now rolls up the Key Initiative-flagged Protein projects. */
+      if (key === 'protein') return agg(entProteinRows(), 'projects');
       if (key === 'portfolio') return agg(SG_ROWS.filter(function (r) {
         return r.status === 'Active' || isOnHold(r.status);
       }), 'active');
@@ -7924,7 +8109,11 @@
     }
     function renderEnterprise() {
       var now = nk();
-      var sourced = ENT_INITIATIVES.filter(function (i) {
+      /* 10/16/26 D11: Patty's list plus any Key Initiative-flagged Comm project not on it. */
+      var ENT_ROWS = ENT_INITIATIVES.concat(entKeyInitRows());
+      var nKey = ENT_ROWS.length - ENT_INITIATIVES.length;
+      document.getElementById('tab-count').textContent = ENT_ROWS.length + ' initiatives';   /* renderAll sets it from ENT_INITIATIVES alone */
+      var sourced = ENT_ROWS.filter(function (i) {
         var e = entByIds(i.ids);
         if (e && !e.pending && e.found.length) return true;
         if (i.sg) { var v = entResolve(i.sg); return !!(v && !v.missing && !v.pending); }
@@ -7932,8 +8121,8 @@
       }).length;
       var noStatus = ENT_INITIATIVES.filter(function (i) { return !i.s; }).length;
 
-      var head = '<div class="ent-head"><div class="ent-cnt"><b>' + ENT_INITIATIVES.length +
-        '</b> initiatives &middot; ' + sourced + ' resolved to live Smartsheet data &middot; ' +
+      var head = '<div class="ent-head"><div class="ent-cnt"><b>' + ENT_ROWS.length +
+        '</b> initiatives' + (nKey ? ' (' + nKey + ' added by the Key Initiative flag)' : '') + ' &middot; ' + sourced + ' resolved to live Smartsheet data &middot; ' +
         '<span style="color:#B7791F;font-weight:700">' + noStatus + ' with no status reported</span></div></div>';
 
       var ths = ENT_MONTHS.map(function (k) {
@@ -7941,18 +8130,23 @@
         return '<th class="mo' + q + '">' + entMonthLabel(k) + '</th>';
       }).join('');
 
-      var body = ENT_INITIATIVES.map(function (i) {
+      var body = ENT_ROWS.map(function (i) {
         var cells = ENT_MONTHS.map(function (k) {
           var q = /-(01|04|07|10)$/.test(k) ? ' q1' : '';
           var n = (k === now) ? ' now' : '';
           var m = i.ms[k];
           return '<td class="ent-mo' + q + n + '">' + (m ? '<span class="ent-ms">' + esc(m) + '</span>' : '') + '</td>';
         }).join('');
+        /* 10/16/26 D11: flag-driven rows show Health (timeline variance) in place of a
+           reported status, labelled as such, and carry a KEY INITIATIVE tag. */
+        var stCell = i.keyRow
+          ? '<span title="Health from the project timeline (no reported status for flag-driven rows)">' + sgHealthCell(i.keyRow) + '</span>'
+          : '<span class="ent-st ' + entStatusClass(i.s) + '">' + esc(i.s || 'NOT REPORTED') + '</span>';
         return '<tr>' +
-          '<td class="ent-nm">' + esc(i.n) + '</td>' +
+          '<td class="ent-nm">' + esc(i.n) + (i.keyRow ? ' <span class="ent-src live" title="Key Initiative ticked on the Stage Gate master">KEY INITIATIVE</span>' : '') + '</td>' +
           '<td class="ent-lead' + (i.l ? '' : ' unk') + '">' + esc(i.l || 'unassigned') + '</td>' +
-          '<td><span class="ent-st ' + entStatusClass(i.s) + '">' + esc(i.s || 'NOT REPORTED') + '</span></td>' +
-          '<td>' + entLiveCell(i) + '</td>' +
+          '<td>' + stCell + '</td>' +
+          '<td>' + entLiveCell(i) + entKeyFlagWarning(i) + '</td>' +
           cells + '</tr>';
       }).join('');
 
@@ -7964,6 +8158,8 @@
         'Status, lead and milestone text are transcribed from the Enterprise Portfolio ' +
         'Summary workbook and update only when that workbook is re-imported by hand. ' +
         'Live cells read the Stage Gate master directly and refresh with the dashboard. ' +
+        'Any Commercialization project with Key Initiative ticked on the Stage Gate master ' +
+        'appears here automatically. ' +
         '&ldquo;NO SOURCE&rdquo; means no system of record exists anywhere; ' +
         '&ldquo;SOURCE NOT READ&rdquo; means one exists but this dashboard does not ' +
         'yet consume it.</div>';
