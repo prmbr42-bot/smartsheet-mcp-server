@@ -373,6 +373,8 @@
       font-size: 12px
     }
 
+    /* 10/16/26 per Kristen (10/14 response): larger Department + Month headers and
+   larger %/hours in the grid. Was 11px/11px/12px/11px; widths nudged to fit. */
     .th-d {
       position: sticky;
       left: 0;
@@ -381,11 +383,11 @@
       color: #fff;
       padding: 8px 14px;
       text-align: left;
-      min-width: 210px;
-      width: 210px;
+      min-width: 230px;
+      width: 230px;
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 700;
-      font-size: 11px;
+      font-size: 14px;
       letter-spacing: .05em
     }
 
@@ -394,11 +396,11 @@
       color: rgba(255, 255, 255, .75);
       padding: 6px 2px;
       text-align: center;
-      min-width: 68px;
-      width: 68px;
+      min-width: 72px;
+      width: 72px;
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 600;
-      font-size: 11px;
+      font-size: 14px;
       border-left: 1px solid rgba(255, 255, 255, .06)
     }
 
@@ -464,8 +466,8 @@
       left: 0;
       z-index: 4;
       padding: 0 14px;
-      min-width: 210px;
-      width: 210px;
+      min-width: 230px;
+      width: 230px;
       border-right: 2px solid var(--border)
     }
 
@@ -478,12 +480,12 @@
 
     .dnm {
       font-weight: 600;
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 140px
+      max-width: 165px
     }
 
     .ctd {
@@ -512,7 +514,7 @@
     }
 
     .cv {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
       line-height: 36px
     }
@@ -1627,19 +1629,80 @@
     }
 
     /* 9/17/26 S1 */
-    .sg-sortable {
-      cursor: pointer;
-      user-select: none
+    /* 10/16/26 per Kristen (10/14 response): header sort removed, filters cover it. */
+    .sg-st {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      white-space: nowrap;
+      background: #D9F0E3;
+      color: #166534
     }
 
-    .sg-sortable:hover {
-      background: #245F43
+    /* 10/16/26 Status column */
+    .sg-st.hold {
+      background: #FDF0DC;
+      color: #8A5A12
     }
 
-    /* 9/17/26 S2 */
-    .sg-sortidle {
-      opacity: .45;
-      font-size: 10px
+    .sg-st.pend {
+      background: #E7EEF9;
+      color: #1D4ED8
+    }
+
+    .sg-st.arch {
+      background: #EDEFED;
+      color: #6B7280
+    }
+
+    .sg-dl {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0D2818;
+      white-space: nowrap;
+      cursor: help
+    }
+
+    /* 10/16/26 Deadline column */
+    .sg-dl.fb {
+      color: #6B7280;
+      font-weight: 500
+    }
+
+    .sg-dl.tbd {
+      color: #B7791F;
+      font-weight: 700
+    }
+
+    .sg-info {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .22);
+      font-size: 10px;
+      font-weight: 800;
+      margin-left: 5px;
+      cursor: help;
+      vertical-align: 1px
+    }
+
+    .sg-rank {
+      display: inline-block;
+      min-width: 22px;
+      padding: 1px 5px;
+      margin-right: 6px;
+      border-radius: 3px;
+      background: #0D2818;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center
     }
 
     .sg-sel {
@@ -2173,6 +2236,366 @@
       padding-right: 4px
     }
 
+    /* ── STAGE GATE FULL-SCREEN POP-OUT (10/16/26, Kristen 10/14 response) ──
+   Replaces the inline drawer. Sits below the sticky dashboard header so that
+   header stays visible; the project's own table fields repeat in the pop header. */
+    #sg-pop {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: 62px;
+      z-index: 150;
+      background: rgba(13, 40, 24, .45);
+      display: none;
+      padding: 18px 24px 24px
+    }
+
+    #sg-pop.show {
+      display: block
+    }
+
+    .sgp {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    .sgp-hd {
+      background: var(--dark);
+      color: #fff;
+      padding: 14px 20px 12px;
+      flex-shrink: 0
+    }
+
+    .sgp-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px
+    }
+
+    .sgp-id {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--mint);
+      letter-spacing: .05em
+    }
+
+    .sgp-nm {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-top: 1px
+    }
+
+    .sgp-x {
+      background: rgba(255, 255, 255, .1);
+      border: none;
+      color: #fff;
+      border-radius: 4px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 15px;
+      flex-shrink: 0
+    }
+
+    .sgp-x:hover {
+      background: rgba(255, 255, 255, .2)
+    }
+
+    .sgp-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 22px;
+      margin-top: 11px
+    }
+
+    .sgp-m {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0
+    }
+
+    .sgp-m .k {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .45)
+    }
+
+    .sgp-m .v {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap
+    }
+
+    .sgp-m .v .sg-dl {
+      color: #fff
+    }
+
+    .sgp-m .v .sg-dl.fb {
+      color: rgba(255, 255, 255, .7)
+    }
+
+    .sgp-m .v .sg-hv {
+      color: #fff
+    }
+
+    .sgp-m .v .sg-bar {
+      min-width: 110px;
+      background: rgba(255, 255, 255, .18)
+    }
+
+    .sgp-m .v .sg-bar b {
+      color: #fff
+    }
+
+    .sgp-tabs {
+      display: flex;
+      gap: 2px;
+      padding: 0 14px;
+      background: #F0EDE6;
+      border-bottom: 1px solid #DDD6CE;
+      flex-shrink: 0
+    }
+
+    .sgp-tab {
+      border: none;
+      background: none;
+      padding: 11px 16px 10px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 13px;
+      color: #4B5563;
+      cursor: pointer;
+      border-bottom: 3px solid transparent
+    }
+
+    .sgp-tab:hover {
+      color: #0D2818
+    }
+
+    .sgp-tab.on {
+      color: #0D2818;
+      border-bottom-color: #52B788;
+      background: #fff
+    }
+
+    .sgp-tab .n {
+      display: inline-block;
+      margin-left: 6px;
+      min-width: 18px;
+      padding: 0 5px;
+      border-radius: 9px;
+      background: #D64545;
+      color: #fff;
+      font-size: 10px;
+      line-height: 16px;
+      text-align: center
+    }
+
+    .sgp-body {
+      flex: 1;
+      overflow: auto;
+      padding: 22px 26px 26px
+    }
+
+    .sgp-cols {
+      display: grid;
+      gap: 26px 34px
+    }
+
+    .sgp-cols.c2 {
+      grid-template-columns: 1fr 1fr
+    }
+
+    .sgp-cols.c3 {
+      grid-template-columns: 1fr 1fr 1fr
+    }
+
+    .sgp-body .blk-scroll {
+      max-height: none;
+      overflow: visible
+    }
+
+    .sgp-note {
+      background: #FDF0DC;
+      border: 1px solid #F3D9A9;
+      color: #8A5A12;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 18px
+    }
+
+    .sgp-arch {
+      background: #F3F4F6;
+      border: 1px solid #E5E7EB;
+      border-radius: 6px;
+      padding: 26px;
+      text-align: center;
+      color: #4B5563;
+      font-size: 13px;
+      line-height: 1.6
+    }
+
+    .sgp-arch b {
+      display: block;
+      font-size: 16px;
+      color: #0D2818;
+      margin-bottom: 4px
+    }
+
+    /* Stage stepper with gate approval dates beneath each stage */
+    .sg-gstp {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap
+    }
+
+    .sg-gstp .g {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 118px
+    }
+
+    .sg-gstp .g span {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 8px;
+      background: #EFF1EF;
+      color: #9CA3AF;
+      border-radius: 2px;
+      white-space: nowrap;
+      text-align: center
+    }
+
+    .sg-gstp .g.at span {
+      background: #52B788;
+      color: #0D2818
+    }
+
+    .sg-gstp .g.pre span {
+      background: #CDE9DA;
+      color: #4B5563
+    }
+
+    .sg-gstp .g small {
+      font-size: 10px;
+      color: #6B7280;
+      text-align: center;
+      line-height: 1.3
+    }
+
+    .sg-gstp .g small b {
+      display: block;
+      font-size: 9px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #9CA3AF;
+      font-weight: 800
+    }
+
+    /* Milestones + closed decisions */
+    .ms {
+      border: 1px solid #E3E8E5;
+      border-left: 3px solid #52B788;
+      border-radius: 4px;
+      padding: 9px 12px;
+      margin-bottom: 8px;
+      background: #fff
+    }
+
+    .ms.late {
+      border-left-color: #D64545;
+      background: #FFF8F8
+    }
+
+    .ms.done {
+      border-left-color: #C7CDC9;
+      opacity: .75
+    }
+
+    .ms-t {
+      font-weight: 700;
+      font-size: 12.5px;
+      color: #0D2818;
+      line-height: 1.35;
+      margin-bottom: 5px
+    }
+
+    .rd-x {
+      font-size: 11.5px;
+      color: #374151;
+      margin-top: 5px;
+      line-height: 1.5
+    }
+
+    .rd-x i {
+      color: #9CA3AF
+    }
+
+    /* Table flag columns (#13) */
+    .sg-fl {
+      display: inline-block;
+      min-width: 24px;
+      padding: 2px 7px;
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      background: #EDEFED;
+      color: #9CA3AF
+    }
+
+    .sg-fl.hot {
+      background: #FBDDDD;
+      color: #991B1B
+    }
+
+    .sg-fl.na {
+      background: none;
+      color: #C7CDC9;
+      cursor: help
+    }
+
+    .sg-fl.ld {
+      background: none;
+      color: #C7CDC9
+    }
+
+    .sg-tbl thead th.fl {
+      white-space: normal;
+      line-height: 1.15;
+      min-width: 62px;
+      max-width: 84px;
+      text-align: center
+    }
+
+    .sg-tbl td.fl {
+      text-align: center
+    }
+
+    .sgp-body .sg-kv {
+      max-width: 520px
+    }
+
+    /* keep label and value together on wide screens */
+    .sg-gstp .g {
+      min-width: 140px
+    }
+
     /* ── ENTERPRISE ROADMAP (8/27/26) ── */
     .ent-wrap {
       padding: 0
@@ -2524,6 +2947,9 @@
     <div class="dfoot">Click any project to expand · Hours prorated by working-days overlap (see Methodology bar above
       for tab-specific basis)</div>
   </div>
+
+  <!-- 10/16/26: Stage Gate full-screen pop-out (replaces the inline drawer). Filled by renderSGPop. -->
+  <div id="sg-pop"></div>
 
   <script>
     'use strict';
@@ -2920,8 +3346,11 @@
        automatically instead. Capped at 2 retries; a manual Refresh always resets. */
     var LOAD_RETRY = 0;
     var LOAD_RETRY_MAX = 3;
-    var SG_FILTER = { status: 'active', bu: 'all', ptype: 'all', stage: '', owner: '', rd: '', sgrel: 'all' };  /* 9/21/26: + sgrel (All / Stage Gate Relevant) */  /* 9/17/26 S2: + stage/owner/rd dropdowns */
-    var SG_SORT = { key: null, dir: 1 };   /* 9/17/26 S2: header sort; key null = sheet order */  // Kristen's filters (+ ptype 9/11/26)
+    var SG_FILTER = { status: 'active', bu: 'all', ptype: 'all', stage: '', owner: '', rd: '', sgrel: 'all', sgprio: 'all' };  /* 9/21/26: + sgrel (All / Stage Gate Relevant) */  /* 9/17/26 S2: + stage/owner/rd dropdowns */
+    /* 10/16/26: status is now a dropdown. 'active' (Active + On Hold, the default) and
+       'all' are the two virtual options; any other value is an exact Status value from
+       the master. sgprio: 'all' | 'top' (Stage Gate Prioritization List, rank 1-20).
+       SG_SORT (header sort) removed 10/16/26 per Kristen. */
 
     /* 9/11/26 per Jerry. Project Type filter, two roll-ups plus All.
        Groups supplied verbatim; nothing inferred. Matching is case-insensitive and
@@ -2969,7 +3398,8 @@
       keys.forEach(function (k) { console.log('   ' + k + '  \u00d7' + out[k]); });
       return out;
     }
-    var SG_EXPANDED = {};                              // Stage Gate inline drill: projectId -> true (8/27/26)
+    /* SG_EXPANDED (inline drawer state, 8/27/26) retired 10/16/26: the drawer is now a
+       full-screen pop-out, state in SG_POP (see sgOpenPop). */
     /* ════════════════════════════════════════════════════════
        PROJECT HEALTH  (9/10/26)
        ────────────────────────────────────────────────────────
@@ -3189,6 +3619,46 @@
     function isOnHold(status) { return /on.hold|on_hold|onhold|hold|paused/i.test(status || ''); }
 
     /* ════════════════════════════════════════════════════════
+       COMM RESOURCE SPAN  (10/16/26, Kristen D1 + 10/14 direction)
+       ────────────────────────────────────────────────────────
+       ONE definition of a Comm project's resource span, used by the hours math
+       (parseSheet), the RU sidebar Span (#32) and the Stage Gate pop-out Span (#18),
+       so no two views can show different end dates.
+         Start = Idea Gate Approval Date
+                 -> Charter Gate Approval Date -> Created date
+         End   = Complete Date ("date resources are released, after Intensive Care")
+                 -> Desired 1st Production Date + 28 days (closeout / follow-ups; the
+                    only date known at intake, before a timeline exists)
+                 -> start + Project Owner Estimated Duration (Months), the pre-existing
+                    last resort
+       Before this change the Comm parse looked for "Anticipated/Actual End Date" and
+       "Revised Target End Date", neither of which exists on the master, so it silently
+       ended every span on Desired 1st Production Date (P-0051 ended in January while
+       its Complete Date is 18 Feb). Spans started at Charter Gate.
+       Inputs are raw cell values; DATE cells arrive as YYYY-MM-DD, "Created date"
+       as a full ISO timestamp. Date maths is done in UTC so +28 days never drifts a
+       day across a DST change. */
+    var COMM_CLOSEOUT_DAYS = 28;
+    function commIsoDay(v) { var m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v || '')); return m ? m[1] : null; }
+    function commAddDays(iso, days) {
+      var p = iso.split('-'), t = Date.UTC(+p[0], +p[1] - 1, +p[2]) + days * 86400000;
+      return new Date(t).toISOString().slice(0, 10);
+    }
+    function commResourceSpan(o) {
+      var s = null, sb = null, e = null, eb = null;
+      if (commIsoDay(o.idea)) { s = commIsoDay(o.idea); sb = 'Idea Gate Approval Date'; }
+      else if (commIsoDay(o.charter)) { s = commIsoDay(o.charter); sb = 'Charter Gate Approval Date (no Idea Gate date)'; }
+      else if (commIsoDay(o.created)) { s = commIsoDay(o.created); sb = 'Created date (no gate approval dates)'; }
+      if (commIsoDay(o.complete)) { e = commIsoDay(o.complete); eb = 'Complete Date'; }
+      else if (commIsoDay(o.desired)) { e = commAddDays(commIsoDay(o.desired), COMM_CLOSEOUT_DAYS); eb = 'Desired 1st Production Date + ' + COMM_CLOSEOUT_DAYS + ' days (no Complete Date)'; }
+      else {
+        var dur = parseFloat(o.durMonths);
+        if (s && !isNaN(dur) && dur > 0) { e = commAddDays(s, Math.round(dur * 30.44)); eb = 'Start + Project Owner Estimated Duration (no Complete or Desired 1st Production Date)'; }
+      }
+      return { start: s, startBasis: sb, end: e, endBasis: eb };
+    }
+
+    /* ════════════════════════════════════════════════════════
        API
     ════════════════════════════════════════════════════════ */
     function ssGet(path) {
@@ -3251,6 +3721,19 @@
         if (!ed && durationCol) {
           var dur = parseFloat(g(durationCol)); var startD = pd(sd);
           if (!isNaN(dur) && dur > 0 && startD) { var endD = new Date(startD); endD.setDate(endD.getDate() + Math.round(dur * 30.44)); ed = endD.toISOString().split('T')[0]; }
+        }
+        /* 10/16/26 (Kristen D1): Comm span comes from commResourceSpan, the single
+           definition shared with the RU sidebar and the Stage Gate pop-out. It replaces
+           the generic sc / endCols / durationCol result above for Comm only; BS is
+           untouched. */
+        var commSpan = null;
+        if (src === 'Commercialization') {
+          commSpan = commResourceSpan({
+            idea: g('Idea Gate Approval Date'), charter: g('Charter Gate Approval Date'),
+            created: g('Created date'), complete: g('Complete Date'), desired: g('Desired 1st Production Date'),
+            durMonths: durationCol ? g(durationCol) : null
+          });
+          sd = commSpan.start; ed = commSpan.end;
         }
         /* Design-hours feature (7/6/26): raw Created Date (Enterprise Review's
            Gantt bar start) and raw Design Kickoff Date (Design-hours spread
@@ -3485,6 +3968,8 @@
         acc.push({
           name: nm, status: st, startDate: effStartDate, endDate: ed, source: src, ftes: ftes, hoursByDept: hoursByDept,
           endDateEstimated: (typeof endDateEstimated !== 'undefined') && endDateEstimated,
+          spanStartBasis: commSpan ? commSpan.startBasis : null,   /* 10/16/26 Comm only */
+          spanEndBasis: commSpan ? commSpan.endBasis : null,
           rowId: row.id, rowPermalink: row.permalink || null,
           projectId: projectId,
           percentComplete: isNaN(pct) ? null : pct,
@@ -3528,6 +4013,29 @@
        columns) is prorated across months by working-day-overlap fraction in a
        dedicated branch below. p.ftes is always empty for Comm now.
     ════════════════════════════════════════════════════════ */
+    /* 10/16/26: Comm phase weighting (see the Comm branch of buildMX). Phases are whole,
+       non-overlapping day ranges so a boundary day is never counted twice. */
+    var COMM_PHASE_WEIGHTS = [{ to: 0.10, w: 0.10 }, { to: 0.50, w: 0.60 }, { to: 0.90, w: 0.20 }, { to: 1.00, w: 0.10 }];
+    function commWeightedSegments(s, e) {
+      var a = new Date(s); a.setHours(0, 0, 0, 0);
+      var b = new Date(e); b.setHours(0, 0, 0, 0);
+      var days = Math.round((b - a) / 86400000) + 1;   /* inclusive calendar days */
+      if (days <= 0) return [];
+      var out = [], prev = 0;
+      COMM_PHASE_WEIGHTS.forEach(function (ph, k) {
+        var upto = (k === COMM_PHASE_WEIGHTS.length - 1) ? days : Math.round(days * ph.to);
+        if (upto > prev) {
+          var ss = new Date(a); ss.setDate(ss.getDate() + prev);
+          var ee = new Date(a); ee.setDate(ee.getDate() + upto - 1);
+          var wd = wdays(ss, ee);
+          if (wd > 0) out.push({ s: ss, e: ee, wd: wd, w: ph.w });
+        }
+        prev = Math.max(prev, upto);
+      });
+      var tw = out.reduce(function (t, x) { return t + x.w; }, 0);
+      out.forEach(function (x) { x.w = x.w / tw; });   /* renormalise if a phase had no working days */
+      return out;
+    }
     function buildMX(projs) {
       var mx = {};
       projs.forEach(function (p) {
@@ -3600,15 +4108,30 @@
            "X FTE" line (see renderPFRowDetailHTML / drill popup). */
         if (p.source === 'Commercialization') {
           var totalWd = wdays(s, e);
+          /* 10/16/26 per Kristen: front-loaded weighting instead of a flat spread.
+             "Resource load is higher in the 1st half of the timeline, then lighter."
+             The span is cut into four phases by calendar position; each phase carries a
+             fixed share of the hours, spread evenly by working days inside the phase:
+                Scoping      0-10% of span   10% of hours
+                Feasibility 10-50%           60%
+                Capability  50-90%           20%
+                Launch      90-100%          10%
+             A phase with no working days (very short spans) gives its share to the
+             phases that have them, so total hours are always conserved. */
+          var segs = commWeightedSegments(s, e);
           Object.keys(p.hoursByDept || {}).forEach(function (dept) {
-            var totalHrs = p.hoursByDept[dept]; if (!totalHrs || totalHrs <= 0 || !totalWd) return;
+            var totalHrs = p.hoursByDept[dept]; if (!totalHrs || totalHrs <= 0 || !totalWd || !segs.length) return;
             if (!mx[dept]) mx[dept] = {};
             MONTHS.forEach(function (mo) {
-              var os = new Date(Math.max(s.getTime(), mo.start.getTime()));
-              var oe = new Date(Math.min(e.getTime(), mo.end.getTime()));
-              if (os > oe) return;
-              var od = wdays(os, oe); if (!od) return;
-              var hrs = totalHrs * (od / totalWd);
+              var hrs = 0;
+              segs.forEach(function (sg) {
+                var os = new Date(Math.max(sg.s.getTime(), mo.start.getTime()));
+                var oe = new Date(Math.min(sg.e.getTime(), mo.end.getTime()));
+                if (os > oe) return;
+                var od = wdays(os, oe); if (!od) return;
+                hrs += totalHrs * sg.w * (od / sg.wd);
+              });
+              if (!hrs) return;
               if (!mx[dept][mo.key]) mx[dept][mo.key] = { totalHours: 0, projects: [] };
               mx[dept][mo.key].totalHours += hrs;
               mx[dept][mo.key].projects.push({
@@ -3624,7 +4147,9 @@
                 itOwnerName: p.itOwnerName || null,
                 itResources: p.itResources || [],
                 itEstHrs: p.itEstHrs || null,
-                statusUpdate: p.statusUpdate || null
+                statusUpdate: p.statusUpdate || null,
+                spanStartBasis: p.spanStartBasis || null,   /* 10/16/26: shown in the RU sidebar Span */
+                spanEndBasis: p.spanEndBasis || null
               });
             });
           });
@@ -4233,7 +4758,10 @@
           id: g('ID'), category: g('RAID Category'), description: desc,
           status: g('Status'), assignedTo: g('Assigned To'),
           probability: g('Probability'), impact: g('Impact'),
-          actionTaken: g('Action Taken'), dueDate: g('Due Date')
+          /* 10/16/26 (D5): one log titles the column "Action Taken or Comments"; Resolved
+             Date added for closed decisions. Additive, BS readers ignore both. */
+          actionTaken: g('Action Taken') || g('Action Taken or Comments'), dueDate: g('Due Date'),
+          resolvedDate: g('Resolved Date')
         });
         return acc;
       }, []);
@@ -4302,6 +4830,10 @@
       /* Any user-initiated load (Refresh, Retry, initial boot) resets the counter so
          the guard can never permanently exhaust itself. */
       if (!isRetry) LOAD_RETRY = 0;
+      /* 10/16/26: timeline caches reset too, or a Refresh would never re-read timelines
+         (the prefetch skips anything already cached). Bumping SG_PREFETCH_RUN stops any
+         prefetch still running from the previous load. */
+      TL_CACHE = {}; TL_ROW1_END = {}; TL_RESOLVED = false; SG_PREFETCH_RUN++;
       setLoad(true); RAID_CACHE = {}; RAID_INDEX = { comm: {}, bs: {} }; EXPANDED = {}; BS_CAP = {}; COMM_CAP = {}; IT_ACTIVE_INDEX = {}; IT_ACTIVE_ROWS = []; PF_EXPANDED = {}; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
       document.getElementById('load-msg').textContent = 'Fetching Commercialization + Business Support…';
       Promise.all([
@@ -4316,8 +4848,11 @@
           /* Store API-provided sheet permalinks — SSO-aware, correct encoded format */
           SHEET_PERMALINKS['Commercialization'] = res[0].permalink || ('https://app.smartsheet.com/sheets/' + COMM_ID);
           SHEET_PERMALINKS['Business Support'] = res[1].permalink || ('https://app.smartsheet.com/sheets/' + BS_ID);
-          var comm = parseSheet(res[0], CFMAP, 'Charter Gate Approval Date',
-            ['Anticipated/Actual End Date', 'Revised Target End Date', 'Desired 1st Production Date', 'Original Target End Date'],
+          /* 10/16/26: the start / end arguments now name the D1 primaries, but for Comm
+             the span is decided by commResourceSpan inside parseSheet (fallbacks included).
+             Only durationCol is still read from here. */
+          var comm = parseSheet(res[0], CFMAP, 'Idea Gate Approval Date',
+            ['Complete Date'],
             'Project Owner Estimated Duration (Months)', 'Created date', 'Commercialization');
           /* Note: 'Project ID' column is fetched automatically — parseSheet reads all columns */
           var bs = parseSheet(res[1], BFMAP, 'Design (Kickoff) Date',
@@ -4475,7 +5010,8 @@
       applyViewHeader();   /* 9/17/26 (G2, G3) */
       /* Swap methodology bar */
       document.getElementById('mbar').innerHTML = TAB === 'comm'
-        ? '<strong>Methodology:</strong> Monthly Hours = Est. Total Project Hours (per dept) prorated by Working Days Overlap &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(COMM_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>')
+        /* 10/16/26: describes the D1 span and the 10/60/20/10 phase weighting */
+        ? '<strong>Methodology:</strong> Est. Total Project Hours (per dept) spread from Idea Gate to End Date (Complete Date, else Desired 1st Production + 28 days), weighted 10% Scoping / 60% Feasibility / 20% Capability / 10% Launch across the span &nbsp;|&nbsp; Active projects only &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(COMM_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>')
         : '<strong>Methodology:</strong> Monthly Hours = FTE × 8 hrs/day × Working Days Overlap, except IT & Digital = IT Owner Estimated Hours spread across project working days, except Design = flat complexity-based estimate (High=28/Medium=12/Low=8 hrs/mo, not prorated) &nbsp;|&nbsp; Capacity = Monthly Hours from Department Capacity Sheet &nbsp;|&nbsp; <span style="color:#6EE7B7">●</span> Live Smartsheet' + (Object.keys(BS_CAP).length ? '' : '&nbsp;&nbsp;<span style="color:#F97316">⚠ Capacity sheet loading…</span>');
       /* View toggle only applies to BS */
       /* 8/27/26: toggle now shows on BOTH tabs; the per-tab button sets are
@@ -4516,6 +5052,8 @@
     }
 
     function renderKPIs(fp, mx) {
+      /* 10/16/26: Comm shows 3 tiles (Kristen #27), BS keeps the 5-column CSS grid. */
+      document.getElementById('kpi-strip').style.gridTemplateColumns = (TAB === 'bs') ? '' : 'repeat(3,1fr)';
       if (TAB === 'bs') { renderKPIsBS(); return; }
       renderKPIsComm(fp, mx);
     }
@@ -4533,33 +5071,34 @@
             alone since it's used all over BS's drill panels/captions where the
             abbreviation is still wanted.
          4-5. Depts Near Capacity / Projects On Hold — unchanged. */
+    /* 10/16/26 per Kristen (#27, D8, D10): three tiles only.
+         1. Total Projects, split "N Active · N On Hold" (On Hold counted, carries no hours)
+         2. Current Month Hour Demand (unchanged)
+         3. Depts Above Capacity = OVER 100% of monthly capacity (was "Near", >= 90%)
+       High Priority Projects and Projects On Hold tiles removed. The old High Priority
+       tile was also the click-to-filter entry for PF_SLICER.priority on Comm; with the
+       tile gone nothing sets it on Comm, and it starts null on every load. */
     function renderKPIsComm(fp, mx) {
-      function ia(s) { return /active|in.progress|test|build|deployment|post.support|design/i.test(s || ''); }
-      function ip(s) { return /pending|discovery|enterprise.review/i.test(s || ''); }
-      var dem = 0, nr = 0, ov = 0;
+      var dem = 0, ov = 0;
       Object.keys(mx).forEach(function (d) {
         var cell = mx[d][CK]; if (!cell) return;
         dem += cell.totalHours;
         var capH = COMM_CAP[d] || null;
-        if (capH) { if (cell.totalHours >= capH * 0.9) nr++; if (cell.totalHours > capH) ov++; }
+        if (capH && cell.totalHours > capH) ov++;
       });
-      var holdKpi = PROJECTS.filter(function (p) { return p.source === 'Commercialization' && !p.capacityExcluded && isOnHold(p.status); }).length;
-      var highProjs = curPortfolioProjects().filter(function (p) { return p.priorityTier === 'High'; });
-      var priorityActive = PF_SLICER.priority === 'High';
+      /* Counted from PROJECTS, not fp: fp honours SHOW_ON_HOLD, a BS-only toggle that
+         can be left off before switching to Comm, which would zero the On Hold count. */
+      var commLive = PROJECTS.filter(function (p) { return p.source === 'Commercialization' && !p.capacityExcluded; });
+      var nAct = commLive.filter(function (p) { return /^\s*active\s*$/i.test(p.status || ''); }).length;
+      var nHold = commLive.filter(function (p) { return isOnHold(p.status); }).length;
       var ks = [
-        {
-          v: highProjs.length, l: 'High Priority Projects', s: priorityActive ? 'Filter active — click to clear' : 'Click to filter dashboard',
-          acc: priorityActive ? '#EF4444' : '#F97316', clickable: true
-        },
-        { v: fp.length, l: 'Total Projects', s: fp.filter(function (p) { return ia(p.status); }).length + ' active · ' + fp.filter(function (p) { return ip(p.status); }).length + ' pending', acc: '#52B788', clickable: false },
-        { v: Math.round(dem) + ' h', l: 'Current Month Hour Demand', s: 'Est. hours prorated by working-day overlap', acc: '#2563EB', clickable: false },
-        { v: nr, l: 'Depts Near Capacity', s: '≥ 90% hours utilized this month', acc: '#F97316', clickable: false },
-        { v: holdKpi, l: 'Projects On Hold', s: 'Not included in hrs', acc: ov > 0 ? '#EF4444' : '#22C55E', clickable: false }
+        { v: nAct + nHold, l: 'Total Projects', s: nAct + ' Active · ' + nHold + ' On Hold', acc: '#52B788', hot: false },
+        { v: Math.round(dem) + ' h', l: 'Current Month Hour Demand', s: 'Active projects only · front-loaded across Idea Gate → End Date', acc: '#2563EB', hot: false },
+        { v: ov, l: 'Depts Above Capacity', s: 'Over 100% of monthly capacity this month', acc: '#EF4444', hot: ov > 0 }
       ];
-      document.getElementById('kpi-strip').innerHTML = ks.map(function (k, i) {
-        return '<div class="kpi-card' + (k.clickable ? ' kpi-clickable' : '') + (k === ks[0] && priorityActive ? ' kpi-active' : '') + '" style="border-top:3px solid ' + k.acc + '"'
-          + (k.clickable ? ' data-kpi-priority="1"' : '') + '>'
-          + '<div class="kv" style="color:' + (i >= 3 && k.v > 0 ? k.acc : 'var(--dark)') + '">' + k.v + '</div>'
+      document.getElementById('kpi-strip').innerHTML = ks.map(function (k) {
+        return '<div class="kpi-card" style="border-top:3px solid ' + k.acc + '">'
+          + '<div class="kv" style="color:' + (k.hot ? k.acc : 'var(--dark)') + '">' + k.v + '</div>'
           + '<div class="kl">' + k.l + '</div><div class="ks">' + k.s + '</div></div>';
       }).join('');
     }
@@ -5748,7 +6287,31 @@
           salesCallOuts: g('Sales Call Outs'),
           financeCallOuts: g('Finance Call Outs'),  /* 9/17/26 DR9: TEXT, 14 populated */
           /* 9/17/26 S8: DATE column; read the raw YYYY-MM-DD value, not the display string. */
-          sgAgenda: (t2id['Anticipated SG Agenda Date'] != null ? (byV[t2id['Anticipated SG Agenda Date']] || null) : null)
+          sgAgenda: (t2id['Anticipated SG Agenda Date'] != null ? (byV[t2id['Anticipated SG Agenda Date']] || null) : null),
+          /* 10/16/26 per Kristen (D2): Deadline fallback when there is no timeline row 1
+             End Date. DATE column, raw YYYY-MM-DD value. */
+          desired1st: (t2id['Desired 1st Production Date'] != null ? (byV[t2id['Desired 1st Production Date']] || null) : null),
+          /* 10/16/26 per Kristen: Stage Gate Prioritization List = rank 1-20 in this
+             TEXT_NUMBER column. Anything not a whole number 1-20 is not on the list. */
+          sgPriority: num('Stage Gate Priority'),
+          /* 10/16/26 per Kristen (pop-out page 1): gate approval dates under each stage.
+             DATE columns, raw YYYY-MM-DD values. */
+          ideaGate: (t2id['Idea Gate Approval Date'] != null ? (byV[t2id['Idea Gate Approval Date']] || null) : null),
+          charterGate: (t2id['Charter Gate Approval Date'] != null ? (byV[t2id['Charter Gate Approval Date']] || null) : null),
+          contractGate: (t2id['Contract Gate Approval Date'] != null ? (byV[t2id['Contract Gate Approval Date']] || null) : null),
+          mreadyGate: (t2id['Market Ready Gate Approval Date'] != null ? (byV[t2id['Market Ready Gate Approval Date']] || null) : null),
+          /* 10/16/26 (#21, D9): TEXT column holding a date ("8/14/2026"), shown as written. */
+          cxoWaiver: g('CXO Waiver'),
+          /* 10/16/26 (#24, D7): Scoping Inputs page. All three are formula TEXT columns
+             that can read "No departments identified"; shown as written. */
+          complexity: g('Cross-Functional Complexity Rating'),
+          totalEstHrs: g('Total Est Resource Hours'),
+          fnCallOuts: g('Function Call Outs'),
+          /* 10/16/26 (#18, D1): raw inputs for commResourceSpan, so the pop-out Span is
+             computed exactly as the Resource Utilization hours window is. */
+          completeDate: (t2id['Complete Date'] != null ? (byV[t2id['Complete Date']] || null) : null),
+          createdDate: (t2id['Created date'] != null ? (byV[t2id['Created date']] || null) : null),
+          ownerDurMonths: (t2id['Project Owner Estimated Duration (Months)'] != null ? (byV[t2id['Project Owner Estimated Duration (Months)']] || null) : null)
         };
       }).filter(function (r) { return r.id || r.name; });
     }
@@ -5780,9 +6343,58 @@
       return false;
     }
 
+    /* 10/16/26 per Kristen (#5, D6): Status slicer as a dropdown like Stage. The
+       master Status is a formula and writes Active / On Hold - Business / Pending /
+       CANCELED / COMPLETE / REJECTED, so the shouting values are title-cased for
+       display only. Matching always uses the raw value. */
+    function sgStatusLabel(s) {
+      var t = String(s || '').trim(); if (!t) return '';
+      return (t === t.toUpperCase()) ? t.charAt(0) + t.slice(1).toLowerCase() : t;
+    }
+    function sgIsArchived(s) { return /^(cancel+ed|complete|completed|rejected)$/i.test(String(s || '').trim()); }
+    function sgStatusPill(s) {
+      var t = String(s || '').trim(); if (!t) return '<span class="sg-no">&mdash;</span>';
+      var cls = isOnHold(t) ? ' hold' : (/^pending$/i.test(t) ? ' pend' : (sgIsArchived(t) ? ' arch' : ''));
+      return '<span class="sg-st' + cls + '">' + esc(sgStatusLabel(t)) + '</span>';
+    }
+    /* 10/16/26 per Kristen: rank 1-20 only, whole numbers. */
+    function sgRank(r) {
+      var n = r.sgPriority;
+      return (n != null && n >= 1 && n <= 20 && Math.floor(n) === n) ? n : null;
+    }
+    /* 10/16/26 per Kristen (D2, 10/14 response): Deadline =
+         1. timeline row 1 End Date (PCMs build row 1 off 1st ship / production transition)
+         2. Desired 1st Production Date (the only date known at intake, before a timeline)
+         3. "TBD"
+       Row 1 End Date is captured by loadTimelineHealth, which already reads row 1. */
+    var TL_ROW1_END = {};   /* projectId -> row 1 End Date (YYYY-MM-DD) */
+    function sgDeadline(r) {
+      var pid = String(r.id || '').toUpperCase();
+      if (TL_ROW1_END[pid]) return { date: TL_ROW1_END[pid], src: 'tl' };
+      if (r.desired1st) return { date: r.desired1st, src: 'desired' };
+      return { date: null, src: 'tbd' };
+    }
+    function sgFmtDate(v) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || '')); if (!m) return String(v || '');
+      return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function sgDeadlineCell(r) {
+      var dl = sgDeadline(r);
+      if (dl.src === 'tbd') return '<span class="sg-dl tbd" title="No timeline row 1 End Date and no Desired 1st Production Date on the master">TBD</span>';
+      var tip = dl.src === 'tl' ? 'Timeline row 1 End Date'
+        : (TL_LINK[String(r.id || '').toUpperCase()] ? 'Desired 1st Production Date (timeline row 1 has no End Date)'
+          : (HEALTH_LOADED ? 'Desired 1st Production Date (no timeline yet)' : 'Desired 1st Production Date (timeline still loading)'));
+      return '<span class="sg-dl' + (dl.src === 'tl' ? '' : ' fb') + '" title="' + esc(tip) + '">' + esc(sgFmtDate(dl.date)) + '</span>';
+    }
+    function sgStatusMatch(r, f) {
+      if (f === 'all') return true;
+      if (f === 'active') return r.status === 'Active' || isOnHold(r.status);
+      return r.status === f;
+    }
     function sgFiltered() {
-      return SG_ROWS.filter(function (r) {
-        if (SG_FILTER.status === 'active' && !(r.status === 'Active' || isOnHold(r.status))) return false;
+      var out = SG_ROWS.filter(function (r) {
+        if (!sgStatusMatch(r, SG_FILTER.status)) return false;
+        if (SG_FILTER.sgprio === 'top' && sgRank(r) == null) return false;
         if (!sgBUMatch(r.bu, SG_FILTER.bu)) return false;
         if (!sgPTypeMatch(r, SG_FILTER.ptype)) return false;
         /* 9/17/26 (S2): dropdown filters. R&D Lead matches any one name in a multi-name cell. */
@@ -5793,44 +6405,25 @@
         if (SG_FILTER.sgrel === 'rel' && !sgAgendaDate(r)) return false;
         return true;
       });
+      /* 10/16/26: the Prioritization List is shown in rank order. Everything else
+         stays in sheet order (header sort was removed). */
+      if (SG_FILTER.sgprio === 'top') out.sort(function (a, b) { return sgRank(a) - sgRank(b); });
+      return out;
     }
-    /* ── 9/17/26 (S2) per Kristen: sort or filter by Stage, Project Type, Owner, R&D Lead ──
-       Header click cycles ascending, descending, off (back to sheet order). Blanks always sort last.
-       Filters are dropdowns for Stage, Owner and R&D Lead; Project Type already has its toggle. */
+    /* ── 9/17/26 (S2) per Kristen: filter by Stage, Owner, R&D Lead (dropdowns).
+       10/16/26: header-click SORT removed per Kristen ("don't need ability to sort since
+       all the filters were added"). sgSortVal / sgSortRows / sgCycleSort / SG_SORT and
+       the .sg-sortable CSS went with it. */
     function sgRdNames(v) { var t = String(v || '').trim(); if (!t || t === 'N/A') return []; return t.split(/\s*[,;]\s*/).filter(Boolean); }
-    function sgSortVal(r, k) {
-      if (k === 'stage') return String(r.stage || '');
-      if (k === 'type') return String(r.type || '');
-      if (k === 'owner') return String(r.owner || '');
-      if (k === 'rd') return sgRdNames(r.rd).join(', ');
-      return '';
-    }
-    function sgSortRows(rows) {
-      if (!SG_SORT.key) return rows;
-      var k = SG_SORT.key, d = SG_SORT.dir;
-      return rows.slice().sort(function (a, b) {
-        var x = sgSortVal(a, k), y = sgSortVal(b, k);
-        if (!x && !y) return 0; if (!x) return 1; if (!y) return -1;
-        return d * x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' });
-      });
-    }
-    function sgCycleSort(k) {
-      if (SG_SORT.key !== k) SG_SORT = { key: k, dir: 1 };
-      else if (SG_SORT.dir === 1) SG_SORT.dir = -1;
-      else SG_SORT = { key: null, dir: 1 };
-      renderStageGate();
-    }
-    function sgTh(label, k) {
-      if (!k) return '<th>' + label + '</th>';
-      var on = SG_SORT.key === k;
-      var arrow = on ? (SG_SORT.dir === 1 ? ' &#9650;' : ' &#9660;') : ' <span class="sg-sortidle">&#8693;</span>';
-      return '<th class="sg-sortable' + (on ? ' on' : '') + '" data-sgsort="' + k + '" title="Click to sort">' + label + arrow + '</th>';
+    function sgTh(label, tip, cls) {
+      return '<th' + (cls ? ' class="' + cls + '"' : '') + '>' + label + (tip ? '<span class="sg-info" title="' + esc(tip) + '">i</span>' : '') + '</th>';
     }
     function sgDropdowns() {
-      var stages = {}, owners = {}, rds = {};
+      var stages = {}, owners = {}, rds = {}, sts = {};
       SG_ROWS.forEach(function (r) {
         if (r.stage) stages[r.stage] = 1;
         if (r.owner) owners[r.owner] = 1;
+        if (r.status) sts[r.status] = 1;
         sgRdNames(r.rd).forEach(function (n) { rds[n] = 1; });
       });
       function sel(k, label, map) {
@@ -5840,9 +6433,24 @@
           keys.map(function (v) { return '<option value="' + esc(v) + '"' + (SG_FILTER[k] === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') +
           '</select></div>';
       }
+      /* 10/16/26 per Kristen (#5): Status dropdown, first in the row. Default stays
+         Active + On Hold; "All" includes Pending (0-Discovery) and Complete (5-Post Launch),
+         which the default hides. Individual statuses listed in a fixed, readable order,
+         then anything new the formula starts producing. */
+      var ORDER = ['Active', 'On Hold - Business', 'Pending', 'COMPLETE', 'CANCELED', 'REJECTED'];
+      var stKeys = ORDER.filter(function (s) { return sts[s]; })
+        .concat(Object.keys(sts).filter(function (s) { return ORDER.indexOf(s) < 0; }).sort());
+      var stSel = '<div class="sg-grp"><label>Status</label><select class="sg-sel' + (SG_FILTER.status !== 'active' ? ' on' : '') + '" data-sgsel="status">' +
+        '<option value="active"' + (SG_FILTER.status === 'active' ? ' selected' : '') + '>Active + On Hold</option>' +
+        '<option value="all"' + (SG_FILTER.status === 'all' ? ' selected' : '') + '>All</option>' +
+        stKeys.map(function (v) { return '<option value="' + esc(v) + '"' + (SG_FILTER.status === v ? ' selected' : '') + '>' + esc(sgStatusLabel(v)) + '</option>'; }).join('') +
+        '</select></div>';
       var any = SG_FILTER.stage || SG_FILTER.owner || SG_FILTER.rd;
-      return sel('stage', 'Stage', stages) + sel('owner', 'Project Owner', owners) + sel('rd', 'R&amp;D Lead', rds) +
-        (any ? '<div class="sg-grp"><label>&nbsp;</label><button type="button" class="sg-clear" data-sgclear="1">Clear</button></div>' : '');
+      return {
+        status: stSel,
+        rest: sel('stage', 'Stage', stages) + sel('owner', 'Project Owner', owners) + sel('rd', 'R&amp;D Lead', rds) +
+          (any ? '<div class="sg-grp"><label>&nbsp;</label><button type="button" class="sg-clear" data-sgclear="1">Clear</button></div>' : '')
+      };
     }
     /* 9/17/26 (S8) per Kristen: star when Anticipated SG Agenda Date is today through 28 days out. */
     /* 9/21/26: agenda test split out so the star (S8) and the Stage Gate Relevant filter
@@ -5886,15 +6494,15 @@
       return ' &middot; <span class="sg-hcount">Health: <b>' + n + '</b> of ' + rows.length + ' scored</span>';
     }
     function renderStageGate() {
-      var rows = sgSortRows(sgFiltered());   /* 9/17/26 S2 */
+      var rows = sgFiltered();   /* 10/16/26: no header sort; Prioritization List is rank-ordered inside sgFiltered */
       var _prevSc = document.getElementById('sg-scroll'), _scTop = _prevSc ? _prevSc.scrollTop : 0;   /* 9/17/26 S1: keep scroll across re-renders */
       function seg(k, v, label) {
         return '<button type="button" class="sg-seg' + (SG_FILTER[k] === v ? ' on' : '') +
           '" data-sgf="' + k + '" data-sgv="' + v + '">' + label + '</button>';
       }
+      var dd = sgDropdowns();
       var head = '<div class="sg-ctl">' +
-        '<div class="sg-grp"><label>Status</label><div class="sg-segwrap">' +
-        seg('status', 'active', 'Active / On Hold') + seg('status', 'all', 'All') + '</div></div>' +
+        dd.status +   /* 10/16/26 per Kristen (#5): Status is a dropdown like Stage */
         '<div class="sg-grp"><label>Business Unit</label><div class="sg-segwrap">' +
         seg('bu', 'all', 'All') + seg('bu', 'MS', 'MS') + seg('bu', 'FE', 'FE') + '</div></div>' +
         '<div class="sg-grp"><label>Project Type</label><div class="sg-segwrap">' +
@@ -5905,7 +6513,10 @@
         /* 9/21/26 per Kristen: All / Stage Gate Relevant, default All; after Project Type, before Stage */
         '<div class="sg-grp"><label>SG Agenda</label><div class="sg-segwrap">' +
         seg('sgrel', 'all', 'All') + seg('sgrel', 'rel', 'Stage Gate Relevant') + '</div></div>' +
-        sgDropdowns() +   /* 9/17/26 S2 */
+        /* 10/16/26 per Kristen: Stage Gate Prioritization List (rank 1-20 from "Stage Gate Priority") */
+        '<div class="sg-grp"><label>Prioritization</label><div class="sg-segwrap">' +
+        seg('sgprio', 'all', 'All') + seg('sgprio', 'top', 'Stage Gate Prioritization List') + '</div></div>' +
+        dd.rest +   /* 9/17/26 S2 */
         /* 8/27/26 per Kristen: show the project count only. The "N need EPO review
            status" tally and the per-row "!" badge were both removed at her request
            — she does not want non-Approved rows called out on this view. NOTE this
@@ -5928,30 +6539,45 @@
             ? '<span class="sg-notl" title="Timeline is linked, but the % Complete cell on the master sheet is blank">No % on master</span>'
             : '<span class="sg-notl" title="No linked timeline sheet, so there is no % complete to read">No timeline</span>')
           : '<div class="sg-bar"><i style="width:' + Math.round(r.pct * 100) + '%"></i><b>' + Math.round(r.pct * 100) + '%</b></div>';
-        var typ = isOnHold(r.status)
-          ? '<span class="sg-tag hold">ON HOLD</span>'
-          : '<span class="sg-tag">' + esc(r.type || '—') + '</span>';
-        var open = !!SG_EXPANDED[r.id || r.name];
-        return '<tr class="sg-row' + (open ? ' open' : '') + '" data-sgrow="' + esc(r.id || r.name) + '">' +
-          '<td class="sg-id"><i class="sg-cx"></i>' + esc(r.id) + '</td>' +
+        /* 10/16/26 per Kristen: ON HOLD no longer replaces the Project Type; status has its own column. */
+        var typ = '<span class="sg-tag">' + esc(r.type || '—') + '</span>';
+        var rank = (SG_FILTER.sgprio === 'top') ? '<span class="sg-rank" title="Stage Gate Priority">' + sgRank(r) + '</span>' : '';
+        var fpid = esc(String(r.id || '').toUpperCase()), fl = sgFlagCells(r);
+        return '<tr class="sg-row" data-sgrow="' + esc(r.id || r.name) + '">' +
+          '<td class="sg-id"><i class="sg-cx"></i>' + rank + esc(r.id) + '</td>' +
           '<td class="sg-nm">' + esc(r.name) + '</td>' +
           '<td class="sg-sm">' + esc(r.owner || '—') + '</td>' +
           /* 9/17/26 per Kristen: R&D Lead wraps (S4); Stage is plain text, its progress
              visual moved to the drawer (S5); Active Duration moved to the drawer (S3). */
           '<td class="sg-sm wrap">' + esc(r.rd && r.rd !== 'N/A' ? r.rd : '—') + '</td>' +
           '<td>' + typ + '</td>' +
+          '<td>' + sgStatusPill(r.status) + '</td>' +   /* 10/16/26 Status column */
           '<td><span class="sg-stage">' + esc(r.stage || '—') + '</span></td>' +
+          '<td>' + sgDeadlineCell(r) + '</td>' +        /* 10/16/26 Deadline column (D2) */
           '<td>' + pct + '</td>' +
           '<td>' + sgHealthCell(r) + '</td>' +
-          '<td class="sg-star">' + sgAgendaStar(r) + '</td></tr>' +   /* 9/17/26 S8 */
-          (open ? '<tr class="sg-det"><td colspan="9">' + sgDetail(r) + '</td></tr>' : '');
+          /* 10/16/26 per Kristen (#13, D3/D4/D12): flag columns, filled in place by sgDataArrived */
+          '<td class="fl" data-sgflag="' + fpid + '" data-sgfk="raid">' + fl.raid + '</td>' +
+          '<td class="fl" data-sgflag="' + fpid + '" data-sgfk="risk">' + fl.risk + '</td>' +
+          '<td class="fl" data-sgflag="' + fpid + '" data-sgfk="ms">' + fl.ms + '</td>' +
+          '<td class="sg-star">' + sgAgendaStar(r) + '</td></tr>';   /* 9/17/26 S8 */
+        /* 10/16/26: no inline drawer row any more; see sgOpenPop / renderSGPop. */
       }).join('');
 
+      /* 10/16/26 per Kristen: "% Complete" header renamed "Progress to Deadline" (the value
+         is unchanged, still the master % Complete). Health carries its definition as a
+         hover. Status and Deadline columns added. */
       document.getElementById('stagegate-body').innerHTML = head +
         '<div class="sg-scroll" id="sg-scroll"><table class="sg-tbl"><thead><tr>' +
-        sgTh('ID') + sgTh('Project Name') + sgTh('Project Owner', 'owner') + sgTh('R&amp;D Lead', 'rd') +
-        sgTh('Project Type', 'type') + sgTh('Stage', 'stage') + sgTh('% Complete') +
-        sgTh('Health') + sgTh('SG Agenda') +
+        sgTh('ID') + sgTh('Project Name') + sgTh('Project Owner') + sgTh('R&amp;D Lead') +
+        sgTh('Project Type') + sgTh('Status') + sgTh('Stage') +
+        sgTh('Deadline', 'Timeline row 1 End Date (1st ship, or production transition). Before a timeline exists: Desired 1st Production Date. Otherwise TBD.') +
+        sgTh('Progress to Deadline') +
+        sgTh('Health', 'Based on project timeline, anticipated days +/- to achieving Deadline') +
+        sgTh('Open RAID', 'RAID log items with any status other than Closed', 'fl') +
+        sgTh('At-Risk Tasks', 'Open timeline tasks with the At Risk box ticked. A dash means the timeline has no At Risk column.', 'fl') +
+        sgTh('Milestones Past Due', 'Milestones (MILESTONE in the Task Name, or the Milestone box ticked) whose End Date has passed and are under 100% complete', 'fl') +
+        sgTh('SG Agenda') +
         '</tr></thead><tbody>' + body + '</tbody></table></div>';
       var _sc = document.getElementById('sg-scroll'); if (_sc) { sgSizeScroll(); _sc.scrollTop = _scTop; }
       sgBind();
@@ -5964,15 +6590,39 @@
        yet read by parseStageGate, and wiring 19+ new column lookups in the same
        change as the expand mechanics would make a failure impossible to isolate.
        Steps 2 and 3 replace the two placeholder calls below, nothing else. */
-    function sgDetail(r) {
-      var det =
-        '<div class="sg-blk">' +
+    /* 10/16/26 per Kristen (10/14 response): the inline drawer became a full-screen
+       pop-out with four pages. The old sgDetail(r) built everything in one block; it is
+       split into one function per page below. Block renderers (sgFinancialBlock,
+       sgThresholdBlock, sgRaidBlock, sgTasksBlock) are reused unchanged in shape. */
+    var SG_PAGES = [
+      { k: 1, label: 'Project Details' },
+      { k: 2, label: 'Financial Summary + Threshold Review' },
+      { k: 3, label: 'Scoping Inputs' },
+      { k: 4, label: 'RAID / At-Risk Tasks / Milestones' }
+    ];
+    /* Stage -> the gate whose approval moved the project INTO that stage. Matches the
+       Stage formula on the master (Pending Gate = Charter Gate => 1-Scoping, etc.). */
+    var SG_GATE_FOR_STAGE = {
+      '1-Scoping': ['Idea Gate', 'ideaGate'], '2-Feasibility': ['Charter Gate', 'charterGate'],
+      '3-Capability': ['Contract Gate', 'contractGate'], '4-Launch': ['Market Ready Gate', 'mreadyGate']
+    };
+    function sgGateStepper(r) {
+      var i = SG_STAGES.indexOf(r.stage);
+      return '<div class="sg-gstp">' + SG_STAGES.map(function (sname, j) {
+        var gate = SG_GATE_FOR_STAGE[sname], dv = r[gate[1]];
+        return '<div class="g ' + (j === i ? 'at' : (i > -1 && j < i ? 'pre' : '')) + '"><span>' + sname + '</span>' +
+          '<small><b>' + gate[0] + ' approval</b>' + (dv ? esc(sgFmtDate(dv)) : '&mdash;') + '</small></div>';
+      }).join('') + '</div>' +
+        (i < 0 ? '<div class="sg-val muted" style="margin-top:6px">Current stage: ' + esc(r.stage || 'not set') + '</div>' : '');
+    }
+    function sgPageDetails(r) {
+      return '<div class="sgp-cols c2"><div class="sg-blk">' +
         '<h4>Project Details</h4>' +
-        /* 9/17/26 (S5, S3): stage progress and Active Duration moved here from the table. */
         '<div class="sg-lbl">Stage</div>' +
-        '<div class="sg-val">' + sgStepper(r.stage) + '</div>' +
+        '<div class="sg-val">' + sgGateStepper(r) + '</div>' +
         '<div class="sg-lbl">Active Duration</div>' +
         '<div class="sg-val">' + (r.dur != null ? r.dur.toFixed(1) + ' months' : '&mdash;') + '</div>' +
+        sgSpanBlock(r) +   /* 10/16/26 (#18) */
         '<div class="sg-lbl">High Level Objective</div>' +
         '<div class="sg-val' + (r.objective ? '' : ' muted') + '">' +
         esc(r.objective || 'Not populated on the master sheet.') + '</div>' +
@@ -5980,17 +6630,56 @@
         '<div class="sg-val' + (r.context ? '' : ' muted') + '">' +
         esc(r.context || 'Not populated on the master sheet.') + '</div>' +
         sgSheetLink(r) +
-        '</div>' +
-        /* 9/17/26 (DR6) per Kristen: Financial Summary stacked on top of Threshold Review. */
-        '<div class="sg-stackcol">' + sgFinancialBlock(r) + sgThresholdBlock(r) + '</div>';
-
-      var lower =
-        '<div class="sg-dgrid two" style="margin-top:20px">' +
-        sgRaidBlock(r) +
-        sgTasksBlock(r) +
+        '</div><div></div></div>';
+    }
+    /* 10/16/26 per Kristen (#18, D1): Resource Span = Idea Gate to End Date, the same
+       window Resource Utilization spreads hours over (commResourceSpan). Deadline is
+       shown alongside because the two are different dates by design: Deadline is the
+       1st ship / production transition, End Date is when resources are released. */
+    function sgSpanBlock(r) {
+      var sp = commResourceSpan({
+        idea: r.ideaGate, charter: r.charterGate, created: r.createdDate,
+        complete: r.completeDate, desired: r.desired1st, durMonths: r.ownerDurMonths
+      });
+      var dl = sgDeadline(r);
+      var txt = (sp.start ? esc(sgFmtDate(sp.start)) : '?') + ' &rarr; ' + (sp.end ? esc(sgFmtDate(sp.end)) : '?');
+      var notes = [];
+      if (sp.startBasis && !/^Idea Gate/.test(sp.startBasis)) notes.push('Start: ' + sp.startBasis);
+      if (sp.endBasis && sp.endBasis !== 'Complete Date') notes.push('End: ' + sp.endBasis);
+      if (!sp.end) notes.push('No end date on the master, so this project carries no Resource Utilization hours.');
+      return '<div class="sg-lbl">Resource Span (Idea Gate &rarr; End Date)</div>' +
+        '<div class="sg-val">' + txt +
+        (dl.date ? '<span style="color:#6B7280;margin-left:12px">Deadline ' + esc(sgFmtDate(dl.date)) + '</span>' : '') +
+        (notes.length ? '<div style="font-size:11.5px;color:#6B7280;margin-top:2px">' + notes.map(esc).join('<br>') + '</div>' : '') +
         '</div>';
-
-      return '<div class="sg-dgrid stack2">' + det + '</div>' + lower;
+    }
+    function sgPageFinance(r) {
+      return '<div class="sgp-cols c2">' + sgFinancialBlock(r) + sgThresholdBlock(r) + '</div>';
+    }
+    /* 10/16/26 per Kristen (#24, D7): visible at every stage, not only Scoping. */
+    function sgPageScoping(r) {
+      function v(x) { return x ? esc(x) : null; }
+      var rows =
+        sgKV('Cross-Functional Complexity Rating', v(r.complexity)) +
+        sgKV('Total Est Resource Hours', v(r.totalEstHrs)) +
+        sgKV('Project Costs &ndash; R&amp;D Estimate', sgMoney(r.rdCost));
+      return '<div class="sgp-cols c2"><div class="sg-blk"><h4>Scoping Inputs</h4>' +
+        (rows || '<div class="sg-val muted">No scoping inputs on this row.</div>') +
+        '</div><div class="sg-blk"><h4>Function Call Outs</h4>' +
+        '<div class="sg-val pre' + (r.fnCallOuts ? '' : ' muted') + '">' + esc(r.fnCallOuts || 'Not populated on the master sheet.') + '</div>' +
+        '</div></div>';
+    }
+    /* 10/16/26 per Kristen: note at the top of this page for projects still in Scoping
+       (0-Discovery / 1-Scoping), where timelines and RAID logs do not exist yet.
+       D6: Canceled / Complete / Rejected projects live in archived folders the index
+       ignores (17 Sept), so say so rather than show three empty blocks. */
+    function sgInScoping(r) { return /^\s*[01]\s*-/.test(String(r.stage || '')); }
+    function sgPageWork(r) {
+      if (sgIsArchived(r.status)) return '<div class="sgp-arch"><b>Archived project</b>' +
+        esc(sgStatusLabel(r.status)) + ' projects sit in archived folders, which the dashboard does not read.<br>' +
+        'RAID, at-risk tasks and milestones are not shown.</div>';
+      return (sgInScoping(r) ? '<div class="sgp-note">Not Available in Scoping Stage</div>' : '') +
+        '<div class="sgp-cols c3">' + sgRaidBlock(r) + sgTasksBlock(r) + sgMilestonesBlock(r) + '</div>';
     }
 
     /* ── Inline drill formatters (8/27/26) ──────────────────────────────────
@@ -6050,7 +6739,9 @@
         sgKV('OGSM Strategy Score', r.scOGSM ? sgVerdict(r.scOGSM) : null) +
         sgKV('OGSM Categories', r.ogsmCat ? esc(r.ogsmCat) : null) +
         sgKV('Top 10 Customer Impacted', sgFlag(r.top10)) +
-        sgKV('Project Imagine related', sgFlag(r.imagine));
+        sgKV('Project Imagine related', sgFlag(r.imagine)) +
+        /* 10/16/26 per Kristen (#21, D9): the column holds a date, so show it when present. */
+        sgKV('CXO Waiver', r.cxoWaiver ? esc(r.cxoWaiver) : null);
       return '<div class="sg-blk"><h4>Threshold Review <span class="sg-dec">3</span></h4>' +
         (rows || '<div class="sg-val muted">No threshold data on this row.</div>') + '</div>';
     }
@@ -6121,66 +6812,157 @@
         text: str.slice(last.index + last[0].length).trim()
       };
     }
-    function loadDrawerData(pid) {
+    /* 10/16/26 — DATA FOR THE POP-OUT AND THE TABLE FLAG COLUMNS (#13, #17, #19).
+       Replaces loadDrawerData(). Same two sources, same caches, but:
+         - every timeline read now also extracts MILESTONES (#19, D12), and records
+           whether the sheet has an At Risk column at all (D4: dash, not 0, when missing);
+         - fetches are shared between the pop-out (on open) and a background prefetch
+           (sgPrefetchFlags) that fills the three flag columns on the table. Neither
+           path re-reads a project the other already has in flight or cached.
+       TL_CACHE[pid] = {loading, error, tasks[] (open At Risk), milestones[], hasAtRisk}
+       RAID_CACHE[pid] = {loading, error, entries[]}   (unfiltered; filtering is at render)
+    
+       MILESTONE (Kristen, D12 10/14): a task is a milestone if its Task Name contains
+       the word MILESTONE or its "Milestone" checkbox is ticked (timelines are moving to
+       the checkbox). OVERDUE = End Date before today AND % Complete under 100%.
+       Status is deliberately NOT used (450 timeline tasks have no status). A blank
+       % Complete counts as under 100%. */
+    var TL_RESOLVED = false;   /* true once loadTimelineHealth has mapped master links -> sheet ids */
+    function sgTodayISO() { var n = new Date(); return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0'); }
+    function sgParseTimeline(sh) {
+      var t2 = {}, titles = {};
+      (sh.columns || []).forEach(function (c) { t2[c.id] = c.title; titles[c.title] = 1; });
+      var hasAtRisk = !!titles['At Risk'], today = sgTodayISO(), tasks = [], ms = [];
+      (sh.rows || []).forEach(function (row) {
+        var o = {}; (row.cells || []).forEach(function (c) {
+          if (c.value != null) o[t2[c.columnId]] = c.value;
+          else if (c.displayValue != null) o[t2[c.columnId]] = c.displayValue;
+        });
+        var pctv = (typeof o['% Complete'] === 'number') ? o['% Complete'] : null;
+        var nm = splitTaskName(o['Task Name']);
+        var end = o['End Date'] ? String(o['End Date']).slice(0, 10) : '';
+        if (o['At Risk'] === true && !(pctv != null && pctv >= 1)) {
+          tasks.push({
+            title: nm.title || '(untitled task)', subs: nm.subs,
+            status: o['Status'] || '', cp: o['CP'] === true,
+            who: o['Assigned To'] || '', end: o['End Date'] || '',
+            pct: pctv, variance: o['Variance'] || '', note: latestNote(o['Notes/Updates'])
+          });
+        }
+        var isMs = o['Milestone'] === true || /\bmilestone\b/i.test(String(o['Task Name'] || ''));
+        if (isMs) {
+          var done = (pctv != null && pctv >= 1);
+          var late = !!end && end < today && !done;
+          ms.push({
+            title: (nm.title || '(untitled milestone)').replace(/\s*\(\s*milestone\s*\)\s*/i, ' ').trim(),
+            end: end, pct: pctv, done: done, late: late,
+            daysLate: late ? Math.round((new Date(today) - new Date(end)) / 86400000) : 0,
+            who: o['Assigned To'] || '', status: o['Status'] || ''
+          });
+        }
+      });
+      ms.sort(function (a, b) { return (a.end || '9999') < (b.end || '9999') ? -1 : ((a.end || '9999') > (b.end || '9999') ? 1 : 0); });
+      return { tasks: tasks, milestones: ms, hasAtRisk: hasAtRisk };
+    }
+    function sgFetchTimeline(pid) {
       pid = String(pid || '').toUpperCase();
-      /* --- timeline tasks --- */
-      if (!TL_CACHE[pid]) {
-        var sid = TL_SHEET[pid];
-        if (!sid) { TL_CACHE[pid] = { loading: false, tasks: [], error: 'no-timeline' }; }
-        else {
-          TL_CACHE[pid] = { loading: true, tasks: [] };
-          ssGet('/sheets/' + sid).then(function (sh) {
-            var t2 = {}; (sh.columns || []).forEach(function (c) { t2[c.id] = c.title; });
-            var tasks = [];
-            (sh.rows || []).forEach(function (row) {
-              var o = {}; (row.cells || []).forEach(function (c) {
-                if (c.value != null) o[t2[c.columnId]] = c.value;
-                else if (c.displayValue != null) o[t2[c.columnId]] = c.displayValue;
-              });
-              if (o['At Risk'] !== true) return;
-              var pctv = (typeof o['% Complete'] === 'number') ? o['% Complete'] : null;
-              if (pctv != null && pctv >= 1) return;          /* flagged but finished */
-              var nm = splitTaskName(o['Task Name']);
-              tasks.push({
-                title: nm.title || '(untitled task)', subs: nm.subs,
-                status: o['Status'] || '', cp: o['CP'] === true,
-                who: o['Assigned To'] || '', end: o['End Date'] || '',
-                pct: pctv, variance: o['Variance'] || '', note: latestNote(o['Notes/Updates'])
-              });
-            });
-            TL_CACHE[pid] = { loading: false, tasks: tasks };
-            if (SG_EXPANDED[pid]) renderStageGate();
-          }).catch(function (e) {
-            TL_CACHE[pid] = { loading: false, tasks: [], error: e.message };
-            if (SG_EXPANDED[pid]) renderStageGate();
-          });
-        }
+      if (TL_CACHE[pid]) return Promise.resolve();
+      /* Before the timeline map exists, "no TL_SHEET" does not mean "no timeline".
+         Do not cache anything; sgPrefetchFlags / the pop-out retry once it resolves. */
+      if (!TL_RESOLVED) return Promise.resolve();
+      var sid = TL_SHEET[pid];
+      if (!sid) { TL_CACHE[pid] = { loading: false, error: 'no-timeline', tasks: [], milestones: [], hasAtRisk: false }; sgDataArrived(pid); return Promise.resolve(); }
+      TL_CACHE[pid] = { loading: true, tasks: [], milestones: [] };
+      return ssGet('/sheets/' + sid).then(function (sh) {
+        var p = sgParseTimeline(sh); p.loading = false; TL_CACHE[pid] = p;
+      }).catch(function (e) {
+        TL_CACHE[pid] = { loading: false, error: e.message, tasks: [], milestones: [], hasAtRisk: false };
+      }).then(function () { sgDataArrived(pid); });
+    }
+    function sgFetchRaid(pid) {
+      pid = String(pid || '').toUpperCase();
+      if (RAID_CACHE[pid]) return Promise.resolve();
+      var ent = raidEntry('Commercialization', pid);
+      var rid = ent && ent.raidSheetId;
+      /* Two different failures that used to read identically in the drawer:
+         the project has no /project-info entry at all (server-side folder walk
+         never found it), versus it was indexed but no RAID sheet was found in
+         its folder. Different owners, different fixes — so say which. */
+      if (!rid) { RAID_CACHE[pid] = { loading: false, entries: [], error: ent ? 'no-raid-sheet' : 'not-indexed' }; sgDataArrived(pid); return Promise.resolve(); }
+      RAID_CACHE[pid] = { loading: true, entries: [] };
+      return ssGet('/sheets/' + rid).then(function (sh) {
+        RAID_CACHE[pid] = { loading: false, entries: parseRaidEntries(sh) };
+      }).catch(function (e) {
+        RAID_CACHE[pid] = { loading: false, entries: [], error: e.message };
+      }).then(function () { sgDataArrived(pid); });
+    }
+    /* Called whenever a project's timeline or RAID lands. Patches that row's flag cells
+       in place (no table re-render, so an open dropdown is not snapped shut) and
+       repaints the pop-out if it is showing this project. */
+    function sgDataArrived(pid) {
+      var cells = document.querySelectorAll('[data-sgflag="' + pid + '"]');
+      if (cells.length) {
+        var r = sgRowByPid(pid);
+        if (r) { var f = sgFlagCells(r); for (var i = 0; i < cells.length; i++) { cells[i].innerHTML = f[cells[i].getAttribute('data-sgfk')]; } }
       }
-      /* --- RAID --- */
-      if (!RAID_CACHE[pid]) {
-        var ent = raidEntry('Commercialization', pid);
-        var rid = ent && ent.raidSheetId;
-        /* Two different failures that used to read identically in the drawer:
-           the project has no /project-info entry at all (server-side folder walk
-           never found it), versus it was indexed but no RAID sheet was found in
-           its folder. Different owners, different fixes — so say which. */
-        if (!rid) {
-          RAID_CACHE[pid] = {
-            loading: false, entries: [],
-            error: ent ? 'no-raid-sheet' : 'not-indexed'
-          };
-        }
-        else {
-          RAID_CACHE[pid] = { loading: true, entries: [] };
-          ssGet('/sheets/' + rid).then(function (sh) {
-            RAID_CACHE[pid] = { loading: false, entries: parseRaidEntries(sh) };
-            if (SG_EXPANDED[pid]) renderStageGate();
-          }).catch(function (e) {
-            RAID_CACHE[pid] = { loading: false, entries: [], error: e.message };
-            if (SG_EXPANDED[pid]) renderStageGate();
-          });
-        }
+      if (SG_POP.key && String(SG_POP.key).toUpperCase() === pid) renderSGPop();
+    }
+    function sgRowByPid(pid) {
+      for (var i = 0; i < SG_ROWS.length; i++) { if (String(SG_ROWS[i].id || '').toUpperCase() === pid) return SG_ROWS[i]; }
+      return null;
+    }
+    /* Background prefetch for the flag columns. Live (non-archived) projects only, in
+       sheet order so the top of the table fills first, three requests at a time. Runs
+       alongside the Health pass; roughly one timeline + one RAID read per project. */
+    var SG_PREFETCH_RUN = 0;
+    function sgPrefetchFlags() {
+      var run = ++SG_PREFETCH_RUN;
+      var jobs = [];
+      SG_ROWS.forEach(function (r) {
+        var pid = String(r.id || '').toUpperCase();
+        if (!pid || sgIsArchived(r.status)) return;
+        jobs.push(function () { return sgFetchTimeline(pid); });
+        jobs.push(function () { return sgFetchRaid(pid); });
+      });
+      var i = 0;
+      function worker() {
+        if (run !== SG_PREFETCH_RUN || i >= jobs.length) return Promise.resolve();
+        var j = jobs[i++];
+        return j().then(function () { return new Promise(function (res) { setTimeout(res, 60); }); }).then(worker);
       }
+      return Promise.all([worker(), worker(), worker()]).then(function () {
+        if (run === SG_PREFETCH_RUN) console.log('[EPO] Stage Gate flags: timelines + RAID read for ' + (jobs.length / 2) + ' live projects');
+      });
+    }
+    /* #13 flag values for one row. D3: Open RAID = entries not Closed. D4: dash where
+       the timeline has no At Risk column. D12: Milestones Past Due per the rule above. */
+    function sgFlagCells(r) {
+      var pid = String(r.id || '').toUpperCase();
+      function n(v, tip) { return '<span class="sg-fl' + (v > 0 ? ' hot' : '') + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + v + '</span>'; }
+      function na(tip) { return '<span class="sg-fl na" title="' + esc(tip) + '">&mdash;</span>'; }
+      var ld = '<span class="sg-fl ld">&hellip;</span>';
+      if (sgIsArchived(r.status)) { var a = na('Archived project'); return { raid: a, risk: a, ms: a }; }
+      var out = {};
+      var rc = RAID_CACHE[pid];
+      if (!rc || rc.loading) out.raid = ld;
+      else if (rc.error === 'no-raid-sheet' || rc.error === 'not-indexed') out.raid = na('No RAID log for this project');
+      else if (rc.error) out.raid = na('RAID log could not be read');
+      else out.raid = n(sgRaidOpen(rc.entries).length, 'Open RAID items (any category, status not Closed)');
+      var tc = TL_CACHE[pid];
+      if (!tc || tc.loading) { out.risk = ld; out.ms = ld; }
+      else if (tc.error) { var t = na(tc.error === 'no-timeline' ? 'No timeline linked on the master' : 'Timeline could not be read'); out.risk = t; out.ms = t; }
+      else {
+        out.risk = tc.hasAtRisk ? n(tc.tasks.length, 'Open tasks flagged At Risk') : na('This timeline has no At Risk column');
+        out.ms = n(tc.milestones.filter(function (m) { return m.late; }).length, 'Milestones past their End Date and under 100%');
+      }
+      return out;
+    }
+    /* D5: open = anything not Closed. Closed DECISIONS still show (with Action Taken and
+       Resolved Date); closed risks / assumptions / issues / actions are hidden. */
+    function sgRaidIsClosed(e) { return /^\s*closed\s*$/i.test(e.status || ''); }
+    function sgRaidOpen(entries) { return (entries || []).filter(function (e) { return !sgRaidIsClosed(e); }); }
+    function sgRaidShown(entries) {
+      return (entries || []).filter(function (e) { return !sgRaidIsClosed(e) || /decision/i.test(e.category || ''); });
     }
     function statusPill(st) {
       var t = String(st || '').toLowerCase(), cls = 'queue';
@@ -6200,6 +6982,8 @@
       if (!c || c.loading) inner = '<div class="blk-load">Reading the timeline&hellip;</div>';
       else if (c.error === 'no-timeline') inner = '<div class="blk-empty">No timeline sheet is linked for this project.</div>';
       else if (c.error) inner = '<div class="blk-empty">Timeline could not be read: ' + esc(c.error) + '</div>';
+      /* 10/16/26 (D4): no At Risk column is not the same as no risk. */
+      else if (!c.hasAtRisk) inner = '<div class="blk-empty">This timeline has no At Risk column, so at-risk tasks cannot be read.</div>';
       else if (!c.tasks.length) inner = '<div class="blk-empty">No open tasks are flagged At Risk.</div>';
       else inner = '<div class="blk-scroll">' + c.tasks.map(function (t) {
         var subs = t.subs.length
@@ -6217,8 +7001,33 @@
           (t.who ? '<span class="tk-p">' + esc(String(t.who).split(',')[0]) + '</span>' : '') +
           '</div>' + subs + note + '</div>';
       }).join('') + '</div>';
-      var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + c.tasks.length + '</span>' : '';
+      var n = (c && !c.loading && !c.error && c.hasAtRisk) ? ' <span class="sg-dec">' + c.tasks.length + '</span>' : '';
       return '<div class="sg-blk"><h4>At-Risk Tasks' + n + '</h4>' + inner + '</div>';
+    }
+    /* 10/16/26 per Kristen (#19, D12): milestones from the timeline, overdue flagged.
+       Rule and detection are in sgParseTimeline. Listed by End Date; overdue first in
+       colour only, not re-ordered, so the list still reads as a schedule. */
+    function sgMilestonesBlock(r) {
+      var c = TL_CACHE[String(r.id || '').toUpperCase()];
+      var inner;
+      if (!c || c.loading) inner = '<div class="blk-load">Reading the timeline&hellip;</div>';
+      else if (c.error === 'no-timeline') inner = '<div class="blk-empty">No timeline sheet is linked for this project.</div>';
+      else if (c.error) inner = '<div class="blk-empty">Timeline could not be read: ' + esc(c.error) + '</div>';
+      else if (!c.milestones.length) inner = '<div class="blk-empty">No milestones on this timeline (no Task Name containing MILESTONE and no Milestone checkbox ticked).</div>';
+      else inner = '<div class="blk-scroll">' + c.milestones.map(function (m) {
+        return '<div class="ms' + (m.late ? ' late' : (m.done ? ' done' : '')) + '">' +
+          '<div class="ms-t">' + esc(m.title) + '</div>' +
+          '<div class="tk-meta">' +
+          (m.late ? '<span class="tk-p late">OVERDUE ' + m.daysLate + 'd</span>' : (m.done ? '<span class="tk-p">DONE</span>' : '')) +
+          (m.end ? '<span class="tk-p">due ' + esc(fmtDay(m.end)) + '</span>' : '<span class="tk-p">no end date</span>') +
+          (m.pct != null ? '<span class="tk-p">' + Math.round(m.pct * 100) + '% done</span>' : '') +
+          (m.who ? '<span class="tk-p">' + esc(String(m.who).split(',')[0]) + '</span>' : '') +
+          '</div></div>';
+      }).join('') + '</div>';
+      var late = (c && !c.loading && !c.error) ? c.milestones.filter(function (m) { return m.late; }).length : 0;
+      var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + c.milestones.length + '</span>' +
+        (late ? ' <span class="tk-p late">' + late + ' OVERDUE</span>' : '') : '';
+      return '<div class="sg-blk"><h4>Milestones' + n + '</h4>' + inner + '</div>';
     }
     /* 9/17/26 (DR1) per Kristen: link to the Smartsheet timeline, styled like the RU
        sidebar button. Source order: the master Timeline link (what Health reads, only
@@ -6242,17 +7051,29 @@
         'but it contains no RAID sheet.</div>';
       else if (c.error) inner = '<div class="blk-empty">RAID could not be read: ' + esc(c.error) + '</div>';
       else if (!c.entries.length) inner = '<div class="blk-empty">No RAID entries logged.</div>';
-      else inner = '<div class="blk-scroll">' + c.entries.map(function (e) {
-        return '<div class="rd">' +
-          '<div class="rd-h">' + (e.category ? '<span class="rd-c">' + esc(e.category) + '</span>' : '') +
-          statusPill(e.status) + '</div>' +
-          '<div class="rd-d">' + esc(String(e.description).slice(0, 240)) +
-          (String(e.description).length > 240 ? '&hellip;' : '') + '</div>' +
-          '<div class="rd-m">' + [e.assignedTo, e.dueDate ? 'due ' + fmtDay(e.dueDate) : '',
-          e.impact ? 'impact ' + e.impact : '', e.probability ? 'prob ' + e.probability : '']
-            .filter(Boolean).map(esc).join(' &middot; ') + '</div></div>';
-      }).join('') + '</div>';
-      var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + c.entries.length + '</span>' : '';
+      else {
+        /* 10/16/26 per Kristen (#17, D5): open items (status not Closed) plus closed
+           decisions. Closed decisions carry Action Taken and Resolved Date, shown as
+           "not recorded" when blank so the gap is visible. */
+        var shown = sgRaidShown(c.entries), hidden = c.entries.length - shown.length;
+        function nr(v) { return v ? esc(v) : '<i>not recorded</i>'; }
+        inner = (shown.length ? '<div class="blk-scroll">' + shown.map(function (e) {
+          var closedDec = sgRaidIsClosed(e);
+          return '<div class="rd">' +
+            '<div class="rd-h">' + (e.category ? '<span class="rd-c">' + esc(e.category) + '</span>' : '') +
+            statusPill(e.status) + '</div>' +
+            '<div class="rd-d">' + esc(String(e.description).slice(0, 240)) +
+            (String(e.description).length > 240 ? '&hellip;' : '') + '</div>' +
+            '<div class="rd-m">' + [e.assignedTo, (!closedDec && e.dueDate) ? 'due ' + fmtDay(e.dueDate) : '',
+            e.impact ? 'impact ' + e.impact : '', e.probability ? 'prob ' + e.probability : '']
+              .filter(Boolean).map(esc).join(' &middot; ') + '</div>' +
+            (closedDec ? '<div class="rd-x"><b>Action Taken:</b> ' + nr(e.actionTaken) +
+              '<br><b>Resolved:</b> ' + (e.resolvedDate ? esc(fmtDay(e.resolvedDate)) : '<i>not recorded</i>') + '</div>' : '') +
+            '</div>';
+        }).join('') + '</div>' : '<div class="blk-empty">No open RAID items and no closed decisions.</div>') +
+          (hidden ? '<div class="blk-load" style="margin-top:6px">' + hidden + ' closed risk / assumption / issue / action item' + (hidden === 1 ? '' : 's') + ' hidden.</div>' : '');
+      }
+      var n = (c && !c.loading && !c.error) ? ' <span class="sg-dec">' + sgRaidShown(c.entries).length + '</span>' : '';
       /* 9/17/26 (DR2) per Kristen: link to the full RAID log, same as the RU sidebar had.
          Shown whenever the index knows the RAID sheet, even if it is empty or still loading. */
       var re = raidEntry('Commercialization', String(r.id || '').toUpperCase());
@@ -6260,11 +7081,71 @@
       return '<div class="sg-blk"><h4>RAID' + n + '</h4>' + inner + link + '</div>';
     }
 
-    function toggleSGRow(key) {
-      if (SG_EXPANDED[key]) delete SG_EXPANDED[key];
-      else { SG_EXPANDED[key] = true; loadDrawerData(key); }
-      renderStageGate();
+    /* 10/16/26: row click opens the full-screen pop-out (was toggleSGRow, inline drawer).
+       SG_POP.key is the row key (Project ID, or name when a row has no ID). */
+    var SG_POP = { key: null, page: 1 };
+    function sgOpenPop(key) {
+      SG_POP = { key: key, page: 1 };
+      var pid = String(key || '').toUpperCase();
+      sgFetchTimeline(pid); sgFetchRaid(pid);
+      renderSGPop();
     }
+    function sgClosePop() {
+      SG_POP = { key: null, page: 1 };
+      var el = document.getElementById('sg-pop'); el.className = ''; el.innerHTML = '';
+    }
+    function renderSGPop() {
+      var el = document.getElementById('sg-pop');
+      if (!SG_POP.key) { el.className = ''; el.innerHTML = ''; return; }
+      var r = null;
+      for (var i = 0; i < SG_ROWS.length; i++) { if ((SG_ROWS[i].id || SG_ROWS[i].name) === SG_POP.key) { r = SG_ROWS[i]; break; } }
+      if (!r) { sgClosePop(); return; }
+      /* Sit just under the sticky dashboard header, whatever its height. */
+      var hdr = document.querySelector('.s-hdr'); el.style.top = (hdr ? hdr.getBoundingClientRect().height : 62) + 'px';
+      var prevBody = el.querySelector('.sgp-body'), st = prevBody ? prevBody.scrollTop : 0, samePage = el.getAttribute('data-page') === String(SG_POP.page) && el.getAttribute('data-key') === String(SG_POP.key);
+      var pctTxt = (r.pct == null) ? '<span style="opacity:.6">&mdash;</span>'
+        : '<div class="sg-bar"><i style="width:' + Math.round(r.pct * 100) + '%"></i><b>' + Math.round(r.pct * 100) + '%</b></div>';
+      function m(k, v) { return '<div class="sgp-m"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
+      /* Page 4 tab shows the number of things needing attention (open RAID + at-risk + overdue). */
+      var hot = 0, pid = String(r.id || '').toUpperCase();
+      var rc = RAID_CACHE[pid], tc = TL_CACHE[pid];
+      if (!sgIsArchived(r.status)) {
+        if (rc && !rc.loading && !rc.error) hot += sgRaidOpen(rc.entries).length;
+        if (tc && !tc.loading && !tc.error) { hot += (tc.hasAtRisk ? tc.tasks.length : 0) + tc.milestones.filter(function (x) { return x.late; }).length; }
+      }
+      var page = SG_POP.page;
+      var bodyHtml = page === 2 ? sgPageFinance(r) : page === 3 ? sgPageScoping(r) : page === 4 ? sgPageWork(r) : sgPageDetails(r);
+      el.innerHTML = '<div class="sgp" role="dialog" aria-modal="true">' +
+        '<div class="sgp-hd"><div class="sgp-top"><div>' +
+        '<div class="sgp-id">' + esc(r.id || '') + (sgRank(r) != null ? ' &middot; Stage Gate Priority #' + sgRank(r) : '') + '</div>' +
+        '<div class="sgp-nm">' + esc(r.name || '') + '</div></div>' +
+        '<button type="button" class="sgp-x" data-sgpclose="1" title="Close (Esc)">&#10005;</button></div>' +
+        '<div class="sgp-meta">' +
+        m('Project Owner', esc(r.owner || '—')) +
+        m('R&amp;D Lead', esc(r.rd && r.rd !== 'N/A' ? r.rd : '—')) +
+        m('Project Type', esc(r.type || '—')) +
+        m('Status', sgStatusPill(r.status)) +
+        m('Stage', esc(r.stage || '—')) +
+        m('Deadline', sgDeadlineCell(r)) +
+        m('Progress to Deadline', pctTxt) +
+        m('Health', sgHealthCell(r)) +
+        (sgAgendaDate(r) ? m('SG Agenda', sgAgendaStar(r) + ' ' + esc(sgFmtDate(r.sgAgenda))) : '') +
+        '</div></div>' +
+        '<div class="sgp-tabs">' + SG_PAGES.map(function (p) {
+          return '<button type="button" class="sgp-tab' + (p.k === page ? ' on' : '') + '" data-sgpage="' + p.k + '">' + p.label +
+            (p.k === 4 && hot ? '<span class="n" title="Open RAID + at-risk tasks + overdue milestones">' + hot + '</span>' : '') + '</button>';
+        }).join('') + '</div>' +
+        '<div class="sgp-body">' + bodyHtml + '</div></div>';
+      el.className = 'show';
+      el.setAttribute('data-page', String(page)); el.setAttribute('data-key', String(SG_POP.key));
+      if (samePage) { var nb = el.querySelector('.sgp-body'); if (nb) nb.scrollTop = st; }
+      var x = el.querySelector('[data-sgpclose]'); if (x) x.onclick = sgClosePop;
+      var tabs = el.querySelectorAll('[data-sgpage]');
+      for (var t = 0; t < tabs.length; t++)tabs[t].onclick = function () { SG_POP.page = +this.getAttribute('data-sgpage'); renderSGPop(); };
+      /* Click on the dimmed backdrop (not the panel) closes. */
+      el.onclick = function (ev) { if (ev.target === el) sgClosePop(); };
+    }
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && SG_POP.key) sgClosePop(); });
 
     /* 9/10/26. Runs AFTER the main render, never as part of it. The dashboard's
        load path was cut from four passes to one in August and this must not spend
@@ -6299,6 +7180,11 @@
           if (sid) { targets.push({ pid: pid.toUpperCase(), sheetId: sid }); TL_SHEET[pid.toUpperCase()] = sid; TL_LINK[pid.toUpperCase()] = link; }
         });
         console.log('[EPO] Health: ' + targets.length + ' linked timelines resolved');
+        /* 10/16/26: timeline ids are now known, so the flag prefetch can start (it runs
+           alongside the Health pass below), and an already-open pop-out can load. */
+        TL_RESOLVED = true;
+        if (SG_POP.key) { var _pp = String(SG_POP.key).toUpperCase(); sgFetchTimeline(_pp); sgFetchRaid(_pp); }
+        sgPrefetchFlags();
         var i = 0;
         function next() {
           if (i >= targets.length) return Promise.resolve();
@@ -6308,6 +7194,8 @@
               var vcol = (sh.columns || []).filter(function (c) { return /variance/i.test(c.title); })[0];
               var ncol = (sh.columns || []).filter(function (c) { return /task\s*name|primary/i.test(c.title); })[0]
                 || (sh.columns || [])[0];
+              /* 10/16/26 (D2): row 1 End Date feeds the Deadline column. Same row, same call. */
+              var ecol = (sh.columns || []).filter(function (c) { return /^\s*end\s*date\s*$/i.test(c.title); })[0];
               var r1 = (sh.rows || [])[0];
               if (!r1) {
                 HEALTH[t.pid] = {
@@ -6319,6 +7207,7 @@
               (r1.cells || []).forEach(function (c) {
                 if (ncol && c.columnId === ncol.id) nm = c.displayValue || c.value;
                 if (vcol && c.columnId === vcol.id) vv = c.value;
+                if (ecol && c.columnId === ecol.id && c.value && /^\d{4}-\d{2}-\d{2}/.test(String(c.value))) TL_ROW1_END[t.pid] = String(c.value).slice(0, 10);
               });
               if (!vcol) {
                 HEALTH[t.pid] = {
@@ -6362,6 +7251,8 @@
         if (TAB === 'comm' && COMM_VIEW === 'stagegate') renderStageGate();
       }).catch(function (e) {
         HEALTH_LOADED = true;
+        /* 10/16/26: let the flags/pop-out settle (as "no timeline") instead of loading forever. */
+        if (!TL_RESOLVED) { TL_RESOLVED = true; sgPrefetchFlags(); if (SG_POP.key) renderSGPop(); }
         console.warn('[EPO] Health: load failed, all rows grey (' + e.message + ')');
       });
     }
@@ -6374,16 +7265,14 @@
       for (var i = 0; i < b.length; i++) {
         b[i].onclick = function () { setSGFilter(this.getAttribute('data-sgf'), this.getAttribute('data-sgv')); };
       }
-      /* 9/17/26 S2: sort headers, dropdown filters, clear */
-      var th = root.querySelectorAll('[data-sgsort]');
-      for (var t = 0; t < th.length; t++) { th[t].onclick = function () { sgCycleSort(this.getAttribute('data-sgsort')); }; }
+      /* 9/17/26 S2: dropdown filters, clear (sort headers removed 10/16/26) */
       var sels = root.querySelectorAll('[data-sgsel]');
       for (var q = 0; q < sels.length; q++) { sels[q].onchange = function () { SG_FILTER[this.getAttribute('data-sgsel')] = this.value; renderStageGate(); }; }
       var clr = root.querySelector('[data-sgclear]');
       if (clr) clr.onclick = function () { SG_FILTER.stage = ''; SG_FILTER.owner = ''; SG_FILTER.rd = ''; renderStageGate(); };
       var rows = root.querySelectorAll('[data-sgrow]');
       for (var j = 0; j < rows.length; j++) {
-        rows[j].onclick = function () { toggleSGRow(this.getAttribute('data-sgrow')); };
+        rows[j].onclick = function () { sgOpenPop(this.getAttribute('data-sgrow')); };
       }
     }
 
@@ -6516,7 +7405,19 @@
             if (p.complexityRating) h += '<div class="det-row"><span class="det-lbl">COMPLEXITY RATING</span><span class="det-val">' + esc(p.complexityRating) + '</span></div>';
           } else if (p.source === 'Business Support') {
             if (ed) h += '<div class="det-row"><span class="det-lbl">ANTICIPATED END</span><span class="det-val">' + ed + (p.endDateEstimated ? ' <span style="opacity:.6;font-style:italic">(est. — no Anticipated End Date on sheet)</span>' : '') + '</span></div>';
-          } else if (sd || ed) h += '<div class="det-row"><span class="det-lbl">SPAN</span><span class="det-val">' + (sd || '?') + ' → ' + (ed || '?') + '</span></div>';
+          } else if (sd || ed) {
+            /* 10/16/26 (#32): full dates for Comm. "May 26 → Mar 27" (month + 2-digit
+               year) read as two days in May and March. */
+            if (p.source === 'Commercialization') { sd = p.startDate ? sgFmtDate(p.startDate) : null; ed = p.endDate ? sgFmtDate(p.endDate) : null; }
+            h += '<div class="det-row"><span class="det-lbl">SPAN</span><span class="det-val">' + (sd || '?') + ' → ' + (ed || '?') + '</span></div>';
+            /* 10/16/26 (#32): say where the span comes from, because "the Complete Date is
+               Feb" was the question. Only the non-default sources need a line. */
+            if (p.spanEndBasis || p.spanStartBasis) {
+              var _sb = p.spanStartBasis && !/^Idea Gate/.test(p.spanStartBasis) ? 'Start: ' + p.spanStartBasis : 'Start: Idea Gate';
+              var _eb = p.spanEndBasis && !/^Complete Date$/.test(p.spanEndBasis) ? 'End: ' + p.spanEndBasis : 'End: Complete Date';
+              h += '<div class="det-row" style="display:block;color:var(--muted);font-size:10px;line-height:1.45">' + esc(_sb) + '<br>' + esc(_eb) + '</div>';
+            }
+          }
           if (p.isDesignEstimate) {
             h += '<div class="det-row"><span class="det-lbl">DESIGN HOURS (est.)</span><span class="det-val">' + fmtHrs(p.hours) + ' this month · complexity-based, not IT-provided</span></div>';
             /* Stacked preview bar (7/6/26, per Jerry) — Design-stage projects
