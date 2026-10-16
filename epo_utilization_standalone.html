@@ -6268,7 +6268,10 @@
              three "Score" columns return "Pass"/"Fail" text, not numerics, despite
              the column names. Confirmed against the live sheet. */
           critMet: g('Criteria Met Count'), sgFilter: g('SG Filter Result'),
-          scCost: g('Cost Savings Score'), scMargin: g('Gross Margin Score'),
+          /* 10/16/26 FIX: the master renamed "Cost Savings Score" to "Cost Impact Score" and
+             "Cost/Risk Savings $K" to "Cost Savings $K"; g()/num() are exact-title lookups, so
+             both drawer fields were silently blank. New title first, old kept as fallback. */
+          scCost: (g('Cost Impact Score') || g('Cost Savings Score')), scMargin: g('Gross Margin Score'),
           scNetSales: g('Incremental Net Sales Score'), scOGSM: g('OGSM Strategy Score'),
           ogsmCat: g('OGSM Categories'), top10: g('Top 10 Customer Impacted?'),
           imagine: g('Project Imagine related?'),
@@ -6282,7 +6285,7 @@
           y1ExpMargin: num('Y1 Expected Gross Profit Margin %'),
           y1TgtMargin: num('Y1 Target Gross Profit Margin %'),
           marginVsTgt: g('Gross Profit Margin vs Target'),
-          costRiskSav: num('Cost/Risk Savings $K'),
+          costRiskSav: (num('Cost Savings $K') != null ? num('Cost Savings $K') : num('Cost/Risk Savings $K')),
           salesFTE: g('Sales FTE'), salesComplexity: g('Sales Complexity'),
           salesCallOuts: g('Sales Call Outs'),
           financeCallOuts: g('Finance Call Outs'),  /* 9/17/26 DR9: TEXT, 14 populated */
@@ -6733,7 +6736,7 @@
       var rows =
         sgKV('Criteria Met Count', r.critMet ? esc(r.critMet) : null) +
         sgKV('SG Filter Result', r.sgFilter ? sgVerdict(r.sgFilter) : null) +
-        sgKV('Cost Savings Score', r.scCost ? sgVerdict(r.scCost) : null) +
+        sgKV('Cost Impact Score', r.scCost ? sgVerdict(r.scCost) : null) +
         sgKV('Gross Margin Score', r.scMargin ? sgVerdict(r.scMargin) : null) +
         sgKV('Incremental Net Sales', r.scNetSales ? sgVerdict(r.scNetSales) : null) +
         sgKV('OGSM Strategy Score', r.scOGSM ? sgVerdict(r.scOGSM) : null) +
@@ -6754,7 +6757,7 @@
         /* 9/21/26 per Finance (Jodi Spiekermann): Net Sales above Gross Profit. */
         sgKV('Y1 Incremental Net Sales', sgMoney(r.y1IncNetSales)) +
         sgKV('Y1 Incremental Gross Profit', sgMoney(r.y1IncGP)) +
-        sgKV('Cost / Risk Savings', sgMoney(r.costRiskSav)) +
+        sgKV('Cost Savings', sgMoney(r.costRiskSav)) +
         sgKV('Y1 Expected GP Margin', sgPct(r.y1ExpMargin)) +
         sgKV('Y1 Target GP Margin', sgPct(r.y1TgtMargin)) +
         sgKV('Margin vs Target', sgMarginDot(r.marginVsTgt)) +
