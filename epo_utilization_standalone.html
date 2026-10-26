@@ -2691,21 +2691,31 @@
       min-width: 140px
     }
 
-    /* ── ENTERPRISE ROADMAP (8/27/26) ── */
+    /* ── ENTERPRISE PORTFOLIO ROADMAP (10/21/26, R5: SharePoint list, Aidan Build Requirements v1.0) ── */
     .ent-wrap {
       padding: 0
     }
 
-    .ent-head {
-      display: flex;
-      align-items: flex-end;
-      gap: 16px;
-      padding: 12px 14px 14px;
-      border-bottom: 1px solid #E5E7EB
+    .ent-src-lnk {
+      color: #1B4D35;
+      font-size: 11px;
+      font-weight: 700;
+      text-decoration: none;
+      border-bottom: 1px dotted #52B788
     }
 
-    .ent-cnt {
-      margin-left: auto;
+    .ent-src-lnk:hover {
+      color: #0D2818;
+      border-bottom-style: solid
+    }
+
+    .ent-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #E5E7EB;
       font-size: 12px;
       color: #4B5563
     }
@@ -2715,14 +2725,130 @@
       color: #0D2818
     }
 
+    .ent-ts {
+      color: #6B7280
+    }
+
+    .ent-ts b {
+      color: #374151;
+      font-weight: 700
+    }
+
+    .ent-wcount {
+      color: #8A5A12;
+      font-weight: 700
+    }
+
+    .ent-legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 10px;
+      margin-left: auto;
+      font-size: 10.5px;
+      color: #4B5563
+    }
+
+    .ent-legend .ent-box {
+      position: static;
+      display: inline-block;
+      width: auto;
+      height: auto;
+      line-height: 1.2;
+      padding: 2px 6px;
+      cursor: default
+    }
+
+    .ent-legend .lg-today {
+      display: inline-block;
+      width: 2px;
+      height: 12px;
+      background: #C2410C;
+      vertical-align: middle;
+      margin-right: 3px
+    }
+
+    .ent-banner {
+      margin: 10px 14px 0;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.5
+    }
+
+    .ent-banner.stale {
+      background: #FDF0DC;
+      color: #7A4E0E;
+      border: 1px solid #F2D29B
+    }
+
+    .ent-banner.err {
+      background: #FBDDDD;
+      color: #7F1D1D;
+      border: 1px solid #F3B4B4
+    }
+
+    .ent-banner.info {
+      background: #EEF6F1;
+      color: #1B4D35;
+      border: 1px solid #CDE9DA
+    }
+
+    .ent-banner b {
+      font-weight: 800
+    }
+
+    .ent-state {
+      padding: 36px 20px;
+      text-align: center;
+      color: #4B5563;
+      font-size: 13px;
+      line-height: 1.6
+    }
+
+    .ent-state h4 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 18px;
+      color: #0D2818;
+      margin: 0 0 6px
+    }
+
+    .ent-state.err h4 {
+      color: #991B1B
+    }
+
+    .ent-retry {
+      margin-top: 12px;
+      background: #1B4D35;
+      color: #fff;
+      border: 0;
+      border-radius: 4px;
+      padding: 7px 16px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit
+    }
+
+    .ent-retry:hover {
+      background: #0D2818
+    }
+
+    .ent-retry:focus-visible {
+      outline: 2px solid #52B788;
+      outline-offset: 2px
+    }
+
     .ent-scroll {
-      overflow-x: auto
+      overflow: auto;
+      max-height: calc(100vh - 230px);
+      position: relative
     }
 
     .ent-tbl {
-      border-collapse: collapse;
-      font-size: 13px;
-      min-width: 100%
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px
     }
 
     .ent-tbl th {
@@ -2737,128 +2863,519 @@
       text-align: left;
       position: sticky;
       top: 0;
-      z-index: 2
-    }
-
-    .ent-tbl th.mo {
-      text-align: center;
-      font-size: 10px;
-      min-width: 62px;
-      padding: 7px 4px
-    }
-
-    .ent-tbl th.mo.q1 {
-      border-left: 2px solid #2F6B4C
+      z-index: 3
     }
 
     .ent-tbl td {
       border-bottom: 1px solid #EDEFED;
-      padding: 9px 8px;
-      vertical-align: middle
+      padding: 8px;
+      vertical-align: top;
+      background: #fff
     }
 
-    .ent-tbl tbody tr:hover {
-      background: #F0F7F3
+    .ent-tbl tr.ent-row:hover td {
+      background: #F7FBF8
     }
 
-    .ent-nm {
+    .ent-tbl tr.ent-row.open td {
+      background: #F3F9F5
+    }
+
+    .ent-tbl .s1,
+    .ent-tbl .s2,
+    .ent-tbl .s3,
+    .ent-tbl .s4 {
+      position: sticky;
+      z-index: 2
+    }
+
+    .ent-tbl th.s1,
+    .ent-tbl th.s2,
+    .ent-tbl th.s3,
+    .ent-tbl th.s4 {
+      z-index: 4
+    }
+
+    .ent-tbl .s1 {
+      left: 0;
+      width: 230px;
+      min-width: 230px;
+      max-width: 230px
+    }
+
+    .ent-tbl .s2 {
+      left: 230px;
+      width: 150px;
+      min-width: 150px;
+      max-width: 150px
+    }
+
+    .ent-tbl .s3 {
+      left: 380px;
+      width: 104px;
+      min-width: 104px;
+      max-width: 104px
+    }
+
+    .ent-tbl .s4 {
+      left: 484px;
+      width: 84px;
+      min-width: 84px;
+      max-width: 84px;
+      border-right: 2px solid #CFE3D7
+    }
+
+    .ent-tbl th.s4 {
+      border-right: 2px solid #2F6B4C
+    }
+
+    .ent-tbl th.mhd {
+      padding: 0
+    }
+
+    .ent-mrow {
+      display: flex
+    }
+
+    .ent-mrow span {
+      flex: 0 0 auto;
+      text-align: center;
+      font-size: 10px;
+      padding: 7px 0;
+      box-sizing: border-box
+    }
+
+    .ent-mrow span.q1 {
+      border-left: 2px solid #2F6B4C
+    }
+
+    .ent-mrow span.now {
+      background: #2F6B4C
+    }
+
+    .ent-tog {
+      all: unset;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      cursor: pointer;
       font-weight: 700;
       color: #0D2818;
-      white-space: nowrap
+      line-height: 1.3;
+      white-space: normal;
+      word-break: break-word;
+      border-radius: 3px
+    }
+
+    .ent-tog:focus-visible,
+    .ent-box:focus-visible,
+    .ent-drw a:focus-visible,
+    .ent-ms-tbl tr:focus-visible {
+      outline: 2px solid #0D2818;
+      outline-offset: 2px
+    }
+
+    .ent-chev {
+      flex: 0 0 auto;
+      display: inline-block;
+      width: 12px;
+      font-size: 10px;
+      color: #2F6B4C;
+      transition: transform .15s;
+      margin-top: 2px
+    }
+
+    .ent-tog[aria-expanded="true"] .ent-chev {
+      transform: rotate(90deg)
+    }
+
+    .ent-wchip {
+      display: inline-block;
+      margin: 4px 0 0 18px;
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      color: #8A5A12;
+      background: #FDF0DC;
+      border-radius: 3px;
+      padding: 1px 6px
     }
 
     .ent-lead {
       font-size: 12px;
-      color: #4B5563;
-      white-space: nowrap
-    }
-
-    .ent-lead.unk {
-      color: #B7791F;
-      font-style: italic
-    }
-
-    .ent-mo {
-      padding: 6px 4px !important;
-      text-align: center;
-      vertical-align: middle
-    }
-
-    .ent-mo.q1 {
-      border-left: 2px solid #E3EAE6
-    }
-
-    .ent-mo.now {
-      background: #F3F9F5
-    }
-
-    .ent-ms {
-      display: block;
-      background: #52B788;
-      color: #0D2818;
-      font-size: 9.5px;
-      font-weight: 700;
-      line-height: 1.25;
-      padding: 4px 5px;
-      border-radius: 3px;
+      color: #374151;
+      line-height: 1.35;
       white-space: normal
     }
 
-    .ent-st {
-      display: inline-block;
+    .ent-lead.unk {
+      color: #9CA3AF;
+      font-style: italic
+    }
+
+    .ent-hb {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       padding: 2px 8px;
       border-radius: 3px;
-      font-size: 10px;
+      font-size: 10.5px;
       font-weight: 800;
       letter-spacing: .03em;
       white-space: nowrap
     }
 
-    .ent-st.ontrack {
+    .ent-hb i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block
+    }
+
+    .ent-hb.green {
       background: #D9F0E3;
       color: #166534
     }
 
-    .ent-st.atrisk {
+    .ent-hb.green i {
+      background: #22A05B
+    }
+
+    .ent-hb.yellow {
       background: #FDF0DC;
       color: #8A5A12
     }
 
-    .ent-st.behind {
+    .ent-hb.yellow i {
+      background: #E0A526
+    }
+
+    .ent-hb.red {
       background: #FBDDDD;
       color: #991B1B
     }
 
-    .ent-st.none {
-      background: #EDEFED;
-      color: #9CA3AF
+    .ent-hb.red i {
+      background: #DC2626
     }
 
-    .ent-src {
-      display: inline-block;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: .04em;
-      padding: 2px 6px;
-      border-radius: 3px;
-      white-space: nowrap
+    .ent-hb.paused {
+      background: #E5E7EB;
+      color: #374151
     }
 
-    .ent-src.live {
-      background: #CDE9DA;
-      color: #14532D
+    .ent-hb.paused i {
+      background: #6B7280
     }
 
-    .ent-src.no {
+    .ent-hb.none {
       background: #F3F4F6;
-      color: #9CA3AF
+      color: #6B7280;
+      font-style: italic
     }
 
-    .ent-live {
-      font-size: 10px;
-      color: #4B5563;
+    .ent-hb.none i {
+      background: transparent;
+      border: 1px dashed #9CA3AF
+    }
+
+    .ent-hsrc {
+      display: block;
+      font-size: 9.5px;
+      color: #6B7280;
       margin-top: 3px;
       white-space: nowrap
+    }
+
+    .ent-cnum {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0D2818;
+      text-align: center
+    }
+
+    .ent-cnum.bad {
+      color: #991B1B
+    }
+
+    .ent-tl {
+      padding: 0 !important;
+      vertical-align: top;
+      position: relative;
+      z-index: 0
+    }
+
+    /* own stacking context: boxes never paint over the sticky columns */
+    .ent-tbl th.s4 {
+      white-space: normal;
+      line-height: 1.15
+    }
+
+    .ent-trk {
+      position: relative
+    }
+
+    .ent-trk .mcol {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      box-sizing: border-box
+    }
+
+    .ent-trk .mcol.q1 {
+      border-left: 2px solid #E3EAE6
+    }
+
+    .ent-trk .mcol.now {
+      background: #F3F9F5
+    }
+
+    .ent-trk .today {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #C2410C;
+      opacity: .55;
+      z-index: 1
+    }
+
+    .ent-trk .nomsg {
+      position: absolute;
+      top: 10px;
+      font-size: 11px;
+      color: #9CA3AF;
+      font-style: italic;
+      white-space: nowrap
+    }
+
+    .ent-box {
+      position: absolute;
+      height: 22px;
+      line-height: 20px;
+      box-sizing: border-box;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 0 5px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      border: 1px solid transparent;
+      z-index: 2;
+      font-family: inherit;
+      text-align: left
+    }
+
+    .ent-box.st-completed {
+      background: #1B4D35;
+      color: #fff
+    }
+
+    .ent-box.st-inprogress {
+      background: #52B788;
+      color: #0D2818
+    }
+
+    .ent-box.st-planned {
+      background: #fff;
+      color: #1B4D35;
+      border: 1.5px solid #52B788
+    }
+
+    .ent-box.st-atrisk {
+      background: #FDF0DC;
+      color: #8A5A12;
+      border: 1.5px solid #D69E2E
+    }
+
+    .ent-box.st-paused {
+      background: #E5E7EB;
+      color: #4B5563;
+      border: 1.5px dashed #9CA3AF
+    }
+
+    .ent-box.oob {
+      outline: 2px dotted #B45309;
+      outline-offset: 1px
+    }
+
+    .ent-box.sel {
+      box-shadow: 0 0 0 2px #0D2818;
+      z-index: 3
+    }
+
+    .ent-box .bang {
+      color: #B45309;
+      font-weight: 900;
+      margin-right: 3px
+    }
+
+    .ent-drw td {
+      background: #FBFCFB !important;
+      padding: 0 !important;
+      border-bottom: 2px solid #CFE3D7
+    }
+
+    .ent-drw-in {
+      position: sticky;
+      left: 0;
+      box-sizing: border-box;
+      padding: 14px 18px 18px
+    }
+
+    .ent-dgrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px
+    }
+
+    .ent-sec {
+      background: #fff;
+      border: 1px solid #E5E7EB;
+      border-radius: 6px;
+      padding: 10px 12px;
+      min-width: 0
+    }
+
+    .ent-sec.wide {
+      grid-column: 1/-1
+    }
+
+    .ent-sec h5 {
+      margin: 0 0 8px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px;
+      letter-spacing: .05em;
+      color: #1B4D35;
+      text-transform: uppercase
+    }
+
+    .ent-kv {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 4px 10px;
+      font-size: 12px
+    }
+
+    .ent-kv dt {
+      color: #6B7280
+    }
+
+    .ent-kv dd {
+      margin: 0;
+      color: #111827;
+      word-break: break-word
+    }
+
+    .ent-txt {
+      font-size: 12.5px;
+      color: #1F2937;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word
+    }
+
+    .ent-txt.np,
+    .ent-np {
+      color: #9CA3AF;
+      font-style: italic
+    }
+
+    .ent-ms-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px
+    }
+
+    .ent-ms-tbl th {
+      background: #EEF6F1 !important;
+      color: #1B4D35 !important;
+      position: static !important;
+      font-size: 11px !important;
+      padding: 5px 6px !important
+    }
+
+    .ent-ms-tbl td {
+      padding: 5px 6px !important;
+      border-bottom: 1px solid #EEF0EE;
+      vertical-align: top;
+      background: transparent !important
+    }
+
+    .ent-ms-tbl tr.sel td {
+      background: #FFF7D6 !important
+    }
+
+    .ent-ms-tbl .mw {
+      display: block;
+      color: #8A5A12;
+      font-size: 10.5px;
+      margin-top: 2px
+    }
+
+    .ent-st {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap
+    }
+
+    .ent-st.st-completed {
+      background: #1B4D35;
+      color: #fff
+    }
+
+    .ent-st.st-inprogress {
+      background: #52B788;
+      color: #0D2818
+    }
+
+    .ent-st.st-planned {
+      background: #fff;
+      color: #1B4D35;
+      border: 1px solid #52B788
+    }
+
+    .ent-st.st-atrisk {
+      background: #FDF0DC;
+      color: #8A5A12
+    }
+
+    .ent-st.st-paused {
+      background: #E5E7EB;
+      color: #4B5563
+    }
+
+    .ent-warn {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 12px;
+      color: #7A4E0E;
+      line-height: 1.5
+    }
+
+    .ent-warn li {
+      margin: 2px 0
+    }
+
+    .ent-warn code,
+    .ent-bad code {
+      font-family: Consolas, Menlo, monospace;
+      font-size: 11px;
+      background: #F3F4F6;
+      color: #374151;
+      padding: 0 4px;
+      border-radius: 3px;
+      word-break: break-all
+    }
+
+    .ent-ok {
+      font-size: 12px;
+      color: #166534
     }
 
     .ent-foot {
@@ -2997,14 +3514,13 @@
       </div>
     </div>
 
-    <!-- 8/27/26: Enterprise roadmap (Patty). Option A per Jerry — config-array
-       source, NOT a Smartsheet fetch. See ENT_INITIATIVES for the rationale
-       and the migration note. -->
+    <!-- 10/21/26 R5: Enterprise tab reads the Enterprise Portfolio Roadmap SharePoint list
+       through the server's read-only /enterprise-roadmap route. See ENT_URL. -->
     <div class="pl-wrap" id="ent-wrap" style="display:none">
       <div class="pl-card">
         <div class="pl-head">
-          <div class="pf-title">ENTERPRISE — INITIATIVE ROADMAP</div>
-          <span style="color:#9CA3AF;font-size:11px">Source: Enterprise Portfolio Summary (LT)</span>
+          <div class="pf-title">ENTERPRISE &mdash; PORTFOLIO ROADMAP</div>
+          <span id="ent-src" style="color:#9CA3AF;font-size:11px"></span>
         </div>
         <div class="pl-body" id="ent-body"></div>
       </div>
@@ -4933,6 +5449,9 @@
       /* Any user-initiated load (Refresh, Retry, initial boot) resets the counter so
          the guard can never permanently exhaust itself. */
       if (!isRetry) LOAD_RETRY = 0;
+      /* 10/21/26 R5: Enterprise reads SharePoint on its own request, in parallel, so a slow
+         or failed SharePoint read never holds up or fails the Smartsheet load (or vice versa). */
+      if (!isRetry) entLoad();
       /* 10/16/26: timeline caches reset too, or a Refresh would never re-read timelines
          (the prefetch skips anything already cached). Bumping SG_PREFETCH_RUN stops any
          prefetch still running from the previous load. */
@@ -5085,8 +5604,7 @@
          that runs rather than threading a third case through the existing show/hide
          logic, which is already duplicated between here and setBSView. */
       if (TAB === 'ent') {
-        document.getElementById('h-sub').textContent = 'Enterprise · Initiative Roadmap · Manual source';
-        document.getElementById('tab-count').textContent = ENT_INITIATIVES.length + ' initiatives';
+        document.getElementById('h-sub').textContent = 'Enterprise · Portfolio Roadmap · SharePoint';   /* 10/21/26 R5 */
         document.getElementById('view-toggle').className = 'view-toggle';
         document.getElementById('kpi-strip').style.display = 'none';
         document.querySelector('.hm-wrap').style.display = 'none';
@@ -5094,6 +5612,11 @@
         document.getElementById('projlist-wrap').style.display = 'none';
         document.getElementById('ent-wrap').style.display = 'block';
         applyViewHeader();   /* 9/17/26: un-hide header items if arriving from Stage Gate */
+        /* 10/21/26 R5: Grid: % has no meaning here (no hours, no percentages). The On Hold
+           button becomes the Enterprise-only Paused filter. */
+        document.getElementById('btn-gridmode').style.display = 'none';
+        document.getElementById('btn-hold').style.display = '';
+        entSyncHoldBtn();
         renderEnterprise();
         return;
       }
@@ -5109,6 +5632,7 @@
       if (holdCount) countTxt += ' · ' + holdCount + ' on hold ' + (TAB === 'comm' ? '(no hours)' : (SHOW_ON_HOLD ? '(included, dimmed)' : '(excluded)'));
       /* 9/17/26: the On Hold toggle has no effect on Comm hours any more, so hide it on Comm. */
       document.getElementById('btn-hold').style.display = TAB === 'comm' ? 'none' : '';
+      entSyncHoldBtn();   /* 10/21/26 R5: restore the BS label after the Enterprise Paused filter */
       document.getElementById('tab-count').textContent = countTxt;
       applyViewHeader();   /* 9/17/26 (G2, G3) */
       /* Swap methodology bar */
@@ -7392,7 +7916,7 @@
           (Object.keys(HEALTH).length - scored) + ' linked-but-grey' +
           '  \u2014 run healthReport() for the remediation list');
         if (TAB === 'comm' && COMM_VIEW === 'stagegate') renderStageGate();
-        if (TAB === 'ent') renderEnterprise();   /* 10/16/26 D11: flag rows show Health */
+        if (TAB === 'ent') renderEnterprise();   /* 10/21/26 R5: Comm rows copy Stage Gate health (E3) */
       }).catch(function (e) {
         HEALTH_LOADED = true;
         /* 10/16/26: let the flags/pop-out settle (as "no timeline") instead of loading forever. */
@@ -7800,6 +8324,8 @@
 
     /* ── UI HELPERS ── */
     function toggleHold() {
+      /* 10/21/26 R5: on Enterprise this is the Paused filter, with its own state. */
+      if (TAB === 'ent') { ENT_SHOW_PAUSED = !ENT_SHOW_PAUSED; entSyncHoldBtn(); renderEnterprise(); return; }
       SHOW_ON_HOLD = !SHOW_ON_HOLD;
       var btn = document.getElementById('btn-hold');
       if (SHOW_ON_HOLD) {
@@ -7833,337 +8359,499 @@
       document.getElementById('data-view').style.display = on ? 'none' : 'block';
       document.getElementById('error-state').style.display = 'none';
       var b = document.getElementById('btn-refresh'); b.disabled = on; b.textContent = on ? '↻  Loading…' : '↻  Refresh';
+      if (!on && TAB === 'ent') entRestoreScroll();   /* 10/21/26 R5 */
     }
     /* ════════════════════════════════════════════════════════
-       ENTERPRISE ROADMAP  (8/27/26)
+       ENTERPRISE PORTFOLIO ROADMAP  (10/21/26, R5)
        ────────────────────────────────────────────────────────
-       OPTION A, chosen deliberately by Jerry 8/27/26: this array is the source of
-       truth for the Enterprise tab, NOT a Smartsheet fetch. Eight of Patty's
-       fourteen initiatives exist in neither master sheet, so there is nothing to
-       read them from yet.
-       TRANSCRIBED from Enterprise_Portfolio_Summary.xlsx (sheet "LT") on 8/27/26.
-       That workbook is a skeleton: only 4 of 14 rows carry a Status, only 2 carry
-       milestones, every timeline cell is unfilled, and two leads read literally
-       "?". Nothing is invented here — a blank in the workbook is a blank below.
-       THIS GOES STALE. It does not update when Patty edits her workbook. The
-       intended replacement is an Enterprise Initiatives sheet in Smartsheet read
-       like every other source; when that exists, delete this array and swap
-       renderEnterprise's data source. Everything else can stay.
-       `sg` maps an initiative to live Smartsheet data where a mapping is known
-       (audit 8/24/26). Not yet consumed — step 2 wires it. */
-    var ENT_MONTHS = ['2026-08', '2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02',
-      '2027-03', '2027-04', '2027-05', '2027-06', '2027-07', '2027-08', '2027-09', '2027-10',
-      '2027-11', '2027-12', '2028-01', '2028-02', '2028-03', '2028-04'];
-    var ENT_INITIATIVES = [
-      {
-        n: 'Project Imagine', s: 'On Track', l: 'Chris Volk', f: 'All', sg: 'imagine', ids: [],
-        ms: { '2026-10': 'Foundation complete · First wall installed', '2027-01': 'Building fully enclosed' }
-      },
-      {
-        n: 'Ignite HR (Workday)', s: 'On Track', l: 'Erin Campbell', f: 'All', sg: null, ids: [],
-        ms: { '2026-08': 'End to End Testing', '2026-09': 'Training', '2026-10': 'Oct 1 · Go Live' }
-      },
-      { n: 'Project Dodgers', s: 'At Risk', l: 'David Leal', f: 'Ops, Eng, IT, Sales', sg: 'P-0087', ids: [], ms: {} },
-      { n: 'Innovation: Pastabilities', s: 'Behind', l: 'JB', f: '', sg: 'P-0041', ids: [], ms: {} },
-      { n: 'Innovation: Protein Sauce', s: '', l: '', f: '', sg: 'protein', ids: [], ms: {} },
-      { n: 'ZZ Integration', s: '', l: 'Aidan Harper', f: '', sg: null, ids: [], ms: {} },
-      { n: 'ZZ Warehouse Transition', s: '', l: 'Steve Kassinger', f: '', sg: null, ids: [], ms: {} },
-      { n: 'Coupa Purch Req Migration', s: '', l: 'Danny Endo', f: '', sg: null, ids: [], ms: {} },
-      { n: 'Coupa Expense Migration', s: '', l: '', f: '', sg: null, ids: [], ms: {} },
-      { n: 'xTracta Migration', s: '', l: '', f: '', sg: null, ids: [], ms: {} },
-      { n: 'Item Master Workflow', s: '', l: 'Kristen Ramirez', f: '', sg: null, ids: [], ms: {} },
-      { n: 'Commercialization Transformation', s: '', l: 'Kristen Ramirez', f: '', sg: 'portfolio', ids: [], ms: {} },
-      { n: 'AI Acceleration', s: '', l: 'All Functions', f: '', sg: null, ids: [], ms: {} },
-      { n: 'Project Simplify', s: '', l: 'All Functions', f: '', sg: 'journeys', ids: [], ms: {} }
-    ];
-    /* 8/27/26 STEP 2 — live Smartsheet resolution for the Enterprise roadmap.
-       Reads SG_ROWS (already parsed from the Comm master on every load), so this
-       adds ZERO API calls and cannot introduce a new failure mode.
-       Resolver keys, and why each is what it is:
-         'P-xxxx'    direct row lookup by Project ID.
-         'imagine'   the master sheet carries a "Project Imagine related?" column,
-                     so this rolls up every row flagged yes. That is a live answer,
-                     not a hardcoded project list.
-         'protein'   name match — there is no flag column for the Protein Sauce
-                     family, so this is the only available handle. Deliberately
-                     loose; it will pick up a renamed sibling, which is the safer
-                     failure direction here.
-         'portfolio' Commercialization Transformation IS the Stage Gate portfolio,
-                     so it rolls up every Active/On Hold row.
-         'journeys'  Project Simplify lives across 7 function journey sheets that
-                     this dashboard does not read. Left unresolved ON PURPOSE
-                     rather than faked — see entResolve's null return. */
-    /* 8/27/26 per Jerry ("ZZ Integration and Item Master Workflow are tracked in
-       SS"). Rather than hardcode those two, match initiative names against every
-       project the dashboard already holds — PROJECTS (both master sheets) and
-       SG_ROWS. Self-maintaining: an initiative that shows up in Smartsheet later
-       starts resolving on its own with no code change.
-       Matching is token-containment, not substring: the initiative's meaningful
-       tokens must ALL appear in the project name, or vice versa. Substring alone
-       was rejected as too loose ("AI Acceleration" would hit anything containing
-       "ai"). Generic words are dropped so "Item Master Workflow" still matches
-       "Item Master Workflow Automation".
-       Every auto-match RENDERS THE MATCHED PROJECT NAME so a wrong match is
-       visible on the screen rather than silently wrong. Explicit sg: mappings
-       always win over auto-matching. */
-    var ENT_STOPWORDS = { 'project': 1, 'the': 1, 'and': 1, 'of': 1, 'a': 1, 'an': 1, 'innovation': 1, 'phase': 1 };
-    function entTokens(nm) {
-      return String(nm || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')
-        .split(/\s+/).filter(function (t) { return t && !ENT_STOPWORDS[t]; });
+       Source: the "Enterprise Portfolio Roadmap" SharePoint list (RiseBIProject),
+       read through the server's read-only GET /enterprise-roadmap route. Built to
+       Aidan's Enterprise Tab Build Requirements v1.0 (19 Oct) and his 21 Oct review
+       answers. Replaces the hand-entered ENT_INITIATIVES list (8/27/26) and the R4
+       Key Initiative logic (10/16/26); C5 confirmed Patty's list is retired.
+       Rules that matter:
+         - one list item = one row, keyed by SharePoint item ID; Title A to Z, ID tie-break (E7)
+         - values shown as saved. Nothing is written back, inferred or recomputed
+         - Gantt boxes come ONLY from PortfolioAreaRoadmap (strict six-value lines)
+         - Health: SharePoint value, except a Commercialization row whose Title matches a
+           Stage Gate project name copies that project's scored Stage Gate health (E3).
+           Paused in SharePoint always wins; roll-ups (no single match) keep SharePoint
+         - loads independently of the Smartsheet load; a failed refresh keeps the last
+           good data labelled stale, and never falls back to the old manual list */
+    var ENT_URL = '/enterprise-roadmap';
+    var ENT_LIST_URL_FALLBACK = 'https://mizkan.sharepoint.com/sites/RiseBIProject/Lists/Enterprise%20Portfolio%20Roadmap';
+    var ENT_SITE_TZ = 'America/Los_Angeles';   /* RiseBIProject is on Pacific time: live dates arrive as 07:00Z (PDT) / 08:00Z (PST) midnight, checked 10/21/26 */
+    var ENT_HEALTH_FROM_SG = true;         /* E3 (Aidan 21 Oct). false = always show the SharePoint Health */
+    var ENT_MW = 76;                       /* px per month column; fixed so boxes sit at real dates */
+    var ENT_MIN_BOX = 64;                  /* readable minimum box width (px); never changes the dates */
+    var ENT_LANE_H = 26;
+    var ENT_TYPES = ['Discovery', 'Design', 'Build', 'Testing', 'Approval', 'Deployment', 'Launch', 'Adoption', 'Stabilization', 'Closure', 'Decision', 'Other'];
+    var ENT_STATUSES = ['Completed', 'In Progress', 'Planned', 'At Risk', 'Paused'];
+    var ENT_HEALTHS = ['Green', 'Yellow', 'Red', 'Paused'];
+    var ENT_PTYPES = ['AI & Automation', 'Systems', 'Commercialization', 'Operations', 'Data & Analytics'];
+    var ENT = { state: 'idle', data: null, rows: [], loadedAt: null, error: null, errorAt: null, req: 0 };
+    var ENT_OPEN = {};          /* item id -> true; survives refresh while the id still exists */
+    var ENT_SEL = null;         /* {id, key} highlighted milestone */
+    var ENT_SHOW_PAUSED = true; /* Enterprise-only; BS keeps SHOW_ON_HOLD */
+    var ENT_SCROLL = null;      /* {left, top} of .ent-scroll, kept across re-renders */
+
+    /* ── dates: calendar dates only, never browser-local conversion ── */
+    function entPad(n) { return (n < 10 ? '0' : '') + n; }
+    function entValidYMD(s) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); if (!m) return null;
+      var y = +m[1], mo = +m[2], d = +m[3]; if (mo < 1 || mo > 12 || d < 1) return null;
+      if (d > new Date(Date.UTC(y, mo, 0)).getUTCDate()) return null;
+      return { y: y, m: mo, d: d, s: s };
     }
-    function entTokenMatch(a, b) {
-      if (!a.length || !b.length) return false;
-      function covers(x, y) { return y.every(function (t) { return x.indexOf(t) > -1; }); }
-      if (!(covers(a, b) || covers(b, a))) return false;
-      return Math.min(a.length, b.length) >= 2;   /* one shared word is not a match */
+    /* SharePoint date-only fields can arrive as "2026-09-17T05:00:00Z" (site midnight in UTC).
+       Convert in the SITE's time zone, so the day never shifts with the viewer's browser. */
+    function entSpDate(v) {
+      if (v == null || v === '') return { ymd: null, raw: null };
+      var s = String(v).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { ymd: entValidYMD(s), raw: s };
+      var t = new Date(s); if (isNaN(t.getTime())) return { ymd: null, raw: s, bad: true };
+      try {
+        var p = {}; new Intl.DateTimeFormat('en-CA', { timeZone: ENT_SITE_TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
+          .formatToParts(t).forEach(function (x) { p[x.type] = x.value; });
+        return { ymd: entValidYMD(p.year + '-' + p.month + '-' + p.day), raw: s };
+      } catch (e) { return { ymd: entValidYMD(s.slice(0, 10)), raw: s }; }
     }
-    /* 8/27/26 REVISED, same day. Auto-matching is NO LONGER used to render.
-       Evidence (entMatchReport run against 229 live projects): Patty's initiative
-       names and the Smartsheet project names share almost no vocabulary.
-       "ZZ Integration" is tracked as "ZZ RJW Implementation"; "Item Master
-       Workflow" as "Master Data Module - Data Audit & Item Creation/Modification";
-       "Ignite HR (Workday)" spans TWO Workday projects. Coupa and xTracta are on
-       neither master sheet at all. Any matcher loose enough to bridge those gaps
-       would produce false matches everywhere, and a wrong project shown to
-       leadership is worse than an honest blank.
-       So: `ids` is an explicit, human-confirmed list of Project IDs per
-       initiative, and it is one-to-MANY by design. entAutoMatch survives only as
-       a discovery aid behind entMatchReport() in the console. */
-    function entByIds(ids) {
-      if (!ids || !ids.length) return null;
-      if ((!SG_ROWS || !SG_ROWS.length) && (!PROJECTS || !PROJECTS.length)) return { pending: true };
-      var found = [], missing = [];
-      ids.forEach(function (want) {
-        var w = String(want).toUpperCase(), hit = null;
-        (SG_ROWS || []).forEach(function (r) {
-          if (!hit && String(r.id || '').toUpperCase() === w)
-            hit = {
-              name: r.name, id: r.id, stage: r.stage,
-              pct: r.pct != null ? Math.round(r.pct * 100) : null, src: 'Comm'
-            };
-        });
-        (PROJECTS || []).forEach(function (pr) {
-          if (!hit && String(pr.projectId || '').toUpperCase() === w)
-            hit = {
-              name: pr.name, id: pr.projectId, stage: pr.status,
-              pct: pr.percentComplete != null ? Math.round(pr.percentComplete * 100) : null,
-              src: pr.source === 'Business Support' ? 'BS' : 'Comm'
-            };
-        });
-        if (hit) found.push(hit); else missing.push(want);
-      });
-      return { found: found, missing: missing };
+    function entDayNum(ymd) { return Date.UTC(ymd.y, ymd.m - 1, ymd.d) / 864e5; }
+    function entFmtYMD(ymd) {
+      if (!ymd) return '';
+      return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][ymd.m - 1] + ' ' + ymd.d + ', ' + ymd.y;
     }
-    function entAutoMatch(name) {
-      var want = entTokens(name), hits = [];
-      (SG_ROWS || []).forEach(function (r) {
-        if (entTokenMatch(want, entTokens(r.name)))
-          hits.push({
-            name: r.name, id: r.id, stage: r.stage, status: r.status,
-            pct: r.pct != null ? Math.round(r.pct * 100) : null, src: 'Comm'
-          });
+    function entFmtStamp(v) {
+      if (!v) return ''; var t = new Date(v); if (isNaN(t.getTime())) return String(v);
+      return t.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+    }
+    function entMonthKey(y, m) { return y + '-' + entPad(m); }
+    function entTodayYMD() { var n = new Date(); return { y: n.getFullYear(), m: n.getMonth() + 1, d: n.getDate() }; }
+
+    /* ── strict six-value roadmap parser (requirements section 7) ── */
+    function entParseRoadmap(text) {
+      var out = { valid: [], bad: [], dups: [], lines: 0, empty: true };
+      if (text == null || String(text).trim() === '') return out;
+      out.empty = false;
+      var lines = String(text).split(/\r\n|\n|\r/);
+      out.lines = lines.length;
+      lines.forEach(function (raw, i) {
+        var ln = i + 1;
+        if (raw.trim() === '') return;                     /* blank lines ignored, numbering kept */
+        var pipes = (raw.match(/\|/g) || []).length;
+        if (pipes !== 5) { out.bad.push({ line: ln, raw: raw, why: 'expected 5 pipes (6 values), found ' + pipes }); return; }
+        var v = raw.split('|').map(function (x) { return x.trim(); });
+        var names = ['Month', 'Milestone Name', 'Milestone Type', 'Status', 'Start Date', 'End Date'];
+        var empt = []; v.forEach(function (x, k) { if (x === '') empt.push(names[k]); });
+        if (empt.length) { out.bad.push({ line: ln, raw: raw, why: 'empty value: ' + empt.join(', ') }); return; }
+        var why = [];
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(v[0])) why.push('Month "' + v[0] + '" is not YYYY-MM');
+        var sd = entValidYMD(v[4]), ed = entValidYMD(v[5]);
+        if (!sd) why.push('Start Date "' + v[4] + '" is not a valid YYYY-MM-DD date');
+        if (!ed) why.push('End Date "' + v[5] + '" is not a valid YYYY-MM-DD date');
+        if (sd && ed && entDayNum(sd) > entDayNum(ed)) why.push('Start Date is after End Date');
+        if (sd && /^\d{4}-\d{2}$/.test(v[0]) && v[0] !== v[4].slice(0, 7)) why.push('Month ' + v[0] + ' does not match the Start Date month ' + v[4].slice(0, 7));
+        if (ENT_TYPES.indexOf(v[2]) < 0) why.push('unknown Milestone Type "' + v[2] + '"');
+        if (ENT_STATUSES.indexOf(v[3]) < 0) why.push('unknown Status "' + v[3] + '"');
+        if (why.length) { out.bad.push({ line: ln, raw: raw, why: why.join('; ') }); return; }
+        out.valid.push({ line: ln, month: v[0], name: v[1], type: v[2], status: v[3], start: sd, end: ed, seq: out.valid.length });
       });
-      (PROJECTS || []).forEach(function (pr) {
-        if (entTokenMatch(want, entTokens(pr.name)))
-          hits.push({
-            name: pr.name, id: pr.projectId, stage: pr.status, status: pr.status,
-            pct: pr.percentComplete != null ? Math.round(pr.percentComplete * 100) : null,
-            src: pr.source === 'Business Support' ? 'BS' : 'Comm'
-          });
+      out.valid.sort(function (a, b) { return entDayNum(a.start) - entDayNum(b.start) || a.seq - b.seq; });   /* stable */
+      var seen = {};
+      out.valid.forEach(function (m) {
+        var k = m.name.toLowerCase() + '|' + m.start.s + '|' + m.end.s;
+        if (seen[k]) { m.dupOf = seen[k]; out.dups.push({ line: m.line, of: seen[k], name: m.name }); } else seen[k] = m.line;
       });
-      /* de-dupe: a Comm project appears in both PROJECTS and SG_ROWS */
-      var seen = {}, out = [];
-      hits.forEach(function (h) {
-        var k = (h.id || h.name).toLowerCase();
-        if (seen[k]) return; seen[k] = 1; out.push(h);
-      });
+      out.valid.forEach(function (m, i) { m.key = 'L' + m.line; m.idx = i; });
       return out;
     }
-    /* Console helper for auditing every auto-match at once:  entMatchReport()  */
-    function entMatchReport() {
-      ENT_INITIATIVES.forEach(function (i) {
-        if (i.sg) return;
-        var m = entAutoMatch(i.n);
-        console.log(i.n, '->', m.length ? m.map(function (h) { return h.src + ':' + (h.id || '?') + ' ' + h.name; }) : '(no match)');
-      });
-    }
-    /* ── 10/16/26 D11: KEY INITIATIVE DRIVES THE COMM SIDE OF THE ENTERPRISE TAB ──
-       Kristen (Rev 3, 16 Oct): "Proceed with Key Initiative Check = Enterprise Tab".
-       Comm first, additive:
-         - every Comm project with Key Initiative ticked appears on this tab;
-         - rows already on Patty's list that map to a Comm project (sg = P-ID, or the
-           Protein roll-up) keep their hand-entered status, lead and milestones and are
-           NOT duplicated;
-         - a flagged project with no row on the list gets its own live row (lead =
-           Project Owner, Health from the timeline, Deadline placed in its month);
-         - a hand-mapped Comm project whose Key Initiative box is NOT ticked is called
-           out on its row instead of silently disappearing.
-       Non-Comm initiatives (Workday, Coupa, ZZ...) still come from ENT_INITIATIVES until
-       the BS master carries the same flag. */
-    function entProteinRows() {
-      return (SG_ROWS || []).filter(function (r) { return r.keyInit && /protein/i.test(r.name || ''); });
-    }
-    function entClaimedIds() {
-      var c = {};
-      ENT_INITIATIVES.forEach(function (i) {
-        if (i.sg && /^P-\d+$/i.test(i.sg)) c[i.sg.toUpperCase()] = 1;
-        if (i.sg === 'protein') entProteinRows().forEach(function (r) { c[String(r.id || '').toUpperCase()] = 1; });
-        (i.ids || []).forEach(function (x) { c[String(x).toUpperCase()] = 1; });
-      });
-      return c;
-    }
-    function entKeyInitRows() {
-      var claimed = entClaimedIds();
-      return (SG_ROWS || []).filter(function (r) { return r.keyInit && r.id && !claimed[String(r.id).toUpperCase()]; })
-        .map(function (r) {
-          var ms = {}, dl = sgDeadline(r);
-          if (dl.date) { ms[String(dl.date).slice(0, 7)] = 'Deadline · ' + sgFmtDate(dl.date); }
-          return { n: r.name, s: '', l: r.owner || '', f: '', sg: String(r.id).toUpperCase(), ids: [], ms: ms, keyRow: r };
-        });
-    }
-    function entKeyFlagWarning(i) {
-      if (!i.sg || !/^P-\d+$/i.test(i.sg) || !SG_ROWS || !SG_ROWS.length) return '';
-      var r = sgRowByPid(i.sg.toUpperCase());
-      if (!r || r.keyInit) return '';
-      return '<div class="ent-live" style="color:#B7791F">Key Initiative is not ticked on the master for ' + esc(r.id) + '</div>';
-    }
-    function entResolve(key) {
-      if (!key) return null;
-      if (!SG_ROWS || !SG_ROWS.length) return { pending: true };
-      function agg(rows, label) {
-        if (!rows.length) return null;
-        var withPct = rows.filter(function (r) { return r.pct != null; });
-        var avg = withPct.length
-          ? Math.round(withPct.reduce(function (a, r) { return a + r.pct; }, 0) / withPct.length * 100)
-          : null;
-        return { count: rows.length, pct: avg, label: label };
+
+    /* ── field normalisers: keep missingness, never guess ── */
+    function entPeople(f, name) {
+      var v = f[name], names = [], unresolved = 0;
+      if (v == null || v === '' || (Array.isArray(v) && !v.length)) {
+        if (f[name + 'LookupId'] != null && f[name + 'LookupId'] !== '') return { names: [], unresolved: 1 };
+        return { names: [], unresolved: 0 };
       }
-      if (/^P-\d+$/i.test(key)) {
-        var row = SG_ROWS.filter(function (r) { return String(r.id || '').toUpperCase() === key.toUpperCase(); })[0];
-        if (!row) return { missing: true };
+      (Array.isArray(v) ? v : [v]).forEach(function (p) {
+        if (p && typeof p === 'object') {
+          var n = p.LookupValue || p.lookupValue || p.displayName || p.Title || '';
+          if (n) names.push(String(n)); else unresolved++;
+        } else if (typeof p === 'string' && p.trim() && !/^\d+$/.test(p.trim())) { names.push(p.trim()); }
+        else unresolved++;                               /* a bare lookup id is never shown as a name */
+      });
+      return { names: names, unresolved: unresolved };
+    }
+    function entText(v) {
+      if (v == null) return null;
+      var s = String(v);
+      /* SharePoint rich text arrives as <div class="ExternalClass...">. Plain text that merely
+         contains "<" is shown literally. DOMParser never runs scripts or loads images. */
+      if (/^\s*<div[\s>]/i.test(s) && /<\/div>\s*$/i.test(s) && typeof DOMParser !== 'undefined') {
+        var h = s.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h\d)>/gi, '\n$&');
+        s = new DOMParser().parseFromString(h, 'text/html').body.textContent || '';
+      }
+      s = s.replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+      return s === '' ? null : s;
+    }
+    function entCount(v) {
+      if (v == null || v === '') return { txt: '—', ok: true, missing: true };
+      var n = Number(v);
+      if (isNaN(n)) return { txt: String(v), ok: false, why: 'Child Project Count "' + v + '" is not a number' };
+      if (n < 0 || Math.floor(n) !== n) return { txt: String(v), ok: false, why: 'Child Project Count ' + v + ' is not a whole, non-negative count' };
+      return { txt: String(n), ok: true };
+    }
+    function entNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+
+    function entBuildRows(payload) {
+      var items = (payload && payload.items) || [];
+      var rows = items.map(function (it) {
+        var f = it.fields || {};
+        var r = { id: String(it.id != null ? it.id : (f.id || f.ID || '')), f: f, warn: [] };
+        r.title = (f.Title == null ? '' : String(f.Title)).trim();
+        if (!r.title) r.warn.push('Title is blank');
+        r.type = f.PortfolioType == null ? '' : String(f.PortfolioType);
+        if (r.type && ENT_PTYPES.indexOf(r.type) < 0) r.warn.push('Portfolio Type "' + r.type + '" is not one of the five listed types');
+        r.lead = entPeople(f, 'PortfolioLead'); r.sponsor = entPeople(f, 'ExecutiveSponsor');
+        if (r.lead.unresolved) r.warn.push(r.lead.unresolved + ' Portfolio Lead value(s) could not be resolved to a name');
+        if (r.sponsor.unresolved) r.warn.push(r.sponsor.unresolved + ' Executive Sponsor value(s) could not be resolved to a name');
+        r.spHealth = f.Health == null ? '' : String(f.Health).trim();
+        if (!r.spHealth) r.warn.push('Health is not reported');
+        else if (ENT_HEALTHS.indexOf(r.spHealth) < 0) r.warn.push('Health "' + r.spHealth + '" is not Green, Yellow, Red or Paused');
+        r.count = entCount(f.ChildProjectCount); if (!r.count.ok) r.warn.push(r.count.why);
+        r.status = entText(f.CurrentStatus); r.acc = entText(f.KeyAccomplishments); r.risks = entText(f.KeyRisks);
+        r.start = entSpDate(f.StartDate); r.end = entSpDate(f.EndDate);
+        if (r.start.bad || (r.start.raw && !r.start.ymd)) r.warn.push('Start Date "' + r.start.raw + '" could not be read');
+        if (r.end.bad || (r.end.raw && !r.end.ymd)) r.warn.push('End Date "' + r.end.raw + '" could not be read');
+        if (r.start.ymd && r.end.ymd && entDayNum(r.start.ymd) > entDayNum(r.end.ymd)) r.warn.push('Start Date is after End Date');
+        r.rm = entParseRoadmap(f.PortfolioAreaRoadmap);
+        r.rm.bad.forEach(function (b) { r.warn.push({ line: b.line, raw: b.raw, why: b.why }); });
+        r.rm.dups.forEach(function (d) { r.warn.push('Line ' + d.line + ' repeats line ' + d.of + ' ("' + d.name + '", same start and end): possible duplicate, both shown'); });
+        r.rm.valid.forEach(function (m) {
+          var o = [];
+          if (r.start.ymd && entDayNum(m.start) < entDayNum(r.start.ymd)) o.push('starts before the portfolio Start Date');
+          if (r.end.ymd && entDayNum(m.end) > entDayNum(r.end.ymd)) o.push('ends after the portfolio End Date');
+          if (o.length) { m.oob = o.join(' and '); r.warn.push('Line ' + m.line + ' ("' + m.name + '") ' + m.oob + '; shown at its real dates'); }
+        });
+        if (entNorm(r.title) === 'project simplify') {   /* requirements 9: Continuous contract */
+          var v = r.rm.valid, ok = v.length === 1 && v[0].name === 'Continuous' && v[0].type === 'Other' && v[0].status === 'In Progress' &&
+            r.start.ymd && r.end.ymd && v[0].start.s === r.start.ymd.s && v[0].end.s === r.end.ymd.s;
+          if (!ok) r.warn.push('Project Simplify should have exactly one roadmap line: Continuous, Other, In Progress, spanning its Start and End Dates');
+        }
+        /* 10/21/26 live check: Graph's item webUrl is the item's storage path (".../Lists/<list>/2_.000"),
+           not a page a person can open. Link to the list's display form for the item instead. */
+        var lu = (payload.source && payload.source.listUrl) || ENT_LIST_URL_FALLBACK;
+        r.url = /DispForm\.aspx/i.test(it.webUrl || '') ? it.webUrl : (r.id ? lu.replace(/\/+$/, '') + '/DispForm.aspx?ID=' + encodeURIComponent(r.id) : '');
+        r.modified = f.Modified || it.lastModifiedDateTime || '';
+        return r;
+      });
+      rows.sort(function (a, b) {
+        var x = a.title.toLowerCase(), y = b.title.toLowerCase();
+        if (x !== y) return x < y ? -1 : 1;
+        var ai = +a.id, bi = +b.id; return (isNaN(ai) || isNaN(bi)) ? (a.id < b.id ? -1 : 1) : ai - bi;
+      });
+      var byName = {};
+      rows.forEach(function (r) { var k = entNorm(r.title); if (!k) return; (byName[k] = byName[k] || []).push(r); });
+      Object.keys(byName).forEach(function (k) {
+        var g = byName[k]; if (g.length < 2) return;
+        g.forEach(function (r) { r.warn.push('Duplicate title: also used by item ' + g.filter(function (o) { return o !== r; }).map(function (o) { return '#' + o.id; }).join(', ') + '. Both are shown'); });
+      });
+      return rows;
+    }
+
+    /* ── Health: SharePoint value, or the matching Stage Gate project's scored health (E3) ── */
+    function entHealth(r) {
+      var sp = r.spHealth, cls = ENT_HEALTHS.indexOf(sp) > -1 ? sp.toLowerCase() : 'none';
+      var base = { label: sp || 'Not reported', cls: cls, src: 'SharePoint', note: '' };
+      if (sp === 'Paused' || !ENT_HEALTH_FROM_SG || r.type !== 'Commercialization') return base;
+      var k = entNorm(r.title), hits = (SG_ROWS || []).filter(function (s) { return entNorm(s.name) === k; });
+      if (hits.length !== 1) {
+        if (hits.length > 1) base.note = 'Title matches ' + hits.length + ' Stage Gate projects; SharePoint Health shown';
+        return base;                                     /* roll-ups and unmatched rows keep SharePoint */
+      }
+      var sg = hits[0], h = healthFor(sg.id);
+      if (h.state === 'green' || h.state === 'yellow' || h.state === 'red') {
+        var lab = h.state.charAt(0).toUpperCase() + h.state.slice(1);
         return {
-          single: true, id: row.id, stage: row.stage, status: row.status,
-          pct: row.pct != null ? Math.round(row.pct * 100) : null
+          label: lab, cls: h.state, src: 'Stage Gate', pid: sg.id,
+          note: 'Copied from the Stage Gate timeline for ' + sg.id + ' (' + (h.days > 0 ? '+' : '') + h.days + 'd variance)' +
+            (sp && sp !== lab ? '. SharePoint says ' + sp : '')
         };
       }
-      if (key === 'imagine') return agg(SG_ROWS.filter(function (r) {
-        return /^(y|yes|true|1)$/i.test(String(r.imagine || '').trim());
-      }), 'flagged');
-      /* 10/16/26 (D11, Kristen: Key Initiative = Enterprise flag). The old matcher looked
-         for "protein sauce" in the name and matched nothing (the projects are named
-         "Bertolli Protein Alfredo", "RAGU Protein Red", ...), so this row read SOURCE NOT
-         READ. It now rolls up the Key Initiative-flagged Protein projects. */
-      if (key === 'protein') return agg(entProteinRows(), 'projects');
-      if (key === 'portfolio') return agg(SG_ROWS.filter(function (r) {
-        return r.status === 'Active' || isOnHold(r.status);
-      }), 'active');
-      return null;   /* 'journeys' and anything unrecognised */
+      base.note = HEALTH_LOADED ? ('Matches Stage Gate ' + sg.id + ', which has no scored health (' + h.why + '); SharePoint Health shown')
+        : ('Matches Stage Gate ' + sg.id + '; its timeline health is still loading');
+      base.pid = sg.id;
+      return base;
     }
-    function entLiveCell(i) {
-      /* Explicit confirmed IDs win over everything. */
-      var e = entByIds(i.ids);
-      if (e && !e.pending) {
-        var lines = e.found.map(function (h) {
-          return esc(h.src) + ' ' + esc(h.id || '?') + ' &middot; ' + esc(h.name) +
-            (h.pct != null ? ' &middot; ' + h.pct + '%' : '');
-        });
-        var miss = e.missing.length
-          ? '<div class="ent-live" style="color:#B7791F">' + e.missing.length +
-          ' mapped id(s) not found: ' + esc(e.missing.join(', ')) + '</div>' : '';
-        if (!e.found.length) return '<span class="ent-src no">NOT FOUND</span>' + miss;
-        var pcts = e.found.filter(function (x) { return x.pct != null; });
-        var avg = pcts.length ? Math.round(pcts.reduce(function (a, x) { return a + x.pct; }, 0) / pcts.length) : null;
-        var badge = e.found.length === 1
-          ? esc(e.found[0].src) + ' ' + esc(e.found[0].id)
-          : e.found.length + ' projects' + (avg != null ? ' &middot; ' + avg + '%' : '');
-        return '<span class="ent-src live">' + badge + '</span>' +
-          '<div class="ent-live" title="' + esc(e.found.map(function (x) { return x.name; }).join(' | ')) +
-          '">' + lines.join('<br>') + '</div>' + miss;
+    function entHealthBadge(h) {
+      return '<span class="ent-hb ' + h.cls + '"><i aria-hidden="true"></i>' + esc(h.label) + '</span>';
+    }
+    function entStCls(s) { return 'st-' + String(s || '').toLowerCase().replace(/\s+/g, ''); }
+
+    /* ── load: independent of the Smartsheet Promise.all ── */
+    function entLoad() {
+      var my = ++ENT.req;
+      ENT.state = ENT.data ? 'refreshing' : 'loading';
+      if (TAB === 'ent') renderEnterprise();
+      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var to = setTimeout(function () { if (ac) ac.abort(); }, 45000);
+      fetch(ENT_URL, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: ac ? ac.signal : undefined })
+        .then(function (r) {
+          return r.text().then(function (t) {
+            var j = null; try { j = JSON.parse(t); } catch (e) { }
+            if (!r.ok) {
+              var err = new Error((j && j.error) || ('HTTP ' + r.status));
+              err.code = (j && j.code) || (r.status === 404 ? 'NO_ROUTE' : 'HTTP_' + r.status); throw err;
+            }
+            if (!j || !Array.isArray(j.items)) { var e2 = new Error('Unexpected response shape'); e2.code = 'BAD_SHAPE'; throw e2; }
+            return j;
+          });
+        })
+        .then(function (j) {
+          if (my !== ENT.req) return;
+          ENT.data = j; ENT.rows = entBuildRows(j); ENT.loadedAt = new Date(); ENT.state = 'ok'; ENT.error = null; ENT.errorAt = null;
+          if (TAB === 'ent') renderEnterprise();
+        })
+        .catch(function (e) {
+          if (my !== ENT.req) return;
+          ENT.error = { msg: (ac && ac.signal.aborted) ? 'Request timed out after 45s' : (e.message || String(e)), code: (ac && ac.signal.aborted) ? 'TIMEOUT' : (e.code || 'NETWORK') };
+          ENT.errorAt = new Date(); ENT.state = ENT.data ? 'stale' : 'error';
+          console.error('[EPO] Enterprise roadmap load failed (' + ENT.error.code + '): ' + ENT.error.msg);
+          if (TAB === 'ent') renderEnterprise();
+        })
+        .then(function () { clearTimeout(to); });
+    }
+    function entErrHint(code) {
+      if (code === 'ACCESS_DENIED' || code === 'NO_IDENTITY' || code === 'TOKEN_FAILED')
+        return 'The dashboard server does not have read access to the SharePoint list (managed identity or Sites.Selected grant).';
+      if (code === 'NOT_CONFIGURED') return 'The server is missing the ENT_SP_SITE_ID / ENT_SP_LIST_ID settings.';
+      if (code === 'NOT_FOUND') return 'The configured SharePoint site or list was not found.';
+      if (code === 'NO_ROUTE') return 'The /enterprise-roadmap route is not deployed on the dashboard server yet.';
+      if (code === 'THROTTLED') return 'SharePoint is throttling requests. Try Refresh in a minute.';
+      if (code === 'TIMEOUT' || code === 'NETWORK') return 'The dashboard server could not be reached.';
+      return 'The dashboard server could not read the list.';
+    }
+
+    /* ── render ── */
+    function entRange(rows) {
+      var lo = null, hi = null, t = entTodayYMD();
+      function add(y) { if (!y) return; var k = y.y * 12 + (y.m - 1); if (lo === null || k < lo) lo = k; if (hi === null || k > hi) hi = k; }
+      rows.forEach(function (r) { add(r.start.ymd); add(r.end.ymd); r.rm.valid.forEach(function (m) { add(m.start); add(m.end); }); });
+      var now = t.y * 12 + (t.m - 1);
+      if (lo === null) { lo = now - 1; hi = now + 11; }
+      lo = Math.min(lo, now); hi = Math.max(hi, now);
+      var months = []; for (var k = lo; k <= hi; k++)months.push({ y: Math.floor(k / 12), m: k % 12 + 1, k: k });
+      return { lo: lo, months: months, width: months.length * ENT_MW, now: now };
+    }
+    function entX(rg, ymd, endEdge) {
+      var dim = new Date(Date.UTC(ymd.y, ymd.m, 0)).getUTCDate();
+      var mi = ymd.y * 12 + (ymd.m - 1) - rg.lo;
+      return (mi + (endEdge ? ymd.d : ymd.d - 1) / dim) * ENT_MW;
+    }
+    function entLayout(r, rg) {
+      var lanes = [], boxes = r.rm.valid.map(function (m) {
+        var x0 = entX(rg, m.start, false), x1 = entX(rg, m.end, true), w = Math.max(x1 - x0, ENT_MIN_BOX);
+        return { m: m, x: x0, w: w, trueW: x1 - x0 };
+      });
+      boxes.forEach(function (b) {
+        for (var i = 0; i < lanes.length; i++) { if (lanes[i] <= b.x - 3) { b.lane = i; lanes[i] = b.x + b.w; return; } }
+        b.lane = lanes.length; lanes.push(b.x + b.w);
+      });
+      return { boxes: boxes, lanes: Math.max(1, lanes.length) };
+    }
+    function entTrack(r, rg) {
+      var L = entLayout(r, rg), h = L.lanes * ENT_LANE_H + 10;
+      var cols = rg.months.map(function (mo, i) {
+        return '<div class="mcol' + (mo.m % 3 === 1 ? ' q1' : '') + (mo.k === rg.now ? ' now' : '') + '" style="left:' + (i * ENT_MW) + 'px;width:' + ENT_MW + 'px"></div>';
+      }).join('');
+      var t = entTodayYMD();
+      var today = '<div class="today" style="left:' + Math.round((entX(rg, t, false) + entX(rg, t, true)) / 2 - 1) + 'px" aria-hidden="true"></div>';
+      var boxes = L.boxes.map(function (b) {
+        var m = b.m, sel = ENT_SEL && ENT_SEL.id === r.id && ENT_SEL.key === m.key;
+        var span = m.start.s === m.end.s ? entFmtYMD(m.start) : entFmtYMD(m.start) + ' to ' + entFmtYMD(m.end);
+        var lab = m.name + '. ' + m.type + '. ' + m.status + '. ' + span + (m.oob ? '. Outside portfolio dates' : '') + (m.dupOf ? '. Possible duplicate of line ' + m.dupOf : '');
+        return '<button type="button" class="ent-box ' + entStCls(m.status) + (m.oob ? ' oob' : '') + (sel ? ' sel' : '') + '" ' +
+          'data-ent-ms="' + esc(r.id) + '" data-ent-key="' + m.key + '" title="' + esc(lab) + '" aria-label="' + esc(lab) + '" ' +
+          'style="left:' + b.x.toFixed(1) + 'px;width:' + b.w.toFixed(1) + 'px;top:' + (5 + b.lane * ENT_LANE_H) + 'px">' +
+          (m.oob ? '<span class="bang" aria-hidden="true">!</span>' : '') + esc(m.name) + '</button>';
+      }).join('');
+      var none = '';
+      if (!r.rm.valid.length) {
+        var msg = r.rm.empty ? 'No roadmap milestones provided' : 'No valid roadmap lines (' + r.rm.bad.length + ' invalid; see drawer)';
+        var sx = Math.max(0, (ENT_SCROLL ? ENT_SCROLL.left : 0)) + 8;
+        none = '<div class="nomsg" style="left:' + sx + 'px">' + esc(msg) + '</div>';
       }
-      if (e && e.pending) return '<span class="ent-src no">loading&hellip;</span>';
-      if (!i.sg) return '<span class="ent-src no">NO SOURCE</span>';
-      var v = entResolve(i.sg);
-      if (v === null) return '<span class="ent-src no" title="Mapping known but the source ' +
-        'sheets are not read by this dashboard.">SOURCE NOT READ</span>';
-      if (v.pending) return '<span class="ent-src no">loading&hellip;</span>';
-      if (v.missing) return '<span class="ent-src no" title="Mapped to ' + esc(i.sg) +
-        ' but no such row is on the Stage Gate master today.">NOT FOUND</span>';
-      if (v.single) {
-        return '<span class="ent-src live">' + esc(v.id) + '</span>' +
-          '<div class="ent-live">' + esc(v.stage || '&mdash;') +
-          (v.pct != null ? ' &middot; ' + v.pct + '%' : '') + '</div>';
+      return '<div class="ent-trk" style="width:' + rg.width + 'px;height:' + h + 'px">' + cols + today + boxes + none + '</div>';
+    }
+    function entPeopleHtml(p) {
+      if (!p.names.length) return '<span class="ent-np">Unassigned</span>' + (p.unresolved ? ' <span class="ent-wchip" style="margin:0">' + p.unresolved + ' unresolved</span>' : '');
+      return esc(p.names.join(', ')) + (p.unresolved ? ' <span class="ent-wchip" style="margin:0">+' + p.unresolved + ' unresolved</span>' : '');
+    }
+    function entWarnList(r) {
+      if (!r.warn.length) return '<div class="ent-ok">No data warnings for this item.</div>';
+      return '<ul class="ent-warn">' + r.warn.map(function (w) {
+        if (typeof w === 'string') return '<li>' + esc(w) + '</li>';
+        return '<li><b>Line ' + w.line + '</b>: ' + esc(w.why) + '<br><code>' + esc(w.raw) + '</code></li>';
+      }).join('') + '</ul>';
+    }
+    function entTextBlock(v) { return v ? '<div class="ent-txt">' + esc(v) + '</div>' : '<div class="ent-txt np">Not provided</div>'; }
+    function entDrawer(r, h) {
+      var dates = (r.start.ymd ? entFmtYMD(r.start.ymd) : '<span class="ent-np">Not provided</span>') + ' to ' +
+        (r.end.ymd ? entFmtYMD(r.end.ymd) : '<span class="ent-np">Not provided</span>');
+      var kv = '<dl class="ent-kv">' +
+        '<dt>Portfolio area</dt><dd>' + (r.title ? esc(r.title) : '<span class="ent-np">Not provided</span>') + '</dd>' +
+        '<dt>Portfolio type</dt><dd>' + (r.type ? esc(r.type) : '<span class="ent-np">Not provided</span>') + '</dd>' +
+        '<dt>Health</dt><dd>' + entHealthBadge(h) + '<div class="ent-hsrc" style="white-space:normal">From ' + esc(h.src) + (h.note ? '. ' + esc(h.note) : '') + '</div></dd>' +
+        '<dt>Executive sponsor</dt><dd>' + entPeopleHtml(r.sponsor) + '</dd>' +
+        '<dt>Portfolio lead</dt><dd>' + entPeopleHtml(r.lead) + '</dd>' +
+        '<dt>Projects / initiatives</dt><dd>' + esc(r.count.txt) + '</dd>' +
+        '<dt>Portfolio dates</dt><dd>' + dates + '</dd></dl>';
+      var ms;
+      if (!r.rm.valid.length) {
+        ms = '<div class="ent-txt np">' + (r.rm.empty ? 'No roadmap milestones provided' : 'No valid roadmap lines. See Source and quality for the line-by-line reasons') + '</div>';
+      } else {
+        ms = '<table class="ent-ms-tbl"><thead><tr><th>Milestone</th><th>Type</th><th>Status</th><th>Start</th><th>End</th></tr></thead><tbody>' +
+          r.rm.valid.map(function (m) {
+            var sel = ENT_SEL && ENT_SEL.id === r.id && ENT_SEL.key === m.key;
+            var w = (m.oob ? '<span class="mw">! ' + esc(m.oob) + '</span>' : '') + (m.dupOf ? '<span class="mw">Possible duplicate of line ' + m.dupOf + '</span>' : '');
+            return '<tr id="ent-ms-' + esc(r.id) + '-' + m.key + '" tabindex="-1"' + (sel ? ' class="sel"' : '') + '><td>' + esc(m.name) + w + '</td><td>' + esc(m.type) + '</td>' +
+              '<td><span class="ent-st ' + entStCls(m.status) + '">' + esc(m.status) + '</span></td>' +
+              '<td style="white-space:nowrap">' + entFmtYMD(m.start) + '</td><td style="white-space:nowrap">' + entFmtYMD(m.end) + '</td></tr>';
+          }).join('') + '</tbody></table>';
       }
-      return '<span class="ent-src live">' + v.count + ' ' + esc(v.label) + '</span>' +
-        (v.pct != null ? '<div class="ent-live">' + v.pct + '% avg complete</div>' : '');
+      var src = '<dl class="ent-kv"><dt>Item modified</dt><dd>' + (r.modified ? esc(entFmtStamp(r.modified)) : '<span class="ent-np">Not provided</span>') +
+        '<div class="ent-hsrc" style="white-space:normal">When this SharePoint item was last edited. It does not show when the upstream refresh last ran.</div></dd>' +
+        '<dt>Item ID</dt><dd>' + esc(r.id) + '</dd>' +
+        '<dt>Roadmap lines</dt><dd>' + r.rm.valid.length + ' valid' + (r.rm.bad.length ? ', ' + r.rm.bad.length + ' invalid' : '') + '</dd>' +
+        '<dt>SharePoint</dt><dd>' + (r.url ? '<a class="ent-src-lnk" href="' + esc(r.url) + '" target="_blank" rel="noopener">Open in SharePoint &#8599;</a>' : '<span class="ent-np">Item link not returned</span>') + '</dd></dl>' +
+        '<h5 style="margin-top:10px">Data warnings</h5>' + entWarnList(r);
+      return '<div class="ent-dgrid">' +
+        '<section class="ent-sec"><h5>Overview</h5>' + kv + '</section>' +
+        '<section class="ent-sec"><h5>Current status</h5>' + entTextBlock(r.status) + '</section>' +
+        '<section class="ent-sec"><h5>Key accomplishments</h5>' + entTextBlock(r.acc) + '</section>' +
+        '<section class="ent-sec"><h5>Key risks</h5>' + entTextBlock(r.risks) + '</section>' +
+        '<section class="ent-sec wide"><h5>Milestones</h5>' + ms + '</section>' +
+        '<section class="ent-sec wide"><h5>Source and quality</h5>' + src + '</section></div>';
     }
-    function entStatusClass(v) {
-      var t = String(v || '').toLowerCase();
-      if (/on track/.test(t)) return 'ontrack';
-      if (/risk/.test(t)) return 'atrisk';
-      if (/behind|delay/.test(t)) return 'behind';
-      return 'none';
+    function entSourceLink() {
+      var u = (ENT.data && ENT.data.source && ENT.data.source.listUrl) || ENT_LIST_URL_FALLBACK;
+      return 'Source: <a class="ent-src-lnk" href="' + esc(u) + '" target="_blank" rel="noopener">Enterprise Portfolio Roadmap (SharePoint) &#8599;</a>';
     }
-    function entMonthLabel(k) {
-      var p = k.split('-'), d = new Date(+p[0], +p[1] - 1, 1);
-      return d.toLocaleString('default', { month: 'short' }) + " '" + p[0].slice(2);
+    function entSyncHoldBtn() {
+      var b = document.getElementById('btn-hold');
+      if (TAB === 'ent') {
+        b.textContent = '▮ Paused: ' + (ENT_SHOW_PAUSED ? 'Included' : 'Excluded');
+        b.className = 'btn-toggle-hold ' + (ENT_SHOW_PAUSED ? 'on' : 'off');
+        b.title = 'Show or hide portfolio areas whose Health is Paused (Enterprise tab only)';
+      } else {
+        b.textContent = '▮ On Hold: ' + (SHOW_ON_HOLD ? 'Included' : 'Excluded');
+        b.className = 'btn-toggle-hold ' + (SHOW_ON_HOLD ? 'on' : 'off');
+        b.title = 'On Hold projects are included in calculations but dimmed, click to exclude';
+      }
     }
     function renderEnterprise() {
-      var now = nk();
-      /* 10/16/26 D11: Patty's list plus any Key Initiative-flagged Comm project not on it. */
-      var ENT_ROWS = ENT_INITIATIVES.concat(entKeyInitRows());
-      var nKey = ENT_ROWS.length - ENT_INITIATIVES.length;
-      document.getElementById('tab-count').textContent = ENT_ROWS.length + ' initiatives';   /* renderAll sets it from ENT_INITIATIVES alone */
-      var sourced = ENT_ROWS.filter(function (i) {
-        var e = entByIds(i.ids);
-        if (e && !e.pending && e.found.length) return true;
-        if (i.sg) { var v = entResolve(i.sg); return !!(v && !v.missing && !v.pending); }
-        return false;
-      }).length;
-      var noStatus = ENT_INITIATIVES.filter(function (i) { return !i.s; }).length;
-
-      var head = '<div class="ent-head"><div class="ent-cnt"><b>' + ENT_ROWS.length +
-        '</b> initiatives' + (nKey ? ' (' + nKey + ' added by the Key Initiative flag)' : '') + ' &middot; ' + sourced + ' resolved to live Smartsheet data &middot; ' +
-        '<span style="color:#B7791F;font-weight:700">' + noStatus + ' with no status reported</span></div></div>';
-
-      var ths = ENT_MONTHS.map(function (k) {
-        var q = /-(01|04|07|10)$/.test(k) ? ' q1' : '';
-        return '<th class="mo' + q + '">' + entMonthLabel(k) + '</th>';
+      var host = document.getElementById('ent-body'); if (!host) return;
+      var srcEl = document.getElementById('ent-src'); if (srcEl) srcEl.innerHTML = entSourceLink();
+      var sc = host.querySelector('.ent-scroll');
+      if (sc && sc.clientWidth) ENT_SCROLL = { left: sc.scrollLeft, top: sc.scrollTop };   /* a hidden container reads 0: keep the last real position */
+      var cnt = document.getElementById('tab-count');
+      if (!ENT.data) {
+        cnt.textContent = '';
+        if (ENT.state === 'error') {
+          host.innerHTML = '<div class="ent-state err"><h4>Enterprise Portfolio Roadmap could not be loaded</h4>' +
+            esc(entErrHint(ENT.error.code)) + '<br><span style="color:#6B7280;font-size:12px">' + esc(ENT.error.msg) + ' (' + esc(ENT.error.code) + '), ' + esc(entFmtStamp(ENT.errorAt)) + '</span>' +
+            '<br><span style="color:#6B7280;font-size:12px">No earlier data is shown in its place.</span>' +
+            '<br><button type="button" class="ent-retry" id="ent-retry">&#8635; Try again</button></div>';
+          document.getElementById('ent-retry').onclick = function () { entLoad(); };
+        } else {
+          host.innerHTML = '<div class="ent-state"><div class="spinner" style="margin:0 auto 10px"></div>Loading the Enterprise Portfolio Roadmap from SharePoint&hellip;</div>';
+        }
+        return;
+      }
+      var all = ENT.rows, shown = all.filter(function (r) { return ENT_SHOW_PAUSED || r.spHealth !== 'Paused'; });
+      var paused = all.length - shown.length;
+      cnt.textContent = shown.length === all.length ? all.length + ' portfolio areas' : shown.length + ' of ' + all.length + ' portfolio areas';
+      var banner = '';
+      if (ENT.state === 'stale') banner = '<div class="ent-banner stale" role="alert"><b>Refresh failed</b> at ' + esc(entFmtStamp(ENT.errorAt)) + ': ' +
+        esc(entErrHint(ENT.error.code)) + ' (' + esc(ENT.error.msg) + '). <b>Showing stale data</b> from the last successful load at ' + esc(entFmtStamp(ENT.loadedAt)) + '.</div>';
+      if (ENT.state === 'refreshing') banner = '<div class="ent-banner info">Refreshing from SharePoint&hellip; showing the last successful load until it finishes.</div>';
+      var wRows = all.filter(function (r) { return r.warn.length; }).length;
+      var head = '<div class="ent-head">' +
+        '<span class="ent-cnt"><b>' + shown.length + '</b> ' + (shown.length === all.length ? 'portfolio areas' : 'of ' + all.length + ' portfolio areas shown (' + paused + ' Paused hidden)') + '</span>' +
+        '<span class="ent-ts">Last successful load: <b>' + esc(entFmtStamp(ENT.loadedAt)) + '</b>' + (ENT.state === 'stale' ? ' <span class="ent-wcount">(stale)</span>' : '') + '</span>' +
+        (wRows ? '<span class="ent-wcount">' + wRows + ' with data warnings</span>' : '') +
+        '<span class="ent-legend" aria-label="Milestone status legend">' + ENT_STATUSES.map(function (s) {
+          return '<span class="ent-box ' + entStCls(s) + '">' + esc(s) + '</span>';
+        }).join('') +
+        '<span class="ent-box st-planned oob">! Outside portfolio dates</span><span><i class="lg-today"></i>Today</span></span></div>';
+      if (!all.length) {
+        host.innerHTML = banner + head + '<div class="ent-state"><h4>No portfolio areas</h4>The Enterprise Portfolio Roadmap list has no items.</div>';
+        return;
+      }
+      var rg = entRange(all);
+      var mh = '<div class="ent-mrow" style="width:' + rg.width + 'px">' + rg.months.map(function (mo) {
+        return '<span class="' + (mo.m % 3 === 1 ? 'q1' : '') + (mo.k === rg.now ? ' now' : '') + '" style="width:' + ENT_MW + 'px">' +
+          ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][mo.m - 1] + " '" + String(mo.y).slice(2) + '</span>';
+      }).join('') + '</div>';
+      var body = shown.map(function (r) {
+        var h = entHealth(r), open = !!ENT_OPEN[r.id], did = 'ent-drw-' + esc(r.id);
+        var nm = r.title || '(untitled item #' + r.id + ')';
+        var row = '<tr class="ent-row' + (open ? ' open' : '') + '">' +
+          '<td class="s1"><button type="button" class="ent-tog" data-ent-tog="' + esc(r.id) + '" aria-expanded="' + open + '" aria-controls="' + did + '">' +
+          '<span class="ent-chev" aria-hidden="true">&#9654;</span><span>' + esc(nm) + '</span></button>' +
+          (r.warn.length ? '<span class="ent-wchip">' + r.warn.length + ' warning' + (r.warn.length > 1 ? 's' : '') + '</span>' : '') + '</td>' +
+          '<td class="s2 ent-lead' + (r.lead.names.length ? '' : ' unk') + '">' + entPeopleHtml(r.lead) + '</td>' +
+          '<td class="s3">' + entHealthBadge(h) + (h.src === 'Stage Gate' ? '<span class="ent-hsrc" title="' + esc(h.note) + '">from Stage Gate</span>' : '') + '</td>' +
+          '<td class="s4 ent-cnum' + (r.count.ok ? '' : ' bad') + '">' + esc(r.count.txt) + '</td>' +
+          '<td class="ent-tl">' + entTrack(r, rg) + '</td></tr>';
+        if (open) row += '<tr class="ent-drw" id="' + did + '"><td colspan="5"><div class="ent-drw-in">' + entDrawer(r, h) + '</div></td></tr>';
+        return row;
       }).join('');
-
-      var body = ENT_ROWS.map(function (i) {
-        var cells = ENT_MONTHS.map(function (k) {
-          var q = /-(01|04|07|10)$/.test(k) ? ' q1' : '';
-          var n = (k === now) ? ' now' : '';
-          var m = i.ms[k];
-          return '<td class="ent-mo' + q + n + '">' + (m ? '<span class="ent-ms">' + esc(m) + '</span>' : '') + '</td>';
-        }).join('');
-        /* 10/16/26 D11: flag-driven rows show Health (timeline variance) in place of a
-           reported status, labelled as such, and carry a KEY INITIATIVE tag. */
-        var stCell = i.keyRow
-          ? '<span title="Health from the project timeline (no reported status for flag-driven rows)">' + sgHealthCell(i.keyRow) + '</span>'
-          : '<span class="ent-st ' + entStatusClass(i.s) + '">' + esc(i.s || 'NOT REPORTED') + '</span>';
-        return '<tr>' +
-          '<td class="ent-nm">' + esc(i.n) + (i.keyRow ? ' <span class="ent-src live" title="Key Initiative ticked on the Stage Gate master">KEY INITIATIVE</span>' : '') + '</td>' +
-          '<td class="ent-lead' + (i.l ? '' : ' unk') + '">' + esc(i.l || 'unassigned') + '</td>' +
-          '<td>' + stCell + '</td>' +
-          '<td>' + entLiveCell(i) + entKeyFlagWarning(i) + '</td>' +
-          cells + '</tr>';
-      }).join('');
-
-      document.getElementById('ent-body').innerHTML = head +
-        '<div class="ent-scroll"><table class="ent-tbl"><thead><tr>' +
-        '<th>Initiative</th><th>Lead</th><th>Reported Status</th><th>Live Data</th>' + ths +
-        '</tr></thead><tbody>' + body + '</tbody></table></div>' +
-        '<div class="ent-foot"><b>Read this as a coverage map, not a plan of record.</b> ' +
-        'Status, lead and milestone text are transcribed from the Enterprise Portfolio ' +
-        'Summary workbook and update only when that workbook is re-imported by hand. ' +
-        'Live cells read the Stage Gate master directly and refresh with the dashboard. ' +
-        'Any Commercialization project with Key Initiative ticked on the Stage Gate master ' +
-        'appears here automatically. ' +
-        '&ldquo;NO SOURCE&rdquo; means no system of record exists anywhere; ' +
-        '&ldquo;SOURCE NOT READ&rdquo; means one exists but this dashboard does not ' +
-        'yet consume it.</div>';
+      var foot = '<div class="ent-foot">Read-only view of the Enterprise Portfolio Roadmap SharePoint list, shown as saved (manual edits included). ' +
+        'Boxes come only from each item\'s Portfolio Area Roadmap lines and sit at their real dates; a short item keeps a minimum width so its label stays readable. ' +
+        'Health for a Commercialization portfolio area whose title matches a Stage Gate project is copied from that project\'s Stage Gate timeline; all other rows show the SharePoint Health. ' +
+        'Paused hidden via the Paused button affects this tab only.</div>';
+      host.innerHTML = banner + head + '<div class="ent-scroll"><table class="ent-tbl"><thead><tr>' +
+        '<th class="s1">Initiative</th><th class="s2">Lead</th><th class="s3">Health</th><th class="s4">Projects / Initiatives</th>' +
+        '<th class="mhd">' + mh + '</th></tr></thead><tbody>' + body + '</tbody></table></div>' + foot;
+      sc = host.querySelector('.ent-scroll');
+      if (!ENT_SCROLL) ENT_SCROLL = { left: Math.max(0, (rg.now - 1 - rg.lo) * ENT_MW), top: 0 };   /* first view opens on last month */
+      entRestoreScroll();
+      sc.onscroll = function () { if (sc.clientWidth) ENT_SCROLL = { left: sc.scrollLeft, top: sc.scrollTop }; };
+      host.onclick = entClick;
     }
+    /* Rendering can happen while the board is hidden behind the Smartsheet spinner, where
+       scrollLeft cannot be set. setLoad(false) calls this again once the board is visible. */
+    function entRestoreScroll() {
+      var sc = document.querySelector('#ent-body .ent-scroll'); if (!sc || !sc.clientWidth || !ENT_SCROLL) return;
+      sc.scrollLeft = ENT_SCROLL.left; sc.scrollTop = ENT_SCROLL.top; entSizeDrawers();
+    }
+    function entSizeDrawers() {
+      var sc = document.querySelector('#ent-body .ent-scroll'); if (!sc) return;
+      var w = sc.clientWidth;
+      Array.prototype.forEach.call(sc.querySelectorAll('.ent-drw-in'), function (d) { d.style.width = w + 'px'; });
+    }
+    function entClick(ev) {
+      var t = ev.target;
+      var tog = t.closest && t.closest('[data-ent-tog]');
+      if (tog) {
+        var id = tog.getAttribute('data-ent-tog');
+        if (ENT_OPEN[id]) { delete ENT_OPEN[id]; if (ENT_SEL && ENT_SEL.id === id) ENT_SEL = null; } else ENT_OPEN[id] = true;
+        renderEnterprise();
+        var b = document.querySelector('[data-ent-tog="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); if (b) b.focus({ preventScroll: true });
+        return;
+      }
+      var box = t.closest && t.closest('[data-ent-ms]');
+      if (box) {
+        var rid = box.getAttribute('data-ent-ms'), key = box.getAttribute('data-ent-key');
+        ENT_OPEN[rid] = true; ENT_SEL = { id: rid, key: key };
+        renderEnterprise();
+        var sc = document.querySelector('#ent-body .ent-scroll'), keep = sc ? sc.scrollLeft : 0;
+        var tr = document.getElementById('ent-ms-' + rid + '-' + key);
+        if (tr) { tr.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (sc) sc.scrollLeft = keep; tr.focus({ preventScroll: true }); }
+      }
+    }
+    window.addEventListener('resize', function () { if (TAB === 'ent') entSizeDrawers(); });
 
     function switchTab(t) {
       TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'projlist'; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
