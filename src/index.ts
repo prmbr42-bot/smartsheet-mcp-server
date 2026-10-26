@@ -278,6 +278,97 @@ async function runHTTP(): Promise<void> {
         res.json({ ok: true, message: "Cache cleared — next GET /project-info will re-scan" });
     });
 
+    // ── Enterprise Portfolio Roadmap (SharePoint, read-only) ──────────────────
+    // 10/21/26: feeds the dashboard's Enterprise tab. Reads every page of one SharePoint list through
+    // Microsoft Graph using the App Service's system-assigned managed identity (no secret stored).
+    // Access is Graph Sites.Selected + a "read" grant on the RiseBIProject site only. GET only:
+    // this route never writes to SharePoint. Items are returned as Graph sends them; the dashboard
+    // does all display formatting. No server cache: the dashboard's Refresh must see manual edits.
+    // App Settings required: ENT_SP_SITE_ID, ENT_SP_LIST_ID.
+    const GRAPH = "https://graph.microsoft.com/v1.0";
+    const ENT_FIELDS = [
+        "Title", "PortfolioType", "ExecutiveSponsor", "PortfolioLead", "Health", "ChildProjectCount",
+        "CurrentStatus", "KeyAccomplishments", "KeyRisks", "StartDate", "EndDate",
+        "PortfolioAreaRoadmap", "Modified",
+    ];
+    const ENT_MAX_PAGES = 50;                       // 50 x 200 = 10,000 items; a runaway-loop guard, not a cap on a real list
+    let _graphTok: { token: string; exp: number } | null = null;
+    let _entInFlight: Promise<unknown> | null = null;
+
+    class EntError extends Error {
+        constructor(public code: string, public httpStatus: number, message: string) { super(message); }
+    }
+
+    async function graphToken(): Promise<string> {
+        if (_graphTok && Date.now() < _graphTok.exp - 5 * 60 * 1000) return _graphTok.token;
+        const ep = process.env.IDENTITY_ENDPOINT, hdr = process.env.IDENTITY_HEADER;
+        if (!ep || !hdr) throw new EntError("NO_IDENTITY", 503, "Managed identity is not enabled on this App Service");
+        const url = `${ep}?resource=${encodeURIComponent("https://graph.microsoft.com")}&api-version=2019-08-01`;
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), SS_FETCH_TIMEOUT_MS);
+        try {
+            const r = await fetch(url, { headers: { "X-IDENTITY-HEADER": hdr }, signal: ac.signal });
+            if (!r.ok) { await r.text(); throw new EntError("TOKEN_FAILED", 503, `Managed identity token request failed (${r.status})`); }
+            const j = await r.json() as { access_token: string; expires_on: string };
+            _graphTok = { token: j.access_token, exp: Number(j.expires_on) * 1000 };
+            return j.access_token;
+        } catch (e) {
+            if (ac.signal.aborted) throw new EntError("TOKEN_FAILED", 504, "Managed identity token request timed out");
+            throw e;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    async function graphGet(url: string, token: string): Promise<any> {
+        const { status, body } = await ssGetWithTimeout(url, token);   // same 30s abort as the Smartsheet reads
+        if (status === 401 || status === 403) throw new EntError("ACCESS_DENIED", 502, `SharePoint denied access (${status}). Check the Sites.Selected grant on the site`);
+        if (status === 404) throw new EntError("NOT_FOUND", 502, "SharePoint site or list not found. Check ENT_SP_SITE_ID / ENT_SP_LIST_ID");
+        if (status === 429 || status === 503) throw new EntError("THROTTLED", 503, `SharePoint is throttling requests (${status}). Try again shortly`);
+        if (status < 200 || status >= 300) throw new EntError("UPSTREAM", 502, `SharePoint returned ${status}`);
+        return body;
+    }
+
+    async function loadEnterpriseRoadmap() {
+        const siteId = process.env.ENT_SP_SITE_ID, listId = process.env.ENT_SP_LIST_ID;
+        if (!siteId || !listId) throw new EntError("NOT_CONFIGURED", 500, "ENT_SP_SITE_ID / ENT_SP_LIST_ID are not set");
+        const token = await graphToken();
+        const base = `${GRAPH}/sites/${siteId}/lists/${encodeURIComponent(listId)}`;
+        const list = await graphGet(`${base}?$select=id,displayName,webUrl`, token);
+        const items: unknown[] = [];
+        let next: string | null = `${base}/items?$top=200&$select=id,webUrl,lastModifiedDateTime&expand=fields(select=${ENT_FIELDS.join(",")})`;
+        let pages = 0;
+        while (next) {
+            if (++pages > ENT_MAX_PAGES) throw new EntError("UPSTREAM", 502, `List paging exceeded ${ENT_MAX_PAGES} pages`);
+            const page: any = await graphGet(next, token);
+            for (const it of page.value ?? []) items.push(it);
+            next = page["@odata.nextLink"] ?? null;   // follow every page; a first page is never treated as the full list
+        }
+        return {
+            source: { name: list.displayName, listUrl: list.webUrl, siteId, listId },
+            loadedAt: new Date().toISOString(),
+            pages,
+            count: items.length,
+            items,
+        };
+    }
+
+    app.get("/enterprise-roadmap", async (_req: Request, res: Response) => {
+        res.setHeader("Cache-Control", "no-store");
+        try {
+            // Concurrent viewers share one in-flight read instead of each hitting Graph.
+            if (!_entInFlight) _entInFlight = loadEnterpriseRoadmap().finally(() => { _entInFlight = null; });
+            res.json(await _entInFlight);
+        } catch (e) {
+            const code = e instanceof EntError ? e.code : "UPSTREAM";
+            const status = e instanceof EntError ? e.httpStatus : 502;
+            const msg = e instanceof Error ? e.message : String(e);
+            if (code === "ACCESS_DENIED" || code === "NO_IDENTITY") _graphTok = null;   // re-request after a grant change
+            console.error(`[EPO] /enterprise-roadmap ${code}:`, msg);
+            res.status(status).json({ error: msg, code });
+        }
+    });
+
     // ── Dashboard static file ─────────────────────────────────────────────────
     app.get("/dashboard", (_req: Request, res: Response) => {
         res.sendFile("/home/site/wwwroot/epo_utilization_standalone.html");
