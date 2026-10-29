@@ -2905,24 +2905,144 @@
 
     .ent-tbl .s2 {
       left: 230px;
-      width: 150px;
-      min-width: 150px;
-      max-width: 150px
+      width: 140px;
+      min-width: 140px;
+      max-width: 140px
     }
 
     .ent-tbl .s3 {
-      left: 380px;
+      left: 370px;
       width: 104px;
       min-width: 104px;
       max-width: 104px
     }
 
     .ent-tbl .s4 {
-      left: 484px;
-      width: 84px;
-      min-width: 84px;
-      max-width: 84px;
+      left: 474px;
+      width: 118px;
+      min-width: 118px;
+      max-width: 118px;
       border-right: 2px solid #CFE3D7
+    }
+
+    .ent-ptype {
+      font-size: 12px;
+      color: #1F2937;
+      line-height: 1.3
+    }
+
+    .ent-ptype.unk {
+      color: #9CA3AF;
+      font-style: italic
+    }
+
+    .ent-filters {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 8px 12px;
+      padding: 10px 14px 2px
+    }
+
+    .ent-filters label {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      color: #4B5563;
+      text-transform: uppercase
+    }
+
+    .ent-filters input,
+    .ent-filters select {
+      font: inherit;
+      font-size: 12.5px;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 400;
+      color: #111827;
+      padding: 5px 8px;
+      border: 1px solid #CFD8D2;
+      border-radius: 4px;
+      background: #fff;
+      min-width: 150px
+    }
+
+    .ent-filters input {
+      min-width: 210px
+    }
+
+    .ent-filters input:focus-visible,
+    .ent-filters select:focus-visible,
+    .ent-clear:focus-visible,
+    .ent-gtog:focus-visible {
+      outline: 2px solid #0D2818;
+      outline-offset: 2px
+    }
+
+    .ent-filters .on {
+      border-color: #52B788;
+      background: #F3F9F5
+    }
+
+    .ent-clear {
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1B4D35;
+      background: none;
+      border: 1px solid #52B788;
+      border-radius: 4px;
+      padding: 5px 10px;
+      cursor: pointer
+    }
+
+    .ent-tbl tr.ent-grp td {
+      background: #E7F1EB !important;
+      padding: 0 !important;
+      border-bottom: 1px solid #CFE3D7
+    }
+
+    .ent-gtog {
+      all: unset;
+      position: sticky;
+      left: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: .06em;
+      color: #0D2818;
+      text-transform: uppercase
+    }
+
+    .ent-gtog .ent-chev {
+      margin-top: 0
+    }
+
+    .ent-gtog[aria-expanded="true"] .ent-chev {
+      transform: rotate(90deg)
+    }
+
+    .ent-gtog small {
+      font-family: Barlow, sans-serif;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0;
+      color: #4B5563;
+      text-transform: none
+    }
+
+    .ent-nomatch {
+      padding: 18px 14px;
+      color: #6B7280;
+      font-size: 13px
     }
 
     .ent-tbl th.s4 {
@@ -3210,6 +3330,22 @@
       color: #B45309;
       font-weight: 900;
       margin-right: 3px
+    }
+
+    /* 10/29/26 R6: a bar that starts before the visible months keeps its label in view.
+   overflow:clip (not hidden) so the box does not become the sticky container. */
+    .ent-trk .ent-box {
+      overflow: clip
+    }
+
+    .ent-box .lbl {
+      position: sticky;
+      left: 598px;
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: top
     }
 
     .ent-drw td {
@@ -5612,11 +5748,10 @@
         document.getElementById('projlist-wrap').style.display = 'none';
         document.getElementById('ent-wrap').style.display = 'block';
         applyViewHeader();   /* 9/17/26: un-hide header items if arriving from Stage Gate */
-        /* 10/21/26 R5: Grid: % has no meaning here (no hours, no percentages). The On Hold
-           button becomes the Enterprise-only Paused filter. */
+        /* 10/21/26 R5: Grid: % has no meaning here (no hours, no percentages).
+           10/29/26 R6: the Paused button is gone from Enterprise; the Health filter covers it. */
         document.getElementById('btn-gridmode').style.display = 'none';
-        document.getElementById('btn-hold').style.display = '';
-        entSyncHoldBtn();
+        document.getElementById('btn-hold').style.display = 'none';
         renderEnterprise();
         return;
       }
@@ -8324,8 +8459,6 @@
 
     /* ── UI HELPERS ── */
     function toggleHold() {
-      /* 10/21/26 R5: on Enterprise this is the Paused filter, with its own state. */
-      if (TAB === 'ent') { ENT_SHOW_PAUSED = !ENT_SHOW_PAUSED; entSyncHoldBtn(); renderEnterprise(); return; }
       SHOW_ON_HOLD = !SHOW_ON_HOLD;
       var btn = document.getElementById('btn-hold');
       if (SHOW_ON_HOLD) {
@@ -8382,8 +8515,10 @@
     var ENT_LIST_URL_FALLBACK = 'https://mizkan.sharepoint.com/sites/RiseBIProject/Lists/Enterprise%20Portfolio%20Roadmap';
     var ENT_SITE_TZ = 'America/Los_Angeles';   /* RiseBIProject is on Pacific time: live dates arrive as 07:00Z (PDT) / 08:00Z (PST) midnight, checked 10/21/26 */
     var ENT_HEALTH_FROM_SG = true;         /* E3 (Aidan 21 Oct). false = always show the SharePoint Health */
-    var ENT_MW = 76;                       /* px per month column; fixed so boxes sit at real dates */
+    var ENT_MW = 76;                       /* px per month column; recalculated each render (entSizeMonths) */
     var ENT_MIN_BOX = 64;                  /* readable minimum box width (px); never changes the dates */
+    var ENT_VIEW_MONTHS = 6;               /* 10/29/26 R6 (Aidan + Kristen): about 6 months fill the screen */
+    var ENT_STICKY_W = 592;                /* summary columns: 230 + 140 + 104 + 118 */
     var ENT_LANE_H = 26;
     var ENT_TYPES = ['Discovery', 'Design', 'Build', 'Testing', 'Approval', 'Deployment', 'Launch', 'Adoption', 'Stabilization', 'Closure', 'Decision', 'Other'];
     var ENT_STATUSES = ['Completed', 'In Progress', 'Planned', 'At Risk', 'Paused'];
@@ -8392,7 +8527,9 @@
     var ENT = { state: 'idle', data: null, rows: [], loadedAt: null, error: null, errorAt: null, req: 0 };
     var ENT_OPEN = {};          /* item id -> true; survives refresh while the id still exists */
     var ENT_SEL = null;         /* {id, key} highlighted milestone */
-    var ENT_SHOW_PAUSED = true; /* Enterprise-only; BS keeps SHOW_ON_HOLD */
+    /* 10/29/26 R6 (Aidan + Kristen): filters on the four summary columns, grouping by Portfolio Type. */
+    var ENT_F = { q: '', lead: '', health: '', type: '' };
+    var ENT_GCOLL = {};         /* Portfolio Type -> true when that group is collapsed */
     var ENT_SCROLL = null;      /* {left, top} of .ent-scroll, kept across re-renders */
 
     /* ── dates: calendar dates only, never browser-local conversion ── */
@@ -8649,7 +8786,7 @@
       return (mi + (endEdge ? ymd.d : ymd.d - 1) / dim) * ENT_MW;
     }
     function entLayout(r, rg) {
-      var lanes = [], boxes = r.rm.valid.map(function (m) {
+      var lanes = [], boxes = entGanttLines(r).lines.map(function (m) {
         var x0 = entX(rg, m.start, false), x1 = entX(rg, m.end, true), w = Math.max(x1 - x0, ENT_MIN_BOX);
         return { m: m, x: x0, w: w, trueW: x1 - x0 };
       });
@@ -8673,7 +8810,7 @@
         return '<button type="button" class="ent-box ' + entStCls(m.status) + (m.oob ? ' oob' : '') + (sel ? ' sel' : '') + '" ' +
           'data-ent-ms="' + esc(r.id) + '" data-ent-key="' + m.key + '" title="' + esc(lab) + '" aria-label="' + esc(lab) + '" ' +
           'style="left:' + b.x.toFixed(1) + 'px;width:' + b.w.toFixed(1) + 'px;top:' + (5 + b.lane * ENT_LANE_H) + 'px">' +
-          (m.oob ? '<span class="bang" aria-hidden="true">!</span>' : '') + esc(m.name) + '</button>';
+          '<span class="lbl">' + (m.oob ? '<span class="bang" aria-hidden="true">!</span>' : '') + esc(m.name) + '</span></button>';
       }).join('');
       var none = '';
       if (!r.rm.valid.length) {
@@ -8710,7 +8847,9 @@
       if (!r.rm.valid.length) {
         ms = '<div class="ent-txt np">' + (r.rm.empty ? 'No roadmap milestones provided' : 'No valid roadmap lines. See Source and quality for the line-by-line reasons') + '</div>';
       } else {
-        ms = '<table class="ent-ms-tbl"><thead><tr><th>Milestone</th><th>Type</th><th>Status</th><th>Start</th><th>End</th></tr></thead><tbody>' +
+        var gl = entGanttLines(r);
+        ms = (gl.filtered ? '<div class="ent-hsrc" style="white-space:normal;font-size:11.5px;margin:0 0 8px">The Gantt shows this row\'s ' + gl.lines.length + ' project timeline' + (gl.lines.length > 1 ? 's' : '') + '. All ' + r.rm.valid.length + ' milestones are listed here.</div>' : '') +
+          '<table class="ent-ms-tbl"><thead><tr><th>Milestone</th><th>Type</th><th>Status</th><th>Start</th><th>End</th></tr></thead><tbody>' +
           r.rm.valid.map(function (m) {
             var sel = ENT_SEL && ENT_SEL.id === r.id && ENT_SEL.key === m.key;
             var w = (m.oob ? '<span class="mw">! ' + esc(m.oob) + '</span>' : '') + (m.dupOf ? '<span class="mw">Possible duplicate of line ' + m.dupOf + '</span>' : '');
@@ -8737,17 +8876,64 @@
       var u = (ENT.data && ENT.data.source && ENT.data.source.listUrl) || ENT_LIST_URL_FALLBACK;
       return 'Source: <a class="ent-src-lnk" href="' + esc(u) + '" target="_blank" rel="noopener">Enterprise Portfolio Roadmap (SharePoint) &#8599;</a>';
     }
-    function entSyncHoldBtn() {
+    function entSyncHoldBtn() {   /* BS label only since R6 (Enterprise no longer uses this button) */
       var b = document.getElementById('btn-hold');
-      if (TAB === 'ent') {
-        b.textContent = '▮ Paused: ' + (ENT_SHOW_PAUSED ? 'Included' : 'Excluded');
-        b.className = 'btn-toggle-hold ' + (ENT_SHOW_PAUSED ? 'on' : 'off');
-        b.title = 'Show or hide portfolio areas whose Health is Paused (Enterprise tab only)';
-      } else {
-        b.textContent = '▮ On Hold: ' + (SHOW_ON_HOLD ? 'Included' : 'Excluded');
-        b.className = 'btn-toggle-hold ' + (SHOW_ON_HOLD ? 'on' : 'off');
-        b.title = 'On Hold projects are included in calculations but dimmed, click to exclude';
+      b.textContent = '▮ On Hold: ' + (SHOW_ON_HOLD ? 'Included' : 'Excluded');
+      b.className = 'btn-toggle-hold ' + (SHOW_ON_HOLD ? 'on' : 'off');
+      b.title = 'On Hold projects are included in calculations but dimmed, click to exclude';
+    }
+    /* Month width so about ENT_VIEW_MONTHS months fill the visible timeline. Never narrower than
+       the R5 76px. Keeps the scroll position on the same date when the width changes. */
+    function entSizeMonths() {
+      var host = document.getElementById('ent-body');
+      var w = (host && host.clientWidth) || Math.max(0, window.innerWidth - 48);
+      var mw = Math.max(76, Math.floor((w - ENT_STICKY_W - 4) / ENT_VIEW_MONTHS));
+      if (ENT_SCROLL && ENT_MW && mw !== ENT_MW) ENT_SCROLL.left = ENT_SCROLL.left * mw / ENT_MW;
+      ENT_MW = mw; ENT_MIN_BOX = Math.max(64, Math.round(mw * 0.6));
+    }
+    /* Kristen (R6): a row with more than one project shows only its project timeline bars on the
+       Gantt (the skill's "<child>: Project timeline" lines). Every milestone stays in the drawer.
+       No such line (e.g. Project Simplify's single Continuous line): show the roadmap as is. */
+    function entMulti(r) { return r.count.ok && !r.count.missing && Number(r.count.txt) > 1; }
+    function entGanttLines(r) {
+      if (!entMulti(r)) return { lines: r.rm.valid, filtered: false };
+      var tl = r.rm.valid.filter(function (m) { return /:\s*Project timeline$/i.test(m.name); });
+      return tl.length ? { lines: tl, filtered: true } : { lines: r.rm.valid, filtered: false };
+    }
+    function entTypeLabel(r) { return r.type || 'Type not provided'; }
+    function entFilterOpts(all) {
+      var leads = {}, un = false, hs = {}, ts = {};
+      all.forEach(function (r) {
+        if (r.lead.names.length) r.lead.names.forEach(function (n) { leads[n] = 1; }); else un = true;
+        hs[entHealth(r).label] = 1; ts[entTypeLabel(r)] = 1;
+      });
+      var hOrder = ['Green', 'Yellow', 'Red', 'Paused', 'Not reported'];
+      return {
+        lead: Object.keys(leads).sort().concat(un ? ['Unassigned'] : []),
+        health: hOrder.filter(function (x) { return hs[x]; }).concat(Object.keys(hs).filter(function (x) { return hOrder.indexOf(x) < 0; }).sort()),
+        type: Object.keys(ts).filter(function (x) { return x !== 'Type not provided'; }).sort().concat(ts['Type not provided'] ? ['Type not provided'] : [])
+      };
+    }
+    function entPass(r) {
+      if (ENT_F.q && r.title.toLowerCase().indexOf(ENT_F.q.toLowerCase()) < 0) return false;
+      if (ENT_F.lead) {
+        if (ENT_F.lead === 'Unassigned') { if (r.lead.names.length) return false; }
+        else if (r.lead.names.indexOf(ENT_F.lead) < 0) return false;
       }
+      if (ENT_F.health && entHealth(r).label !== ENT_F.health) return false;
+      if (ENT_F.type && entTypeLabel(r) !== ENT_F.type) return false;
+      return true;
+    }
+    function entFiltersHtml(all) {
+      var o = entFilterOpts(all), any = ENT_F.q || ENT_F.lead || ENT_F.health || ENT_F.type;
+      function sel(key, label, list) {
+        return '<label>' + label + '<select data-ent-f="' + key + '"' + (ENT_F[key] ? ' class="on"' : '') + '><option value="">All</option>' +
+          list.map(function (v) { return '<option' + (v === ENT_F[key] ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') + '</select></label>';
+      }
+      return '<div class="ent-filters" role="search" aria-label="Filter portfolio areas">' +
+        '<label>Initiative<input type="search" data-ent-f="q" placeholder="Search names" value="' + esc(ENT_F.q) + '"' + (ENT_F.q ? ' class="on"' : '') + '></label>' +
+        sel('lead', 'Lead', o.lead) + sel('health', 'Health', o.health) + sel('type', 'Portfolio Type', o.type) +
+        (any ? '<button type="button" class="ent-clear" data-ent-clear="1">Clear filters</button>' : '') + '</div>';
     }
     function renderEnterprise() {
       var host = document.getElementById('ent-body'); if (!host) return;
@@ -8768,8 +8954,7 @@
         }
         return;
       }
-      var all = ENT.rows, shown = all.filter(function (r) { return ENT_SHOW_PAUSED || r.spHealth !== 'Paused'; });
-      var paused = all.length - shown.length;
+      var all = ENT.rows, shown = all.filter(entPass);
       cnt.textContent = shown.length === all.length ? all.length + ' portfolio areas' : shown.length + ' of ' + all.length + ' portfolio areas';
       var banner = '';
       if (ENT.state === 'stale') banner = '<div class="ent-banner stale" role="alert"><b>Refresh failed</b> at ' + esc(entFmtStamp(ENT.errorAt)) + ': ' +
@@ -8777,7 +8962,7 @@
       if (ENT.state === 'refreshing') banner = '<div class="ent-banner info">Refreshing from SharePoint&hellip; showing the last successful load until it finishes.</div>';
       var wRows = all.filter(function (r) { return r.warn.length; }).length;
       var head = '<div class="ent-head">' +
-        '<span class="ent-cnt"><b>' + shown.length + '</b> ' + (shown.length === all.length ? 'portfolio areas' : 'of ' + all.length + ' portfolio areas shown (' + paused + ' Paused hidden)') + '</span>' +
+        '<span class="ent-cnt"><b>' + shown.length + '</b> ' + (shown.length === all.length ? 'portfolio areas' : 'of ' + all.length + ' portfolio areas shown') + '</span>' +
         '<span class="ent-ts">Last successful load: <b>' + esc(entFmtStamp(ENT.loadedAt)) + '</b>' + (ENT.state === 'stale' ? ' <span class="ent-wcount">(stale)</span>' : '') + '</span>' +
         (wRows ? '<span class="ent-wcount">' + wRows + ' with data warnings</span>' : '') +
         '<span class="ent-legend" aria-label="Milestone status legend">' + ENT_STATUSES.map(function (s) {
@@ -8788,12 +8973,13 @@
         host.innerHTML = banner + head + '<div class="ent-state"><h4>No portfolio areas</h4>The Enterprise Portfolio Roadmap list has no items.</div>';
         return;
       }
-      var rg = entRange(all);
+      entSizeMonths();
+      var rg = entRange(all);   /* range from ALL rows, so filtering never moves the month columns */
       var mh = '<div class="ent-mrow" style="width:' + rg.width + 'px">' + rg.months.map(function (mo) {
         return '<span class="' + (mo.m % 3 === 1 ? 'q1' : '') + (mo.k === rg.now ? ' now' : '') + '" style="width:' + ENT_MW + 'px">' +
           ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][mo.m - 1] + " '" + String(mo.y).slice(2) + '</span>';
       }).join('') + '</div>';
-      var body = shown.map(function (r) {
+      function rowHtml(r) {
         var h = entHealth(r), open = !!ENT_OPEN[r.id], did = 'ent-drw-' + esc(r.id);
         var nm = r.title || '(untitled item #' + r.id + ')';
         var row = '<tr class="ent-row' + (open ? ' open' : '') + '">' +
@@ -8802,23 +8988,44 @@
           (r.warn.length ? '<span class="ent-wchip">' + r.warn.length + ' warning' + (r.warn.length > 1 ? 's' : '') + '</span>' : '') + '</td>' +
           '<td class="s2 ent-lead' + (r.lead.names.length ? '' : ' unk') + '">' + entPeopleHtml(r.lead) + '</td>' +
           '<td class="s3">' + entHealthBadge(h) + (h.src === 'Stage Gate' ? '<span class="ent-hsrc" title="' + esc(h.note) + '">from Stage Gate</span>' : '') + '</td>' +
-          '<td class="s4 ent-cnum' + (r.count.ok ? '' : ' bad') + '">' + esc(r.count.txt) + '</td>' +
+          '<td class="s4 ent-ptype' + (r.type ? '' : ' unk') + '">' + esc(r.type || 'Not provided') + '</td>' +
           '<td class="ent-tl">' + entTrack(r, rg) + '</td></tr>';
         if (open) row += '<tr class="ent-drw" id="' + did + '"><td colspan="5"><div class="ent-drw-in">' + entDrawer(r, h) + '</div></td></tr>';
         return row;
+      }
+      /* Groups by Portfolio Type, A to Z (blank type last); Title A to Z inside each group. */
+      var order = entFilterOpts(all).type, byType = {};
+      shown.forEach(function (r) { (byType[entTypeLabel(r)] = byType[entTypeLabel(r)] || []).push(r); });
+      var body = order.filter(function (t) { return byType[t]; }).map(function (t) {
+        var coll = !!ENT_GCOLL[t], rows = byType[t];
+        return '<tr class="ent-grp"><td colspan="5"><button type="button" class="ent-gtog" data-ent-grp="' + esc(t) + '" aria-expanded="' + (!coll) + '">' +
+          '<span class="ent-chev" aria-hidden="true">&#9654;</span>' + esc(t) + ' <small>' + rows.length + ' portfolio area' + (rows.length > 1 ? 's' : '') + '</small></button></td></tr>' +
+          (coll ? '' : rows.map(rowHtml).join(''));
       }).join('');
+      if (!shown.length) body = '<tr><td colspan="5" class="ent-nomatch">No portfolio areas match these filters.</td></tr>';
       var foot = '<div class="ent-foot">Read-only view of the Enterprise Portfolio Roadmap SharePoint list, shown as saved (manual edits included). ' +
         'Boxes come only from each item\'s Portfolio Area Roadmap lines and sit at their real dates; a short item keeps a minimum width so its label stays readable. ' +
-        'Health for a Commercialization portfolio area whose title matches a Stage Gate project is copied from that project\'s Stage Gate timeline; all other rows show the SharePoint Health. ' +
-        'Paused hidden via the Paused button affects this tab only.</div>';
-      host.innerHTML = banner + head + '<div class="ent-scroll"><table class="ent-tbl"><thead><tr>' +
-        '<th class="s1">Initiative</th><th class="s2">Lead</th><th class="s3">Health</th><th class="s4">Projects / Initiatives</th>' +
+        'A row with more than one project shows only its project timeline bars; every milestone is in its drawer. ' +
+        'Health for a Commercialization portfolio area whose title matches a Stage Gate project is copied from that project\'s Stage Gate timeline; all other rows show the SharePoint Health.</div>';
+      host.innerHTML = banner + head + entFiltersHtml(all) + '<div class="ent-scroll"><table class="ent-tbl"><thead><tr>' +
+        '<th class="s1">Initiative</th><th class="s2">Lead</th><th class="s3">Health</th><th class="s4">Portfolio Type</th>' +
         '<th class="mhd">' + mh + '</th></tr></thead><tbody>' + body + '</tbody></table></div>' + foot;
       sc = host.querySelector('.ent-scroll');
       if (!ENT_SCROLL) ENT_SCROLL = { left: Math.max(0, (rg.now - 1 - rg.lo) * ENT_MW), top: 0 };   /* first view opens on last month */
       entRestoreScroll();
       sc.onscroll = function () { if (sc.clientWidth) ENT_SCROLL = { left: sc.scrollLeft, top: sc.scrollTop }; };
       host.onclick = entClick;
+      host.oninput = host.onchange = entFilterEvent;
+    }
+    function entFilterEvent(ev) {
+      var el = ev.target, key = el && el.getAttribute && el.getAttribute('data-ent-f'); if (!key) return;
+      if (key === 'q' && ev.type === 'change') return;            /* search filters as you type */
+      if (key !== 'q' && ev.type === 'input') return;             /* selects apply on change */
+      ENT_F[key] = el.value;
+      var caret = key === 'q' ? el.selectionStart : null;
+      renderEnterprise();
+      var again = document.querySelector('#ent-body [data-ent-f="' + key + '"]');
+      if (again) { again.focus({ preventScroll: true }); if (caret != null) try { again.setSelectionRange(caret, caret); } catch (e) { } }
     }
     /* Rendering can happen while the board is hidden behind the Smartsheet spinner, where
        scrollLeft cannot be set. setLoad(false) calls this again once the board is visible. */
@@ -8833,6 +9040,18 @@
     }
     function entClick(ev) {
       var t = ev.target;
+      var g = t.closest && t.closest('[data-ent-grp]');
+      if (g) {
+        var k = g.getAttribute('data-ent-grp'); ENT_GCOLL[k] = !ENT_GCOLL[k]; renderEnterprise();
+        var gb = Array.prototype.filter.call(document.querySelectorAll('#ent-body [data-ent-grp]'), function (x) { return x.getAttribute('data-ent-grp') === k; })[0];
+        if (gb) gb.focus({ preventScroll: true });
+        return;
+      }
+      if (t.closest && t.closest('[data-ent-clear]')) {
+        ENT_F = { q: '', lead: '', health: '', type: '' }; renderEnterprise();
+        var q = document.querySelector('#ent-body [data-ent-f="q"]'); if (q) q.focus({ preventScroll: true });
+        return;
+      }
       var tog = t.closest && t.closest('[data-ent-tog]');
       if (tog) {
         var id = tog.getAttribute('data-ent-tog');
@@ -8851,7 +9070,12 @@
         if (tr) { tr.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (sc) sc.scrollLeft = keep; tr.focus({ preventScroll: true }); }
       }
     }
-    window.addEventListener('resize', function () { if (TAB === 'ent') entSizeDrawers(); });
+    var ENT_RESIZE_T = null;
+    window.addEventListener('resize', function () {
+      if (TAB !== 'ent') return;
+      entSizeDrawers();
+      clearTimeout(ENT_RESIZE_T); ENT_RESIZE_T = setTimeout(function () { if (ENT.data) renderEnterprise(); }, 200);
+    });
 
     function switchTab(t) {
       TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'projlist'; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
