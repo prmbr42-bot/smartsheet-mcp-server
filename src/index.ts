@@ -289,7 +289,7 @@ async function runHTTP(): Promise<void> {
     const ENT_FIELDS = [
         "Title", "PortfolioType", "ExecutiveSponsor", "PortfolioLead", "Health", "ChildProjectCount",
         "CurrentStatus", "KeyAccomplishments", "KeyRisks", "StartDate", "EndDate",
-        "PortfolioAreaRoadmap", "Modified",
+        "PortfolioAreaRoadmap", "Modified", "SourceLink",   // 11/02/26: row-level source link (Aidan drawer addendum D2)
     ];
     const ENT_MAX_PAGES = 50;                       // 50 x 200 = 10,000 items; a runaway-loop guard, not a cap on a real list
     let _graphTok: { token: string; exp: number } | null = null;

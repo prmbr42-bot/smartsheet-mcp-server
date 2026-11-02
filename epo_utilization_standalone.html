@@ -3514,6 +3514,15 @@
       color: #166534
     }
 
+    .ent-srcurl {
+      font-family: Consolas, Menlo, monospace;
+      font-size: 10.5px;
+      color: #4B5563;
+      word-break: break-all;
+      margin-top: 3px;
+      user-select: all
+    }
+
     .ent-foot {
       padding: 10px 14px;
       font-size: 11px;
@@ -8529,7 +8538,10 @@
     var ENT_SEL = null;         /* {id, key} highlighted milestone */
     /* 10/29/26 R6 (Aidan + Kristen): filters on the four summary columns, grouping by Portfolio Type. */
     var ENT_F = { q: '', lead: '', health: '', type: '' };
-    var ENT_GCOLL = {};         /* Portfolio Type -> true when that group is collapsed */
+    /* 11/02/26 (Aidan drawer addendum D1): groups AND drawers start collapsed on every page load.
+       Open state lives in memory only (never browser storage), so a reload always starts compact;
+       an in-page Refresh keeps what the user opened for item IDs that still exist. */
+    var ENT_GOPEN = {};         /* Portfolio Type -> true when the user has opened that group */
     var ENT_SCROLL = null;      /* {left, top} of .ent-scroll, kept across re-renders */
 
     /* ── dates: calendar dates only, never browser-local conversion ── */
@@ -8638,6 +8650,13 @@
       if (n < 0 || Math.floor(n) !== n) return { txt: String(v), ok: false, why: 'Child Project Count ' + v + ' is not a whole, non-negative count' };
       return { txt: String(n), ok: true };
     }
+    function entSourceLinkVal(v) {
+      if (v == null || String(v).trim() === '') return { state: 'none' };
+      var raw = String(v), t = raw.trim(), u = null;
+      try { u = new URL(t); } catch (e) { }                   /* no base URL: relative values fail here */
+      if (!u || (u.protocol !== 'https:' && u.protocol !== 'http:') || !u.hostname) return { state: 'bad', raw: raw };
+      return { state: 'ok', href: t, raw: raw };             /* the saved value, trimmed only for use */
+    }
     function entNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
 
     function entBuildRows(payload) {
@@ -8678,6 +8697,9 @@
         /* 10/21/26 live check: Graph's item webUrl is the item's storage path (".../Lists/<list>/2_.000"),
            not a page a person can open. Link to the list's display form for the item instead. */
         var lu = (payload.source && payload.source.listUrl) || ENT_LIST_URL_FALLBACK;
+        /* 11/02/26 D2: row-level SourceLink (single-line text). Validated, never rewritten. */
+        r.src = entSourceLinkVal(f.SourceLink);
+        if (r.src.state === 'bad') r.warn.push('Source Link "' + r.src.raw + '" is not a valid http or https address, so it is not linked');
         r.url = /DispForm\.aspx/i.test(it.webUrl || '') ? it.webUrl : (r.id ? lu.replace(/\/+$/, '') + '/DispForm.aspx?ID=' + encodeURIComponent(r.id) : '');
         r.modified = f.Modified || it.lastModifiedDateTime || '';
         return r;
@@ -8831,6 +8853,14 @@
         return '<li><b>Line ' + w.line + '</b>: ' + esc(w.why) + '<br><code>' + esc(w.raw) + '</code></li>';
       }).join('') + '</ul>';
     }
+    function entSourceLinkHtml(r) {
+      if (r.src.state === 'none') return '<span class="ent-np">Source link not provided</span>';
+      if (r.src.state === 'bad') return '<span class="ent-np">Source link unavailable</span> <span class="ent-wchip" style="margin:0">see data warnings</span>';
+      var nm = r.title || ('item ' + r.id);
+      return '<a class="ent-src-lnk" href="' + esc(r.src.href) + '" target="_blank" rel="noopener noreferrer" ' +
+        'aria-label="View source information for ' + esc(nm) + ' (opens in a new tab)">View source information &#8599;</a>' +
+        '<div class="ent-srcurl">' + esc(r.src.href) + '</div>';
+    }
     function entTextBlock(v) { return v ? '<div class="ent-txt">' + esc(v) + '</div>' : '<div class="ent-txt np">Not provided</div>'; }
     function entDrawer(r, h) {
       var dates = (r.start.ymd ? entFmtYMD(r.start.ymd) : '<span class="ent-np">Not provided</span>') + ' to ' +
@@ -8862,6 +8892,7 @@
         '<div class="ent-hsrc" style="white-space:normal">When this SharePoint item was last edited. It does not show when the upstream refresh last ran.</div></dd>' +
         '<dt>Item ID</dt><dd>' + esc(r.id) + '</dd>' +
         '<dt>Roadmap lines</dt><dd>' + r.rm.valid.length + ' valid' + (r.rm.bad.length ? ', ' + r.rm.bad.length + ' invalid' : '') + '</dd>' +
+        '<dt>Source Link</dt><dd>' + entSourceLinkHtml(r) + '</dd>' +
         '<dt>SharePoint</dt><dd>' + (r.url ? '<a class="ent-src-lnk" href="' + esc(r.url) + '" target="_blank" rel="noopener">Open in SharePoint &#8599;</a>' : '<span class="ent-np">Item link not returned</span>') + '</dd></dl>' +
         '<h5 style="margin-top:10px">Data warnings</h5>' + entWarnList(r);
       return '<div class="ent-dgrid">' +
@@ -8997,7 +9028,7 @@
       var order = entFilterOpts(all).type, byType = {};
       shown.forEach(function (r) { (byType[entTypeLabel(r)] = byType[entTypeLabel(r)] || []).push(r); });
       var body = order.filter(function (t) { return byType[t]; }).map(function (t) {
-        var coll = !!ENT_GCOLL[t], rows = byType[t];
+        var coll = !ENT_GOPEN[t], rows = byType[t];
         return '<tr class="ent-grp"><td colspan="5"><button type="button" class="ent-gtog" data-ent-grp="' + esc(t) + '" aria-expanded="' + (!coll) + '">' +
           '<span class="ent-chev" aria-hidden="true">&#9654;</span>' + esc(t) + ' <small>' + rows.length + ' portfolio area' + (rows.length > 1 ? 's' : '') + '</small></button></td></tr>' +
           (coll ? '' : rows.map(rowHtml).join(''));
@@ -9042,7 +9073,7 @@
       var t = ev.target;
       var g = t.closest && t.closest('[data-ent-grp]');
       if (g) {
-        var k = g.getAttribute('data-ent-grp'); ENT_GCOLL[k] = !ENT_GCOLL[k]; renderEnterprise();
+        var k = g.getAttribute('data-ent-grp'); if (ENT_GOPEN[k]) delete ENT_GOPEN[k]; else ENT_GOPEN[k] = true; renderEnterprise();
         var gb = Array.prototype.filter.call(document.querySelectorAll('#ent-body [data-ent-grp]'), function (x) { return x.getAttribute('data-ent-grp') === k; })[0];
         if (gb) gb.focus({ preventScroll: true });
         return;
