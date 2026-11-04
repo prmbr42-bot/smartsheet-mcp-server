@@ -451,9 +451,18 @@ async function runHTTP(): Promise<void> {
         const ids = new Set<string>();
         const items = got.items.map((it: any) => {
             const f: Record<string, unknown> = {};
-            for (const [k, v] of Object.entries(it.fields ?? {})) if (MZ_KEEP.has(k)) f[k] = v;
+            for (const [k, v] of Object.entries(it.fields ?? {})) {
+                if (!MZ_KEEP.has(k)) continue;
+                // 11/04/26 live check: person arrays carry Email; keep only the id and display name.
+                f[k] = Array.isArray(v)
+                    ? v.map((p: any) => (p && typeof p === "object") ? { LookupId: p.LookupId ?? null, LookupValue: p.LookupValue ?? null } : p)
+                    : v;
+            }
             for (const [k, v] of Object.entries(f)) {
-                if (k.endsWith("LookupId") && v != null && v !== "") ids.add(String(v));
+                // Look a person up only when Graph did not already return the name
+                // (live check: BusinessOwner arrives as the display name beside BusinessOwnerLookupId).
+                const base = k.endsWith("LookupId") ? k.slice(0, -8) : null;
+                if (base && v != null && v !== "" && !(typeof f[base] === "string" && (f[base] as string).trim())) ids.add(String(v));
                 if (Array.isArray(v)) for (const p of v) if (p && typeof p === "object" && (p as any).LookupId != null && !(p as any).LookupValue) ids.add(String((p as any).LookupId));
             }
             return { id: it.id, webUrl: it.webUrl, lastModifiedDateTime: it.lastModifiedDateTime, fields: f };

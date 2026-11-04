@@ -9164,7 +9164,11 @@
       ['00_Candidate', 'Awaiting EPO review'], ['01_Discovery', 'Understanding the business need'],
       ['02_Design: EPO Review', 'EPO design review'], ['03_Design: IT Review', 'Technical review'],
       ['04_Build Package Review', 'Agreeing delivery scope'], ['05_Ready for Prioritization', 'Ready for delivery planning'],
-      ['06_In Build', 'In delivery'], ['07_On Hold', 'On hold'], ['08_Parked', 'Deferred'],
+      ['06_In Build', 'In delivery'],
+      /* 11/04/26 live check: 10_UAT is in use (5 records) but was not in the 03-11 label table.
+         Placed after In delivery as open work; label proposed, awaiting Aidan's confirmation. */
+      ['10_UAT', 'Business testing (UAT)'],
+      ['07_On Hold', 'On hold'], ['08_Parked', 'Deferred'],
       ['Closed', 'Closed; outcome not implied'], ['09_Completed', 'Completed as recorded']];
     var BSI_PAUSED = { '07_On Hold': 1, '08_Parked': 1 };
     var BSI_DONE = { 'Closed': 1, '09_Completed': 1 };
@@ -9325,7 +9329,7 @@
       var kv = function (rows) { return '<dl class="ent-kv">' + rows.map(function (x) { return '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd>'; }).join('') + '</dl>'; };
       var est = (r.estLo == null && r.estHi == null) ? '<span class="ent-np">Not recorded</span>' :
         (r.estLo != null && r.estHi != null ? esc(String(r.estLo)) + ' to ' + esc(String(r.estHi)) + ' hours' : (r.estLo != null ? 'From ' + esc(String(r.estLo)) + ' hours' : 'Up to ' + esc(String(r.estHi)) + ' hours'));
-      var pkg = r.pkg.state === 'ok' ? '<a class="ent-src-lnk" href="' + esc(r.pkg.href) + '" target="_blank" rel="noopener noreferrer" aria-label="Open the initiative workspace for ' + esc(r.title) + ' (opens in a new tab)">' + esc(r.pkg.label || 'Open workspace') + ' &#8599;</a>' :
+      var pkg = r.pkg.state === 'ok' ? '<a class="ent-src-lnk" href="' + esc(r.pkg.href) + '" target="_blank" rel="noopener noreferrer" aria-label="Open the initiative workspace for ' + esc(r.title) + ' (opens in a new tab)">Open workspace &#8599;</a>' :
         (r.pkg.state === 'bad' ? '<span class="ent-np">Link unavailable (not a valid web address)</span>' : '<span class="ent-np">Not recorded</span>');
       var stage = r.stage ? (r.stageLabel ? esc(r.stageLabel) + ' <span class="ent-np" style="font-style:normal">(' + esc(r.stage) + ')</span>' : esc(r.stage) + ' <span class="ent-np">(not a known lifecycle value)</span>') : '<span class="ent-np">Not recorded</span>';
       var gaps = r.gaps.length ? '<ul class="ent-warn">' + r.gaps.map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ul>' : '<div class="ent-ok">No data gaps for this initiative.</div>';
