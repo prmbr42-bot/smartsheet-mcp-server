@@ -2883,16 +2883,14 @@
 
     .ent-tbl .s1,
     .ent-tbl .s2,
-    .ent-tbl .s3,
-    .ent-tbl .s4 {
+    .ent-tbl .s3 {
       position: sticky;
       z-index: 2
     }
 
     .ent-tbl th.s1,
     .ent-tbl th.s2,
-    .ent-tbl th.s3,
-    .ent-tbl th.s4 {
+    .ent-tbl th.s3 {
       z-index: 4
     }
 
@@ -2914,17 +2912,11 @@
       left: 370px;
       width: 104px;
       min-width: 104px;
-      max-width: 104px
-    }
-
-    .ent-tbl .s4 {
-      left: 474px;
-      width: 118px;
-      min-width: 118px;
-      max-width: 118px;
+      max-width: 104px;
       border-right: 2px solid #CFE3D7
     }
 
+    /* 11/04/26 R8: last summary column (Portfolio Type removed) */
     .ent-ptype {
       font-size: 12px;
       color: #1F2937;
@@ -3045,7 +3037,7 @@
       font-size: 13px
     }
 
-    .ent-tbl th.s4 {
+    .ent-tbl th.s3 {
       border-right: 2px solid #2F6B4C
     }
 
@@ -3226,11 +3218,6 @@
     }
 
     /* own stacking context: boxes never paint over the sticky columns */
-    .ent-tbl th.s4 {
-      white-space: normal;
-      line-height: 1.15
-    }
-
     .ent-trk {
       position: relative
     }
@@ -3340,7 +3327,7 @@
 
     .ent-box .lbl {
       position: sticky;
-      left: 598px;
+      left: 480px;
       display: inline-block;
       max-width: 100%;
       overflow: hidden;
@@ -3512,15 +3499,6 @@
     .ent-ok {
       font-size: 12px;
       color: #166534
-    }
-
-    .ent-srcurl {
-      font-family: Consolas, Menlo, monospace;
-      font-size: 10.5px;
-      color: #4B5563;
-      word-break: break-all;
-      margin-top: 3px;
-      user-select: all
     }
 
     .ent-foot {
@@ -8527,7 +8505,7 @@
     var ENT_MW = 76;                       /* px per month column; recalculated each render (entSizeMonths) */
     var ENT_MIN_BOX = 64;                  /* readable minimum box width (px); never changes the dates */
     var ENT_VIEW_MONTHS = 6;               /* 10/29/26 R6 (Aidan + Kristen): about 6 months fill the screen */
-    var ENT_STICKY_W = 592;                /* summary columns: 230 + 140 + 104 + 118 */
+    var ENT_STICKY_W = 474;                /* summary columns: 230 + 140 + 104 (11/04/26 R8: Portfolio Type column removed, Gantt gets the width) */
     var ENT_LANE_H = 26;
     var ENT_TYPES = ['Discovery', 'Design', 'Build', 'Testing', 'Approval', 'Deployment', 'Launch', 'Adoption', 'Stabilization', 'Closure', 'Decision', 'Other'];
     var ENT_STATUSES = ['Completed', 'In Progress', 'Planned', 'At Risk', 'Paused'];
@@ -8650,13 +8628,6 @@
       if (n < 0 || Math.floor(n) !== n) return { txt: String(v), ok: false, why: 'Child Project Count ' + v + ' is not a whole, non-negative count' };
       return { txt: String(n), ok: true };
     }
-    function entSourceLinkVal(v) {
-      if (v == null || String(v).trim() === '') return { state: 'none' };
-      var raw = String(v), t = raw.trim(), u = null;
-      try { u = new URL(t); } catch (e) { }                   /* no base URL: relative values fail here */
-      if (!u || (u.protocol !== 'https:' && u.protocol !== 'http:') || !u.hostname) return { state: 'bad', raw: raw };
-      return { state: 'ok', href: t, raw: raw };             /* the saved value, trimmed only for use */
-    }
     function entNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
 
     function entBuildRows(payload) {
@@ -8697,9 +8668,8 @@
         /* 10/21/26 live check: Graph's item webUrl is the item's storage path (".../Lists/<list>/2_.000"),
            not a page a person can open. Link to the list's display form for the item instead. */
         var lu = (payload.source && payload.source.listUrl) || ENT_LIST_URL_FALLBACK;
-        /* 11/02/26 D2: row-level SourceLink (single-line text). Validated, never rewritten. */
-        r.src = entSourceLinkVal(f.SourceLink);
-        if (r.src.state === 'bad') r.warn.push('Source Link "' + r.src.raw + '" is not a valid http or https address, so it is not linked');
+        /* 11/04/26 R8 (Aidan): SourceLink is no longer displayed (users could hit Smartsheet content
+           they cannot access). The server still reads the field; the dashboard ignores it. */
         r.url = /DispForm\.aspx/i.test(it.webUrl || '') ? it.webUrl : (r.id ? lu.replace(/\/+$/, '') + '/DispForm.aspx?ID=' + encodeURIComponent(r.id) : '');
         r.modified = f.Modified || it.lastModifiedDateTime || '';
         return r;
@@ -8853,14 +8823,6 @@
         return '<li><b>Line ' + w.line + '</b>: ' + esc(w.why) + '<br><code>' + esc(w.raw) + '</code></li>';
       }).join('') + '</ul>';
     }
-    function entSourceLinkHtml(r) {
-      if (r.src.state === 'none') return '<span class="ent-np">Source link not provided</span>';
-      if (r.src.state === 'bad') return '<span class="ent-np">Source link unavailable</span> <span class="ent-wchip" style="margin:0">see data warnings</span>';
-      var nm = r.title || ('item ' + r.id);
-      return '<a class="ent-src-lnk" href="' + esc(r.src.href) + '" target="_blank" rel="noopener noreferrer" ' +
-        'aria-label="View source information for ' + esc(nm) + ' (opens in a new tab)">View source information &#8599;</a>' +
-        '<div class="ent-srcurl">' + esc(r.src.href) + '</div>';
-    }
     function entTextBlock(v) { return v ? '<div class="ent-txt">' + esc(v) + '</div>' : '<div class="ent-txt np">Not provided</div>'; }
     function entDrawer(r, h) {
       var dates = (r.start.ymd ? entFmtYMD(r.start.ymd) : '<span class="ent-np">Not provided</span>') + ' to ' +
@@ -8875,7 +8837,7 @@
         '<dt>Portfolio dates</dt><dd>' + dates + '</dd></dl>';
       var ms;
       if (!r.rm.valid.length) {
-        ms = '<div class="ent-txt np">' + (r.rm.empty ? 'No roadmap milestones provided' : 'No valid roadmap lines. See Source and quality for the line-by-line reasons') + '</div>';
+        ms = '<div class="ent-txt np">' + (r.rm.empty ? 'No roadmap milestones provided' : 'No valid roadmap lines') + '</div>';
       } else {
         var gl = entGanttLines(r);
         ms = (gl.filtered ? '<div class="ent-hsrc" style="white-space:normal;font-size:11.5px;margin:0 0 8px">The Gantt shows this row\'s ' + gl.lines.length + ' project timeline' + (gl.lines.length > 1 ? 's' : '') + '. All ' + r.rm.valid.length + ' milestones are listed here.</div>' : '') +
@@ -8888,20 +8850,12 @@
               '<td style="white-space:nowrap">' + entFmtYMD(m.start) + '</td><td style="white-space:nowrap">' + entFmtYMD(m.end) + '</td></tr>';
           }).join('') + '</tbody></table>';
       }
-      var src = '<dl class="ent-kv"><dt>Item modified</dt><dd>' + (r.modified ? esc(entFmtStamp(r.modified)) : '<span class="ent-np">Not provided</span>') +
-        '<div class="ent-hsrc" style="white-space:normal">When this SharePoint item was last edited. It does not show when the upstream refresh last ran.</div></dd>' +
-        '<dt>Item ID</dt><dd>' + esc(r.id) + '</dd>' +
-        '<dt>Roadmap lines</dt><dd>' + r.rm.valid.length + ' valid' + (r.rm.bad.length ? ', ' + r.rm.bad.length + ' invalid' : '') + '</dd>' +
-        '<dt>Source Link</dt><dd>' + entSourceLinkHtml(r) + '</dd>' +
-        '<dt>SharePoint</dt><dd>' + (r.url ? '<a class="ent-src-lnk" href="' + esc(r.url) + '" target="_blank" rel="noopener">Open in SharePoint &#8599;</a>' : '<span class="ent-np">Item link not returned</span>') + '</dd></dl>' +
-        '<h5 style="margin-top:10px">Data warnings</h5>' + entWarnList(r);
       return '<div class="ent-dgrid">' +
         '<section class="ent-sec"><h5>Overview</h5>' + kv + '</section>' +
         '<section class="ent-sec"><h5>Current status</h5>' + entTextBlock(r.status) + '</section>' +
         '<section class="ent-sec"><h5>Key accomplishments</h5>' + entTextBlock(r.acc) + '</section>' +
         '<section class="ent-sec"><h5>Key risks</h5>' + entTextBlock(r.risks) + '</section>' +
-        '<section class="ent-sec wide"><h5>Milestones</h5>' + ms + '</section>' +
-        '<section class="ent-sec wide"><h5>Source and quality</h5>' + src + '</section></div>';
+        '<section class="ent-sec wide"><h5>Milestones</h5>' + ms + '</section></div>';   /* 11/04/26 R8 (Aidan): Source and quality section removed */
     }
     function entSourceLink() {
       var u = (ENT.data && ENT.data.source && ENT.data.source.listUrl) || ENT_LIST_URL_FALLBACK;
@@ -8991,11 +8945,9 @@
       if (ENT.state === 'stale') banner = '<div class="ent-banner stale" role="alert"><b>Refresh failed</b> at ' + esc(entFmtStamp(ENT.errorAt)) + ': ' +
         esc(entErrHint(ENT.error.code)) + ' (' + esc(ENT.error.msg) + '). <b>Showing stale data</b> from the last successful load at ' + esc(entFmtStamp(ENT.loadedAt)) + '.</div>';
       if (ENT.state === 'refreshing') banner = '<div class="ent-banner info">Refreshing from SharePoint&hellip; showing the last successful load until it finishes.</div>';
-      var wRows = all.filter(function (r) { return r.warn.length; }).length;
       var head = '<div class="ent-head">' +
         '<span class="ent-cnt"><b>' + shown.length + '</b> ' + (shown.length === all.length ? 'portfolio areas' : 'of ' + all.length + ' portfolio areas shown') + '</span>' +
         '<span class="ent-ts">Last successful load: <b>' + esc(entFmtStamp(ENT.loadedAt)) + '</b>' + (ENT.state === 'stale' ? ' <span class="ent-wcount">(stale)</span>' : '') + '</span>' +
-        (wRows ? '<span class="ent-wcount">' + wRows + ' with data warnings</span>' : '') +
         '<span class="ent-legend" aria-label="Milestone status legend">' + ENT_STATUSES.map(function (s) {
           return '<span class="ent-box ' + entStCls(s) + '">' + esc(s) + '</span>';
         }).join('') +
@@ -9016,12 +8968,11 @@
         var row = '<tr class="ent-row' + (open ? ' open' : '') + '">' +
           '<td class="s1"><button type="button" class="ent-tog" data-ent-tog="' + esc(r.id) + '" aria-expanded="' + open + '" aria-controls="' + did + '">' +
           '<span class="ent-chev" aria-hidden="true">&#9654;</span><span>' + esc(nm) + '</span></button>' +
-          (r.warn.length ? '<span class="ent-wchip">' + r.warn.length + ' warning' + (r.warn.length > 1 ? 's' : '') + '</span>' : '') + '</td>' +
+          '</td>' +
           '<td class="s2 ent-lead' + (r.lead.names.length ? '' : ' unk') + '">' + entPeopleHtml(r.lead) + '</td>' +
           '<td class="s3">' + entHealthBadge(h) + (h.src === 'Stage Gate' ? '<span class="ent-hsrc" title="' + esc(h.note) + '">from Stage Gate</span>' : '') + '</td>' +
-          '<td class="s4 ent-ptype' + (r.type ? '' : ' unk') + '">' + esc(r.type || 'Not provided') + '</td>' +
           '<td class="ent-tl">' + entTrack(r, rg) + '</td></tr>';
-        if (open) row += '<tr class="ent-drw" id="' + did + '"><td colspan="5"><div class="ent-drw-in">' + entDrawer(r, h) + '</div></td></tr>';
+        if (open) row += '<tr class="ent-drw" id="' + did + '"><td colspan="4"><div class="ent-drw-in">' + entDrawer(r, h) + '</div></td></tr>';
         return row;
       }
       /* Groups by Portfolio Type, A to Z (blank type last); Title A to Z inside each group. */
@@ -9029,17 +8980,17 @@
       shown.forEach(function (r) { (byType[entTypeLabel(r)] = byType[entTypeLabel(r)] || []).push(r); });
       var body = order.filter(function (t) { return byType[t]; }).map(function (t) {
         var coll = !ENT_GOPEN[t], rows = byType[t];
-        return '<tr class="ent-grp"><td colspan="5"><button type="button" class="ent-gtog" data-ent-grp="' + esc(t) + '" aria-expanded="' + (!coll) + '">' +
+        return '<tr class="ent-grp"><td colspan="4"><button type="button" class="ent-gtog" data-ent-grp="' + esc(t) + '" aria-expanded="' + (!coll) + '">' +
           '<span class="ent-chev" aria-hidden="true">&#9654;</span>' + esc(t) + ' <small>' + rows.length + ' portfolio area' + (rows.length > 1 ? 's' : '') + '</small></button></td></tr>' +
           (coll ? '' : rows.map(rowHtml).join(''));
       }).join('');
-      if (!shown.length) body = '<tr><td colspan="5" class="ent-nomatch">No portfolio areas match these filters.</td></tr>';
+      if (!shown.length) body = '<tr><td colspan="4" class="ent-nomatch">No portfolio areas match these filters.</td></tr>';
       var foot = '<div class="ent-foot">Read-only view of the Enterprise Portfolio Roadmap SharePoint list, shown as saved (manual edits included). ' +
         'Boxes come only from each item\'s Portfolio Area Roadmap lines and sit at their real dates; a short item keeps a minimum width so its label stays readable. ' +
         'A row with more than one project shows only its project timeline bars; every milestone is in its drawer. ' +
         'Health for a Commercialization portfolio area whose title matches a Stage Gate project is copied from that project\'s Stage Gate timeline; all other rows show the SharePoint Health.</div>';
       host.innerHTML = banner + head + entFiltersHtml(all) + '<div class="ent-scroll"><table class="ent-tbl"><thead><tr>' +
-        '<th class="s1">Initiative</th><th class="s2">Lead</th><th class="s3">Health</th><th class="s4">Portfolio Type</th>' +
+        '<th class="s1">Initiative</th><th class="s2">Lead</th><th class="s3">Health</th>' +
         '<th class="mhd">' + mh + '</th></tr></thead><tbody>' + body + '</tbody></table></div>' + foot;
       sc = host.querySelector('.ent-scroll');
       if (!ENT_SCROLL) ENT_SCROLL = { left: Math.max(0, (rg.now - 1 - rg.lo) * ENT_MW), top: 0 };   /* first view opens on last month */
