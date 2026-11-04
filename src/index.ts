@@ -369,6 +369,121 @@ async function runHTTP(): Promise<void> {
         }
     });
 
+    // ── MizAI Initiatives (SharePoint, read-only) ─────────────────────────────
+    // 11/04/26: Business Support source migration, Phase 1. Same site, same managed identity and
+    // Sites.Selected read grant as /enterprise-roadmap (the grant covers the whole RiseBIProject
+    // site). GET only, no cache, every page. Only the agreed fields are returned (Aidan's
+    // 03-11-2026 requirements, section 7.1), so no extra employee data leaves the server.
+    // Single-person columns come back from Graph as <Name>LookupId only; those are resolved to
+    // display names through the site's hidden User Information List, best effort.
+    // App Setting required: MIZAI_SP_LIST_ID (site comes from ENT_SP_SITE_ID).
+    const MZ_FIELDS = [
+        "Title", "InitiativeID", "Journey", "Origin", "Stage", "CurrentStatus",
+        "BusinessOwner", "MizAIOwner", "OwningTeam", "DeliveryTeam", "CrossTeam", "CrossJourney",
+        "SolutionShape", "InitiativePackage", "AppChannel", "DeliveryPriority", "DoDComplete",
+        "HandoffValid", "PackageVersion", "EstHoursLow", "EstHoursHigh", "EstByTeam",
+        "EstimateAccuracy", "Created", "Modified",
+    ];
+    const MZ_KEEP = new Set<string>([...MZ_FIELDS, ...MZ_FIELDS.map((f) => f + "LookupId")]);
+    let _mzInFlight: Promise<unknown> | null = null;
+    let _uil: { listId: string | null; at: number } | null = null;           // User Information List id
+    const _users = new Map<string, { name: string | null; email: string | null; at: number }>();
+    const USER_TTL_MS = 60 * 60 * 1000;
+
+    async function mzGetAll(first: string, token: string): Promise<{ items: any[]; pages: number }> {
+        const items: any[] = [];
+        let next: string | null = first, pages = 0;
+        while (next) {
+            if (++pages > ENT_MAX_PAGES) throw new EntError("UPSTREAM", 502, `List paging exceeded ${ENT_MAX_PAGES} pages`);
+            const page: any = await graphGet(next, token);
+            for (const it of page.value ?? []) items.push(it);
+            next = page["@odata.nextLink"] ?? null;
+        }
+        return { items, pages };
+    }
+
+    async function resolveUsers(siteId: string, ids: string[], token: string): Promise<Record<string, { name: string | null; email: string | null }>> {
+        const out: Record<string, { name: string | null; email: string | null }> = {};
+        const want = ids.filter((id) => {
+            const c = _users.get(id);
+            if (c && Date.now() - c.at < USER_TTL_MS) { out[id] = { name: c.name, email: c.email }; return false; }
+            return true;
+        });
+        if (!want.length) return out;
+        try {
+            if (!_uil || Date.now() - _uil.at > USER_TTL_MS) {
+                const lists: any = await graphGet(`${GRAPH}/sites/${siteId}/lists?$select=id,displayName,system&$top=999`, token);
+                const u = (lists.value ?? []).find((l: any) => l.displayName === "User Information List");
+                _uil = { listId: u ? u.id : null, at: Date.now() };
+            }
+            if (!_uil.listId) return out;
+            for (const id of want.slice(0, 200)) {
+                try {
+                    const it: any = await graphGet(`${GRAPH}/sites/${siteId}/lists/${_uil.listId}/items/${encodeURIComponent(id)}?expand=fields(select=Title,EMail)`, token);
+                    const v = { name: it?.fields?.Title ?? null, email: it?.fields?.EMail ?? null };
+                    _users.set(id, { ...v, at: Date.now() });
+                    out[id] = v;
+                } catch { /* one unresolved person never fails the whole read */ }
+            }
+        } catch (e) {
+            console.error("[EPO] /mizai-initiatives user lookup skipped:", e instanceof Error ? e.message : String(e));
+        }
+        return out;
+    }
+
+    async function loadMizaiInitiatives() {
+        const siteId = process.env.ENT_SP_SITE_ID, listId = process.env.MIZAI_SP_LIST_ID;
+        if (!siteId || !listId) throw new EntError("NOT_CONFIGURED", 500, "ENT_SP_SITE_ID / MIZAI_SP_LIST_ID are not set");
+        const token = await graphToken();
+        const base = `${GRAPH}/sites/${siteId}/lists/${encodeURIComponent(listId)}`;
+        const list = await graphGet(`${base}?$select=id,displayName,webUrl`, token);
+        const sel = [...MZ_FIELDS, "BusinessOwnerLookupId"].join(",");
+        let mode = "select", got: { items: any[]; pages: number };
+        try {
+            got = await mzGetAll(`${base}/items?$top=200&$select=id,webUrl,lastModifiedDateTime&expand=fields(select=${sel})`, token);
+        } catch (e) {
+            // A field-name mismatch in $select fails the whole read with a 400. Fall back once to the
+            // unfiltered read; the whitelist below still limits what is returned.
+            if (!(e instanceof EntError && e.code === "UPSTREAM" && /\b400\b/.test(e.message))) throw e;
+            mode = "unfiltered";
+            got = await mzGetAll(`${base}/items?$top=200&$select=id,webUrl,lastModifiedDateTime&expand=fields`, token);
+        }
+        const ids = new Set<string>();
+        const items = got.items.map((it: any) => {
+            const f: Record<string, unknown> = {};
+            for (const [k, v] of Object.entries(it.fields ?? {})) if (MZ_KEEP.has(k)) f[k] = v;
+            for (const [k, v] of Object.entries(f)) {
+                if (k.endsWith("LookupId") && v != null && v !== "") ids.add(String(v));
+                if (Array.isArray(v)) for (const p of v) if (p && typeof p === "object" && (p as any).LookupId != null && !(p as any).LookupValue) ids.add(String((p as any).LookupId));
+            }
+            return { id: it.id, webUrl: it.webUrl, lastModifiedDateTime: it.lastModifiedDateTime, fields: f };
+        });
+        const resolved = await resolveUsers(siteId, [...ids], token);
+        const users: Record<string, { name: string | null }> = {};          // names only: emails are not needed on screen
+        for (const [k, v] of Object.entries(resolved)) users[k] = { name: v.name };
+        return {
+            source: { name: list.displayName, listUrl: list.webUrl, siteId, listId },
+            loadedAt: new Date().toISOString(),
+            pages: got.pages, count: items.length, mode,
+            users, items,
+        };
+    }
+
+    app.get("/mizai-initiatives", async (_req: Request, res: Response) => {
+        res.setHeader("Cache-Control", "no-store");
+        try {
+            if (!_mzInFlight) _mzInFlight = loadMizaiInitiatives().finally(() => { _mzInFlight = null; });
+            res.json(await _mzInFlight);
+        } catch (e) {
+            const code = e instanceof EntError ? e.code : "UPSTREAM";
+            const status = e instanceof EntError ? e.httpStatus : 502;
+            const msg = e instanceof Error ? e.message : String(e);
+            if (code === "ACCESS_DENIED" || code === "NO_IDENTITY") _graphTok = null;
+            console.error(`[EPO] /mizai-initiatives ${code}:`, msg);
+            res.status(status).json({ error: msg, code });
+        }
+    });
+
     // ── Dashboard static file ─────────────────────────────────────────────────
     app.get("/dashboard", (_req: Request, res: Response) => {
         res.sendFile("/home/site/wwwroot/epo_utilization_standalone.html");

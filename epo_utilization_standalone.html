@@ -3501,6 +3501,63 @@
       color: #166534
     }
 
+    .bsi-scroll {
+      overflow: auto;
+      max-height: calc(100vh - 260px)
+    }
+
+    .bsi-tbl {
+      width: 100%
+    }
+
+    .bsi-tbl th.b1,
+    .bsi-tbl td.b1 {
+      width: 32%
+    }
+
+    .bsi-tbl td {
+      font-size: 12.5px;
+      color: #1F2937
+    }
+
+    .bsi-iid {
+      font-size: 10.5px;
+      color: #6B7280;
+      margin: 3px 0 0 18px
+    }
+
+    .bsi-num {
+      text-align: center
+    }
+
+    .ent-filters label.bsi-chk {
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      text-transform: none;
+      font-size: 12px;
+      letter-spacing: 0;
+      font-weight: 600;
+      padding-bottom: 6px
+    }
+
+    .ent-filters label.bsi-chk input {
+      min-width: 0
+    }
+
+    .bsi-pv {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: .05em;
+      color: #8A5A12;
+      background: #FDF0DC;
+      border-radius: 3px;
+      padding: 1px 6px;
+      text-transform: uppercase
+    }
+
     .ent-foot {
       padding: 10px 14px;
       font-size: 11px;
@@ -3545,6 +3602,9 @@
       <button class="vt-btn" id="vt-heatmap" type="button" style="display:none">Heatmap</button>
       <button class="vt-btn" id="vt-gantt" type="button" style="display:none">Gantt</button>
       <button class="vt-btn active" id="vt-projlist" type="button">Project List</button>
+      <button class="vt-btn" id="vt-bsinit" type="button" style="display:none"
+        title="Preview: Business Support from the MizAI Initiatives SharePoint list">MizAI Initiatives
+        (preview)</button>
       <!-- 8/27/26, per Jerry (Kristen review): Commercialization gains its own
          sub-views. The #view-toggle container is shared between tabs; BS buttons
          above and Comm buttons below are shown/hidden by tab in setCommView /
@@ -3646,6 +3706,16 @@
           <span id="ent-src" style="color:#9CA3AF;font-size:11px"></span>
         </div>
         <div class="pl-body" id="ent-body"></div>
+      </div>
+    </div>
+    <!-- 11/04/26: Business Support, MizAI Initiatives view (SharePoint, Phase 1 preview). See BSI_URL. -->
+    <div class="pl-wrap" id="bsi-wrap" style="display:none">
+      <div class="pl-card">
+        <div class="pl-head">
+          <div class="pf-title">BUSINESS SUPPORT &mdash; MIZAI INITIATIVES</div>
+          <span id="bsi-src" style="color:#9CA3AF;font-size:11px"></span>
+        </div>
+        <div class="pl-body" id="bsi-body"></div>
       </div>
     </div>
 
@@ -5575,6 +5645,8 @@
       /* 10/21/26 R5: Enterprise reads SharePoint on its own request, in parallel, so a slow
          or failed SharePoint read never holds up or fails the Smartsheet load (or vice versa). */
       if (!isRetry) entLoad();
+      /* 11/04/26: refresh the MizAI Initiatives preview too, but only once someone has opened it. */
+      if (!isRetry && BSI.state !== 'idle') bsiLoad();
       /* 10/16/26: timeline caches reset too, or a Refresh would never re-read timelines
          (the prefetch skips anything already cached). Bumping SG_PREFETCH_RUN stops any
          prefetch still running from the previous load. */
@@ -5734,6 +5806,7 @@
         document.getElementById('stagegate-wrap').style.display = 'none';
         document.getElementById('projlist-wrap').style.display = 'none';
         document.getElementById('ent-wrap').style.display = 'block';
+        bsiHide();
         applyViewHeader();   /* 9/17/26: un-hide header items if arriving from Stage Gate */
         /* 10/21/26 R5: Grid: % has no meaning here (no hours, no percentages).
            10/29/26 R6: the Paused button is gone from Enterprise; the Health filter covers it. */
@@ -5743,6 +5816,9 @@
         return;
       }
       document.getElementById('ent-wrap').style.display = 'none';
+      /* 11/04/26: MizAI Initiatives preview keeps its own surface (see setBSView). */
+      if (TAB === 'bs' && BS_VIEW === 'bsinit') { bsiShow(); renderBSI(); return; }
+      bsiHide();
       var fp = curProjects(), mx = curMX();
       var holdCount = PROJECTS.filter(function (p) {
         return p.source === (TAB === 'comm' ? 'Commercialization' : 'Business Support') && !p.capacityExcluded && isOnHold(p.status);
@@ -5770,6 +5846,7 @@
         document.getElementById(id).style.display = (TAB === 'comm') ? '' : 'none';
       });
       document.getElementById('vt-projlist').style.display = (TAB === 'bs') ? '' : 'none';
+      document.getElementById('vt-bsinit').style.display = (TAB === 'bs') ? '' : 'none';
       /* NOTE (7/27/26): this show/hide + dispatch block is a DUPLICATE of the one in
          setBSView. It exists because renderAll runs on paths setBSView never touches
          (initial load, Refresh, slicer changes, tab switch) and must restore the
@@ -8085,6 +8162,16 @@
 
     function setBSView(v) {
       BS_VIEW = v;
+      /* 11/04/26: MizAI Initiatives preview (SharePoint). Handled first, so none of the
+         Smartsheet surfaces below run for it. renderAll has the matching branch. */
+      document.getElementById('vt-bsinit').className = 'vt-btn' + (v === 'bsinit' ? ' active' : '');
+      if (TAB === 'bs' && v === 'bsinit') {
+        ['vt-heatmap', 'vt-gantt', 'vt-projlist'].forEach(function (id) { document.getElementById(id).className = 'vt-btn'; });
+        bsiShow(); if (!BSI.data && BSI.state !== 'loading') bsiLoad(); renderBSI(); return;
+      }
+      bsiHide();
+      if (TAB === 'bs') document.getElementById('h-sub').textContent = 'Business Support · Hours-Based · Live Smartsheet';
+      if (TAB === 'bs') document.getElementById('btn-hold').style.display = '';
       document.getElementById('vt-heatmap').className = 'vt-btn' + (v === 'heatmap' ? ' active' : '');
       document.getElementById('vt-gantt').className = 'vt-btn' + (v === 'gantt' ? ' active' : '');
       document.getElementById('vt-projlist').className = 'vt-btn' + (v === 'projlist' ? ' active' : '');
@@ -9059,6 +9146,310 @@
       clearTimeout(ENT_RESIZE_T); ENT_RESIZE_T = setTimeout(function () { if (ENT.data) renderEnterprise(); }, 200);
     });
 
+    /* ════════════════════════════════════════════════════════
+       BUSINESS SUPPORT: MIZAI INITIATIVES VIEW  (11/04/26, Phase 1 preview)
+       ────────────────────────────────────────────────────────
+       Business Support source migration, Phase 1 (brief v1.3, 04-11-2026). Reads the MizAI
+       Initiatives SharePoint list through the server's read-only /mizai-initiatives route.
+       Sits beside the existing Smartsheet views as its own view button, labelled as a
+       preview, so the Smartsheet Project List stays the default until Business Support
+       accepts this one. Nothing here touches the Smartsheet BS code paths.
+       Rules (Aidan 03-11 and 04-11-2026): one row per initiative; every record in the list;
+       values shown as stored; blanks stay blank; no dates, health, capacity or progress
+       invented; Stage shown with business labels and the stored value alongside; DevOps
+       delivery is "not connected yet" until Phase 2. */
+    var BSI_URL = '/mizai-initiatives';
+    var BSI_LIST_URL_FALLBACK = 'https://mizkan.sharepoint.com/sites/RiseBIProject/Lists/MizAI%20Initiatives';
+    var BSI_STAGES = [
+      ['00_Candidate', 'Awaiting EPO review'], ['01_Discovery', 'Understanding the business need'],
+      ['02_Design: EPO Review', 'EPO design review'], ['03_Design: IT Review', 'Technical review'],
+      ['04_Build Package Review', 'Agreeing delivery scope'], ['05_Ready for Prioritization', 'Ready for delivery planning'],
+      ['06_In Build', 'In delivery'], ['07_On Hold', 'On hold'], ['08_Parked', 'Deferred'],
+      ['Closed', 'Closed; outcome not implied'], ['09_Completed', 'Completed as recorded']];
+    var BSI_PAUSED = { '07_On Hold': 1, '08_Parked': 1 };
+    var BSI_DONE = { 'Closed': 1, '09_Completed': 1 };
+    var BSI = { state: 'idle', data: null, rows: [], loadedAt: null, error: null, errorAt: null, req: 0 };
+    var BSI_OPEN = {};          /* item id -> drawer open (page memory only) */
+    var BSI_GCOLL = {};         /* stage key -> group collapsed */
+    var BSI_F = { q: '', journey: '', view: 'open', paused: false, gaps: false };
+
+    function bsiStageLabel(s) {
+      for (var i = 0; i < BSI_STAGES.length; i++)if (BSI_STAGES[i][0] === s) return BSI_STAGES[i][1];
+      return null;
+    }
+    function bsiStageOrder(s) {
+      for (var i = 0; i < BSI_STAGES.length; i++)if (BSI_STAGES[i][0] === s) return i;
+      return s ? BSI_STAGES.length : BSI_STAGES.length + 1;   /* unrecognised, then blank, last */
+    }
+    function bsiVal(v) {
+      if (v == null) return null;
+      if (typeof v === 'object' && !Array.isArray(v)) { return v.LookupValue || v.Value || v.Label || v.Description || null; }
+      var s = String(v).trim(); return s === '' ? null : s;
+    }
+    function bsiList(v) {
+      if (v == null || v === '') return [];
+      if (Array.isArray(v)) return v.map(bsiVal).filter(function (x) { return x; });
+      var s = bsiVal(v); return s ? [s] : [];
+    }
+    /* Person fields: multi-person arrays carry LookupValue; single-person columns come back as
+       <Name>LookupId only and are resolved by the server from the User Information List. */
+    function bsiPeople(f, name, users) {
+      var out = { names: [], unresolved: 0 };
+      function add(id) { var u = users && users[String(id)]; if (u && u.name) out.names.push(u.name); else out.unresolved++; }
+      var v = f[name];
+      if (Array.isArray(v)) {
+        v.forEach(function (p) {
+          if (p && typeof p === 'object') { if (p.LookupValue) out.names.push(String(p.LookupValue)); else if (p.LookupId != null) add(p.LookupId); else out.unresolved++; }
+          else if (typeof p === 'string' && p.trim()) out.names.push(p.trim());
+        });
+      }
+      else if (v && typeof v === 'object') { if (v.LookupValue) out.names.push(String(v.LookupValue)); else if (v.LookupId != null) add(v.LookupId); }
+      else if (typeof v === 'string' && v.trim() && !/^\d+$/.test(v.trim())) out.names.push(v.trim());
+      if (!out.names.length && !out.unresolved) { var lid = f[name + 'LookupId']; if (lid != null && lid !== '') add(lid); }
+      return out;
+    }
+    function bsiLink(v) {
+      if (v == null || v === '') return { state: 'none' };
+      var href = null, label = null;
+      if (typeof v === 'object') { href = v.Url || v.url || null; label = v.Description || null; }
+      else { var s = String(v).trim(), m = /^(\S+?)(?:,\s*(.+))?$/.exec(s); href = m ? m[1] : s; label = m && m[2] ? m[2] : null; }
+      try { var u = new URL(String(href || '').trim()); if ((u.protocol === 'https:' || u.protocol === 'http:') && u.hostname) return { state: 'ok', href: u.href, label: label }; } catch (e) { }
+      return { state: 'bad', raw: typeof v === 'object' ? JSON.stringify(v) : String(v) };
+    }
+    function bsiBool(v) { return v === true ? 'Yes' : v === false ? 'No' : (v == null || v === '') ? null : String(v); }
+    function bsiNum(v) { if (v == null || v === '') return null; var n = Number(v); return isNaN(n) ? String(v) : n; }
+
+    function bsiBuildRows(p) {
+      var users = p.users || {}, lu = (p.source && p.source.listUrl) || BSI_LIST_URL_FALLBACK;
+      return (p.items || []).map(function (it) {
+        var f = it.fields || {}, r = { id: String(it.id), f: f, gaps: [] };
+        r.title = (bsiVal(f.Title) || '');
+        r.iid = bsiVal(f.InitiativeID);
+        r.journey = bsiVal(f.Journey); r.origin = bsiVal(f.Origin);
+        r.stage = bsiVal(f.Stage); r.stageLabel = bsiStageLabel(r.stage);
+        r.status = entText(f.CurrentStatus);
+        r.bo = bsiPeople(f, 'BusinessOwner', users); r.epo = bsiPeople(f, 'MizAIOwner', users); r.dt = bsiPeople(f, 'DeliveryTeam', users);
+        r.owning = bsiList(f.OwningTeam); r.cross = bsiList(f.CrossTeam); r.shape = bsiList(f.SolutionShape);
+        r.crossJ = bsiBool(f.CrossJourney);
+        r.pkg = bsiLink(f.InitiativePackage); r.appCh = bsiVal(f.AppChannel); r.pkgVer = bsiVal(f.PackageVersion);
+        r.prio = bsiNum(f.DeliveryPriority); r.dod = bsiBool(f.DoDComplete); r.handoff = bsiBool(f.HandoffValid);
+        r.estLo = bsiNum(f.EstHoursLow); r.estHi = bsiNum(f.EstHoursHigh); r.estBy = bsiVal(f.EstByTeam); r.estAcc = bsiVal(f.EstimateAccuracy);
+        r.created = f.Created || null; r.modified = f.Modified || it.lastModifiedDateTime || null;
+        r.url = /DispForm\.aspx/i.test(it.webUrl || '') ? it.webUrl : (lu.replace(/\/+$/, '') + '/DispForm.aspx?ID=' + encodeURIComponent(r.id));
+        if (!r.title) r.gaps.push('Title is blank');
+        if (!r.iid) r.gaps.push('Initiative ID not recorded');
+        if (!r.stage) r.gaps.push('Stage not recorded'); else if (!r.stageLabel) r.gaps.push('Stage "' + r.stage + '" is not one of the known lifecycle values');
+        if (!r.bo.names.length) r.gaps.push(r.bo.unresolved ? 'Business owner name could not be resolved' : 'Business owner not recorded');
+        if (!r.epo.names.length) r.gaps.push(r.epo.unresolved ? 'EPO owner name could not be resolved' : 'EPO owner not recorded');
+        else if (r.epo.unresolved) r.gaps.push(r.epo.unresolved + ' EPO owner name(s) could not be resolved');
+        if (r.pkg.state === 'bad') r.gaps.push('Initiative package link is not a valid web address');
+        return r;
+      }).sort(function (a, b) {
+        var x = a.title.toLowerCase(), y = b.title.toLowerCase(); if (x !== y) return x < y ? -1 : 1; return (+a.id) - (+b.id);
+      });
+    }
+
+    function bsiLoad() {
+      var my = ++BSI.req;
+      BSI.state = BSI.data ? 'refreshing' : 'loading';
+      if (bsiActive()) renderBSI();
+      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var to = setTimeout(function () { if (ac) ac.abort(); }, 45000);
+      fetch(BSI_URL, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: ac ? ac.signal : undefined })
+        .then(function (r) {
+          return r.text().then(function (t) {
+            var j = null; try { j = JSON.parse(t); } catch (e) { }
+            if (!r.ok) { var err = new Error((j && j.error) || ('HTTP ' + r.status)); err.code = (j && j.code) || (r.status === 404 ? 'NO_ROUTE' : 'HTTP_' + r.status); throw err; }
+            if (!j || !Array.isArray(j.items)) { var e2 = new Error('Unexpected response shape'); e2.code = 'BAD_SHAPE'; throw e2; }
+            return j;
+          });
+        })
+        .then(function (j) {
+          if (my !== BSI.req) return;
+          BSI.data = j; BSI.rows = bsiBuildRows(j); BSI.loadedAt = new Date(); BSI.state = 'ok'; BSI.error = null;
+          if (bsiActive()) renderBSI();
+        })
+        .catch(function (e) {
+          if (my !== BSI.req) return;
+          var timedOut = ac && ac.signal.aborted;
+          BSI.error = { msg: timedOut ? 'Request timed out after 45s' : (e.message || String(e)), code: timedOut ? 'TIMEOUT' : (e.code || 'NETWORK') };
+          BSI.errorAt = new Date(); BSI.state = BSI.data ? 'stale' : 'error';
+          console.error('[EPO] MizAI Initiatives load failed (' + BSI.error.code + '): ' + BSI.error.msg);
+          if (bsiActive()) renderBSI();
+        })
+        .then(function () { clearTimeout(to); });
+    }
+    function bsiErrHint(code) {
+      if (code === 'NO_ROUTE') return 'The /mizai-initiatives route is not deployed on the dashboard server yet.';
+      if (code === 'NOT_CONFIGURED') return 'The server is missing the MIZAI_SP_LIST_ID setting.';
+      return entErrHint(code);
+    }
+    function bsiActive() { return TAB === 'bs' && BS_VIEW === 'bsinit'; }
+
+    /* Show this view's surface and hide the Smartsheet BS surfaces (both setBSView and
+       renderAll call this, per the 7/27/26 note about keeping the two dispatchers in step). */
+    function bsiShow() {
+      ['ent-wrap', 'gantt-wrap', 'projlist-wrap', 'stagegate-wrap'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; });
+      document.querySelector('.hm-wrap').style.display = 'none';
+      document.getElementById('kpi-strip').style.display = 'none';
+      document.getElementById('slicer-bar').style.display = 'none';
+      document.getElementById('bsi-wrap').style.display = 'block';
+      document.getElementById('btn-hold').style.display = 'none';
+      document.getElementById('btn-gridmode').style.display = 'none';
+      document.getElementById('h-sub').textContent = 'Business Support · MizAI Initiatives · SharePoint (preview)';
+      document.getElementById('view-toggle').className = 'view-toggle show';
+      ['vt-util', 'vt-stagegate'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+      document.getElementById('vt-projlist').style.display = '';
+      document.getElementById('vt-bsinit').style.display = '';
+    }
+    function bsiHide() {
+      var w = document.getElementById('bsi-wrap'); if (w) w.style.display = 'none';
+      var s = document.getElementById('slicer-bar'); if (s) s.style.display = '';
+    }
+
+    function bsiPass(r) {
+      var st = r.stage || '';
+      if (BSI_F.view === 'open') { if (BSI_DONE[st]) return false; if (!BSI_F.paused && BSI_PAUSED[st]) return false; }
+      else if (BSI_F.view === 'done') { if (!BSI_DONE[st]) return false; }
+      if (BSI_F.q && r.title.toLowerCase().indexOf(BSI_F.q.toLowerCase()) < 0 && String(r.iid || '').toLowerCase().indexOf(BSI_F.q.toLowerCase()) < 0) return false;
+      if (BSI_F.journey) { if (BSI_F.journey === 'Journey not recorded') { if (r.journey) return false; } else if (r.journey !== BSI_F.journey) return false; }
+      if (BSI_F.gaps && !r.gaps.length) return false;
+      return true;
+    }
+    function bsiPeopleHtml(p) {
+      if (!p.names.length) return '<span class="ent-np">' + (p.unresolved ? 'Name not available' : 'Not recorded') + '</span>';
+      return esc(p.names.join(', ')) + (p.unresolved ? ' <span class="ent-np">(+' + p.unresolved + ' name not available)</span>' : '');
+    }
+    function bsiTxt(v, empty) { return v != null && v !== '' ? esc(String(v)) : '<span class="ent-np">' + (empty || 'Not recorded') + '</span>'; }
+    function bsiDrawer(r) {
+      var kv = function (rows) { return '<dl class="ent-kv">' + rows.map(function (x) { return '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd>'; }).join('') + '</dl>'; };
+      var est = (r.estLo == null && r.estHi == null) ? '<span class="ent-np">Not recorded</span>' :
+        (r.estLo != null && r.estHi != null ? esc(String(r.estLo)) + ' to ' + esc(String(r.estHi)) + ' hours' : (r.estLo != null ? 'From ' + esc(String(r.estLo)) + ' hours' : 'Up to ' + esc(String(r.estHi)) + ' hours'));
+      var pkg = r.pkg.state === 'ok' ? '<a class="ent-src-lnk" href="' + esc(r.pkg.href) + '" target="_blank" rel="noopener noreferrer" aria-label="Open the initiative workspace for ' + esc(r.title) + ' (opens in a new tab)">' + esc(r.pkg.label || 'Open workspace') + ' &#8599;</a>' :
+        (r.pkg.state === 'bad' ? '<span class="ent-np">Link unavailable (not a valid web address)</span>' : '<span class="ent-np">Not recorded</span>');
+      var stage = r.stage ? (r.stageLabel ? esc(r.stageLabel) + ' <span class="ent-np" style="font-style:normal">(' + esc(r.stage) + ')</span>' : esc(r.stage) + ' <span class="ent-np">(not a known lifecycle value)</span>') : '<span class="ent-np">Not recorded</span>';
+      var gaps = r.gaps.length ? '<ul class="ent-warn">' + r.gaps.map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ul>' : '<div class="ent-ok">No data gaps for this initiative.</div>';
+      return '<div class="ent-dgrid">' +
+        '<section class="ent-sec"><h5>Business</h5>' + kv([
+          ['Initiative', bsiTxt(r.title)], ['Initiative ID', bsiTxt(r.iid)], ['Journey', bsiTxt(r.journey)], ['Origin', bsiTxt(r.origin)],
+          ['Business position', stage], ['Business owner', bsiPeopleHtml(r.bo)], ['EPO owner', bsiPeopleHtml(r.epo)],
+          ['Delivery priority', bsiTxt(r.prio, 'Not set')]]) + '</section>' +
+        '<section class="ent-sec wide"><h5>Current status</h5>' + entTextBlock(r.status) + '</section>' +
+        '<section class="ent-sec"><h5>Delivery teams (as recorded)</h5>' + kv([
+          ['Owning team', bsiTxt(r.owning.join(', '))], ['Cross team', bsiTxt(r.cross.join(', '))], ['Delivery members', bsiPeopleHtml(r.dt)],
+          ['Cross-Journey', bsiTxt(r.crossJ)], ['Solution shape', bsiTxt(r.shape.join(', '))]]) +
+        '<div class="ent-hsrc" style="white-space:normal">Owning team choices are SharePoint capabilities, not DevOps area paths.</div></section>' +
+        '<section class="ent-sec"><h5>Package and estimate</h5>' + kv([
+          ['Workspace', pkg], ['App channel', bsiTxt(r.appCh)], ['Package version', bsiTxt(r.pkgVer)],
+          ['Handoff validated', bsiTxt(r.handoff)], ['Definition of Done', bsiTxt(r.dod)],
+          ['Early estimate', est], ['Estimate by team', bsiTxt(r.estBy)], ['Estimate basis', bsiTxt(r.estAcc)]]) +
+        '<div class="ent-hsrc" style="white-space:normal">Handoff and Definition of Done are recorded flags. They do not prove delivery acceptance, capacity, release or business acceptance.</div></section>' +
+        '<section class="ent-sec"><h5>Delivery (DevOps)</h5><div class="ent-txt np">Not connected yet. Phase 2 will show the Epics and Features linked to this initiative by its SharePoint item ID (' + esc(r.id) + ').</div></section>' +
+        '<section class="ent-sec"><h5>Record</h5>' + kv([
+          ['SharePoint item ID', esc(r.id)], ['Record created', r.created ? esc(entFmtStamp(r.created)) : '<span class="ent-np">Not recorded</span>'],
+          ['Record edited', r.modified ? esc(entFmtStamp(r.modified)) : '<span class="ent-np">Not recorded</span>'],
+          ['SharePoint', '<a class="ent-src-lnk" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" aria-label="Open ' + esc(r.title || 'this initiative') + ' in SharePoint (opens in a new tab)">Open in SharePoint &#8599;</a>']]) +
+        '<div class="ent-hsrc" style="white-space:normal">Created and edited are record timestamps, not project dates.</div>' +
+        '<h5 style="margin-top:10px">Data gaps</h5>' + gaps + '</section></div>';
+    }
+    function bsiFiltersHtml(all) {
+      var js = {}, none = false; all.forEach(function (r) { if (r.journey) js[r.journey] = 1; else none = true; });
+      var jl = Object.keys(js).sort().concat(none ? ['Journey not recorded'] : []);
+      return '<div class="ent-filters" role="search" aria-label="Filter initiatives">' +
+        '<label>Initiative<input type="search" data-bsi-f="q" placeholder="Search name or ID" value="' + esc(BSI_F.q) + '"' + (BSI_F.q ? ' class="on"' : '') + '></label>' +
+        '<label>Journey<select data-bsi-f="journey"' + (BSI_F.journey ? ' class="on"' : '') + '><option value="">All</option>' + jl.map(function (v) { return '<option' + (v === BSI_F.journey ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') + '</select></label>' +
+        '<label>Show<select data-bsi-f="view"' + (BSI_F.view !== 'open' ? ' class="on"' : '') + '>' +
+        [['open', 'Open work'], ['all', 'All stages'], ['done', 'Completed and closed']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === BSI_F.view ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+        '<label class="bsi-chk"><input type="checkbox" data-bsi-f="paused"' + (BSI_F.paused ? ' checked' : '') + (BSI_F.view !== 'open' ? ' disabled' : '') + '> Include on hold and parked</label>' +
+        '<label class="bsi-chk"><input type="checkbox" data-bsi-f="gaps"' + (BSI_F.gaps ? ' checked' : '') + '> Data gaps only</label></div>';
+    }
+    function bsiScopeText() {
+      if (BSI_F.view === 'all') return 'all stages';
+      if (BSI_F.view === 'done') return 'completed and closed';
+      return BSI_F.paused ? 'open work, including on hold and parked' : 'open work, excluding on hold and parked';
+    }
+    function renderBSI() {
+      var host = document.getElementById('bsi-body'); if (!host) return;
+      var src = document.getElementById('bsi-src');
+      if (src) src.innerHTML = 'Source: <a class="ent-src-lnk" href="' + esc((BSI.data && BSI.data.source && BSI.data.source.listUrl) || BSI_LIST_URL_FALLBACK) + '" target="_blank" rel="noopener noreferrer">MizAI Initiatives (SharePoint) &#8599;</a> <span class="bsi-pv">Preview</span>';
+      var cnt = document.getElementById('tab-count');
+      if (!BSI.data) {
+        cnt.textContent = '';
+        if (BSI.state === 'error') {
+          host.innerHTML = '<div class="ent-state err"><h4>MizAI Initiatives could not be loaded</h4>' + esc(bsiErrHint(BSI.error.code)) +
+            '<br><span style="color:#6B7280;font-size:12px">' + esc(BSI.error.msg) + ' (' + esc(BSI.error.code) + '), ' + esc(entFmtStamp(BSI.errorAt)) + '</span>' +
+            '<br><span style="color:#6B7280;font-size:12px">No Smartsheet data is shown in its place.</span>' +
+            '<br><button type="button" class="ent-retry" id="bsi-retry">&#8635; Try again</button></div>';
+          document.getElementById('bsi-retry').onclick = function () { bsiLoad(); };
+        } else host.innerHTML = '<div class="ent-state"><div class="spinner" style="margin:0 auto 10px"></div>Loading MizAI Initiatives from SharePoint&hellip;</div>';
+        return;
+      }
+      var all = BSI.rows, shown = all.filter(bsiPass), gapRows = all.filter(function (r) { return r.gaps.length; }).length;
+      cnt.textContent = shown.length + ' of ' + all.length + ' initiatives';
+      var banner = '';
+      if (BSI.state === 'stale') banner = '<div class="ent-banner stale" role="alert"><b>Refresh failed</b> at ' + esc(entFmtStamp(BSI.errorAt)) + ': ' + esc(bsiErrHint(BSI.error.code)) +
+        ' (' + esc(BSI.error.msg) + '). <b>Showing stale data</b> from the last successful load at ' + esc(entFmtStamp(BSI.loadedAt)) + '.</div>';
+      if (BSI.state === 'refreshing') banner = '<div class="ent-banner info">Refreshing from SharePoint&hellip; showing the last successful load until it finishes.</div>';
+      var head = '<div class="ent-head"><span class="ent-cnt"><b>' + shown.length + '</b> of ' + all.length + ' initiatives (' + esc(bsiScopeText()) + ')</span>' +
+        '<span class="ent-ts">Last successful load: <b>' + esc(entFmtStamp(BSI.loadedAt)) + '</b>' + (BSI.state === 'stale' ? ' <span class="ent-wcount">(stale)</span>' : '') + '</span>' +
+        (gapRows ? '<span class="ent-wcount">' + gapRows + ' with data gaps</span>' : '') +
+        '<span class="ent-legend">Delivery (DevOps): not connected yet</span></div>';
+      if (!all.length) { host.innerHTML = banner + head + '<div class="ent-state"><h4>No initiatives</h4>The MizAI Initiatives list has no items.</div>'; return; }
+      var groups = {}, keys = [];
+      shown.forEach(function (r) { var k = r.stage || ''; if (!groups[k]) { groups[k] = []; keys.push(k); } groups[k].push(r); });
+      keys.sort(function (a, b) { return bsiStageOrder(a) - bsiStageOrder(b) || (a < b ? -1 : 1); });
+      function row(r) {
+        var open = !!BSI_OPEN[r.id], did = 'bsi-drw-' + esc(r.id);
+        var h = '<tr class="ent-row' + (open ? ' open' : '') + '">' +
+          '<td class="b1"><button type="button" class="ent-tog" data-bsi-tog="' + esc(r.id) + '" aria-expanded="' + open + '" aria-controls="' + did + '">' +
+          '<span class="ent-chev" aria-hidden="true">&#9654;</span><span>' + esc(r.title || '(untitled item #' + r.id + ')') + '</span></button>' +
+          '<div class="bsi-iid">' + (r.iid ? esc(r.iid) : '<span class="ent-np">No initiative ID</span>') + (r.gaps.length ? ' <span class="ent-wchip" style="margin:0 0 0 6px">' + r.gaps.length + ' gap' + (r.gaps.length > 1 ? 's' : '') + '</span>' : '') + '</div></td>' +
+          '<td>' + bsiTxt(r.journey) + '</td>' +
+          '<td>' + bsiPeopleHtml(r.bo) + '</td>' +
+          '<td>' + bsiPeopleHtml(r.epo) + '</td>' +
+          '<td class="bsi-num">' + bsiTxt(r.prio, 'Not set') + '</td>' +
+          '<td><span class="ent-np">Not connected yet</span></td></tr>';
+        if (open) h += '<tr class="ent-drw" id="' + did + '"><td colspan="6"><div class="ent-drw-in" style="position:static">' + bsiDrawer(r) + '</div></td></tr>';
+        return h;
+      }
+      var body = keys.map(function (k) {
+        var coll = !!BSI_GCOLL[k], lab = k ? (bsiStageLabel(k) || ('Stage not recognised: ' + k)) : 'Stage not recorded';
+        return '<tr class="ent-grp"><td colspan="6"><button type="button" class="ent-gtog" data-bsi-grp="' + esc(k) + '" aria-expanded="' + (!coll) + '">' +
+          '<span class="ent-chev" aria-hidden="true">&#9654;</span>' + esc(lab) + ' <small>' + groups[k].length + ' initiative' + (groups[k].length > 1 ? 's' : '') + (k && bsiStageLabel(k) ? ' &middot; ' + esc(k) : '') + '</small></button></td></tr>' +
+          (coll ? '' : groups[k].map(row).join(''));
+      }).join('');
+      if (!shown.length) body = '<tr><td colspan="6" class="ent-nomatch">No initiatives match these filters.</td></tr>';
+      host.innerHTML = banner + head + bsiFiltersHtml(all) +
+        '<div class="bsi-scroll"><table class="ent-tbl bsi-tbl"><thead><tr><th class="b1">Initiative</th><th>Journey</th><th>Business owner</th><th>EPO owner</th><th>Priority</th><th>Delivery (DevOps)</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
+        '<div class="ent-foot">Preview of the Business Support view built on the MizAI Initiatives SharePoint list (Phase 1). Read-only; values shown as stored. ' +
+        'The Smartsheet Project List stays the default until this view is accepted. Delivery information from DevOps arrives in Phase 2.</div>';
+      host.onclick = bsiClick; host.oninput = host.onchange = bsiFilterEvent;
+    }
+    function bsiFilterEvent(ev) {
+      var el = ev.target, key = el && el.getAttribute && el.getAttribute('data-bsi-f'); if (!key) return;
+      if (key === 'q' && ev.type === 'change') return;
+      if (key !== 'q' && ev.type === 'input' && el.type !== 'checkbox') return;
+      if (el.type === 'checkbox' && ev.type === 'input') return;
+      BSI_F[key] = el.type === 'checkbox' ? el.checked : el.value;
+      var caret = key === 'q' ? el.selectionStart : null;
+      renderBSI();
+      var again = document.querySelector('#bsi-body [data-bsi-f="' + key + '"]');
+      if (again) { again.focus({ preventScroll: true }); if (caret != null) try { again.setSelectionRange(caret, caret); } catch (e) { } }
+    }
+    function bsiClick(ev) {
+      var t = ev.target;
+      var g = t.closest && t.closest('[data-bsi-grp]');
+      if (g) {
+        var k = g.getAttribute('data-bsi-grp'); BSI_GCOLL[k] = !BSI_GCOLL[k]; renderBSI();
+        var gb = Array.prototype.filter.call(document.querySelectorAll('#bsi-body [data-bsi-grp]'), function (x) { return x.getAttribute('data-bsi-grp') === k; })[0]; if (gb) gb.focus({ preventScroll: true }); return;
+      }
+      var tog = t.closest && t.closest('[data-bsi-tog]');
+      if (tog) {
+        var id = tog.getAttribute('data-bsi-tog'); if (BSI_OPEN[id]) delete BSI_OPEN[id]; else BSI_OPEN[id] = true; renderBSI();
+        var b = document.querySelector('#bsi-body [data-bsi-tog="' + id + '"]'); if (b) b.focus({ preventScroll: true });
+      }
+    }
+
     function switchTab(t) {
       TAB = t; SEL = null; EXPANDED = {}; COLL = {}; BS_VIEW = 'projlist'; PF_EXPANDED = {}; PF_SLICER = { dept: null, itOwner: null, itResource: null, priority: null }; HM_STATUS_COLL = {}; HM_MX_BY_STATUS = {}; GANTT_DEPT_COLL = {}; PF_RAID_EXPANDED = {}; PF_ROW_INDEX = {};
       document.getElementById('tab-comm').className = 'tab ' + (t === 'comm' ? 'active' : '');
@@ -9067,6 +9458,7 @@
       document.getElementById('vt-heatmap').className = 'vt-btn';
       document.getElementById('vt-gantt').className = 'vt-btn';
       document.getElementById('vt-projlist').className = 'vt-btn active';
+      document.getElementById('vt-bsinit').className = 'vt-btn';
       /* 8/27/26: reset Comm sub-view on any tab switch, same as BS_VIEW above. */
       COMM_VIEW = 'stagegate';   /* 9/17/26 (G1): Stage Gate is the Comm default */
       document.getElementById('vt-util').className = 'vt-btn';
@@ -9089,6 +9481,7 @@
       document.getElementById('vt-heatmap').onclick = function () { setBSView('heatmap'); };
       document.getElementById('vt-gantt').onclick = function () { setBSView('gantt'); };
       document.getElementById('vt-projlist').onclick = function () { setBSView('projlist'); };
+      document.getElementById('vt-bsinit').onclick = function () { setBSView('bsinit'); };
       document.getElementById('vt-util').onclick = function () { setCommView('util'); };
       document.getElementById('vt-stagegate').onclick = function () { setCommView('stagegate'); };
 
